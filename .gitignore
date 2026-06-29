@@ -32,3 +32,9 @@ pnpm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Foundry
+/contracts/lib/
+/contracts/out/
+/contracts/cache/
+/contracts/broadcast/
