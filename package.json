@@ -14,7 +14,14 @@
       "@polkadot/keyring": "13.5.9",
       "@polkadot/api": "15.10.2",
       "@polkadot/types": "15.10.2"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "bufferutil",
+      "protobufjs",
+      "sharp",
+      "unrs-resolver",
+      "utf-8-validate"
+    ]
   },
   "scripts": {
     "dev": "next dev",
