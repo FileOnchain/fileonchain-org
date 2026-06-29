@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import ThemeProvider from "@/components/ThemeProvider";
+import { ToastProvider } from "@/components/ui/Toast";
 import Nav from "@/components/layout/Nav";
 import Footer from "@/components/layout/Footer";
 import "./globals.css";
@@ -61,9 +62,11 @@ export default function RootLayout({
       </head>
       <body className="bg-background text-foreground font-sans min-h-screen flex flex-col">
         <ThemeProvider>
-          <Nav />
-          <div className="flex-1">{children}</div>
-          <Footer />
+          <ToastProvider>
+            <Nav />
+            <div className="flex-1">{children}</div>
+            <Footer />
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>
