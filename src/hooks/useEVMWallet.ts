@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { createPublicClient, createWalletClient, custom, http, type WalletClient } from "viem";
 import { mainnet } from "viem/chains";
 import { useWalletStates } from "@/states/wallet";
@@ -24,6 +24,9 @@ declare global {
  * useEVMWallet — EVM wallet integration via injected providers (MetaMask,
  * Rabby, Coinbase Wallet, Brave). Uses viem for client construction; reads
  * the address via `eth_accounts`, requests connection via `eth_requestAccounts`.
+ *
+ * No mount-time reads: the wallet is only consulted when the user explicitly
+ * clicks "Connect Wallet" to avoid surprise pop-ups on page load.
  */
 export const useEVMWallet = () => {
   const evmAddress = useWalletStates((s) => s.evmAddress);
@@ -34,26 +37,6 @@ export const useEVMWallet = () => {
     if (typeof window === "undefined") return null;
     return window.ethereum ?? null;
   };
-
-  // Try to read any already-permitted account on mount.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const provider = window.ethereum;
-    if (!provider) return;
-
-    void provider
-      .request({ method: "eth_accounts" })
-      .then((accounts) => {
-        const list = accounts as string[];
-        if (list && list.length > 0 && !evmAddress) {
-          setEvmAddress(list[0] as `0x${string}`);
-          setChainFamily("evm");
-        }
-      })
-      .catch(() => {
-        // ignore — user hasn't connected yet
-      });
-  }, [evmAddress, setEvmAddress, setChainFamily]);
 
   const connect = useCallback(async () => {
     const provider = getProvider();

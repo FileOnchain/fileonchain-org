@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { useWalletStates } from "@/states/wallet";
 import { getAptosNetworks } from "@/lib/chains/aptos";
 
@@ -28,6 +28,9 @@ declare global {
 /**
  * useAptosWallet — connects to Petra / Martian via the global `window.aptos`
  * provider. Aptos SDK loaded lazily to avoid SSR `window`/`crypto` issues.
+ *
+ * No mount-time reads: the wallet is only consulted on explicit connect() so
+ * the browser doesn't surprise the user with a pop-up on page load.
  */
 export const useAptosWallet = () => {
   const aptosAddress = useWalletStates((s) => s.aptosAddress);
@@ -38,22 +41,6 @@ export const useAptosWallet = () => {
     if (typeof window === "undefined") return null;
     return window.petra ?? window.aptos ?? window.martian ?? null;
   };
-
-  useEffect(() => {
-    const provider = getProvider();
-    if (!provider?.account) return;
-    void provider
-      .account()
-      .then((acct) => {
-        if (acct?.address && !aptosAddress) {
-          setAptosAddress(acct.address);
-          setChainFamily("aptos");
-        }
-      })
-      .catch(() => {
-        // not connected
-      });
-  }, [aptosAddress, setAptosAddress, setChainFamily]);
 
   const connect = useCallback(async () => {
     const provider = getProvider();

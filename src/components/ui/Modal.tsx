@@ -28,6 +28,10 @@ const sizeClasses = {
  * Modal — accessible dialog with framer-motion enter/exit. Radix provides
  * focus trap, escape-to-close, and aria semantics; framer-motion adds the
  * soft scale + fade entrance.
+ *
+ * Centering: the outer wrapper uses fixed + top/left 50% + translate -50%,
+ * the inner motion.div handles only opacity/scale so framer's transform
+ * doesn't fight Tailwind's translate.
  */
 export const Modal = ({
   open,
@@ -55,49 +59,54 @@ export const Modal = ({
               />
             </Dialog.Overlay>
             <Dialog.Content asChild>
-              <motion.div
-                initial={{ opacity: 0, scale: 0.96, y: 8 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.96, y: 8 }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              <div
                 className={cn(
                   "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
                   "w-[calc(100vw-2rem)] sm:w-full",
                   sizeClasses[size],
-                  "rounded-xl border border-border bg-surface-elevated shadow-elev-3",
-                  "p-5 md:p-6 max-h-[90vh] overflow-y-auto",
-                  className,
                 )}
               >
-                {(title || !hideClose) && (
-                  <div className="flex items-start justify-between gap-4 mb-4">
-                    <div className="flex-1 min-w-0">
-                      {title && (
-                        <Dialog.Title className="text-lg font-semibold text-foreground">
-                          {title}
-                        </Dialog.Title>
-                      )}
-                      {description && (
-                        <Dialog.Description className="mt-1 text-sm text-muted">
-                          {description}
-                        </Dialog.Description>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  className={cn(
+                    "rounded-xl border border-border bg-surface-elevated shadow-elev-3",
+                    "p-5 md:p-6 max-h-[90vh] overflow-y-auto",
+                    className,
+                  )}
+                >
+                  {(title || !hideClose) && (
+                    <div className="flex items-start justify-between gap-4 mb-4">
+                      <div className="flex-1 min-w-0">
+                        {title && (
+                          <Dialog.Title className="text-lg font-semibold text-foreground">
+                            {title}
+                          </Dialog.Title>
+                        )}
+                        {description && (
+                          <Dialog.Description className="mt-1 text-sm text-muted">
+                            {description}
+                          </Dialog.Description>
+                        )}
+                      </div>
+                      {!hideClose && (
+                        <Dialog.Close
+                          aria-label="Close"
+                          className="shrink-0 rounded-md p-1.5 text-muted hover:text-foreground hover:bg-surface transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        >
+                          <FiX size={18} />
+                        </Dialog.Close>
                       )}
                     </div>
-                    {!hideClose && (
-                      <Dialog.Close
-                        aria-label="Close"
-                        className="shrink-0 rounded-md p-1.5 text-muted hover:text-foreground hover:bg-surface transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                      >
-                        <FiX size={18} />
-                      </Dialog.Close>
-                    )}
-                  </div>
-                )}
-                <div>{children}</div>
-                {footer && (
-                  <div className="mt-5 flex flex-wrap items-center justify-end gap-2">{footer}</div>
-                )}
-              </motion.div>
+                  )}
+                  <div>{children}</div>
+                  {footer && (
+                    <div className="mt-5 flex flex-wrap items-center justify-end gap-2">{footer}</div>
+                  )}
+                </motion.div>
+              </div>
             </Dialog.Content>
           </Dialog.Portal>
         )}
