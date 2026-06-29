@@ -1,33 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FileOnChain
+
+Upload files permanently on the Autonomys Network.
+
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app) and managed with **pnpm**.
 
 ## Getting Started
 
-First, run the development server:
+Install dependencies and start the dev server:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+You can start editing the page by modifying `src/app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Requirements
+
+- Node.js **>= 20** (see `engines` in `package.json`)
+- pnpm **>= 10** (see `packageManager` in `package.json`)
+
+Enable [Corepack](https://nodejs.org/api/corepack.html) if you don't have pnpm installed yet — it'll pick up the version pinned in `package.json`:
+
+```bash
+corepack enable
+corepack prepare pnpm@10.28.1 --activate
+```
+
+## Scripts
+
+| Command       | What it does                           |
+| ------------- | -------------------------------------- |
+| `pnpm dev`    | Run the development server             |
+| `pnpm build`  | Produce a production build             |
+| `pnpm start`  | Serve the production build             |
+| `pnpm lint`   | Run ESLint across the project          |
 
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- [Next.js Documentation](https://nextjs.org/docs) — learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) — an interactive Next.js tutorial.
 
 ## Deploy on Vercel
 
