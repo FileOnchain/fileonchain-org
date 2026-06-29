@@ -1,32 +1,67 @@
 # FileOnChain
 
-Upload files permanently on the Autonomys Network.
+Upload files permanently to any chain — EVM, Substrate, Solana, and Aptos.
+Anchor CIDs onchain, pay for private encrypted cache, and fund public infrastructure through donations.
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app) and managed with **pnpm**.
+## Stack
 
-## Getting Started
+- **Next.js 15** (App Router) + **React 19 RC**
+- **TypeScript** + **Tailwind CSS 3**
+- **Zustand** for state, **Radix UI** primitives, **framer-motion** for transitions
+- **viem**, **@solana/web3.js**, **@aptos-labs/ts-sdk**, **@polkadot/api** for chain SDKs
+- **Foundry** (separate `contracts/` workspace) for the on-chain registry / cache / donation contracts
 
-Install dependencies and start the dev server:
+## Project layout
+
+```
+fileonchain-org/
+├── contracts/          Foundry project: FileRegistry, CachePayments, DonationEscrow + tests
+├── public/             Static assets (logos, chain icons)
+├── src/
+│   ├── app/            App Router routes (upload, explorer, cache, donations, dashboard)
+│   ├── components/     UI primitives (ui/), layout (Nav/Footer/PageShell), features
+│   ├── hooks/          useSubstrateWallet, useEVMWallet, useSolanaWallet, useAptosWallet, …
+│   ├── lib/
+│   │   ├── chains/     12-chain registry + per-family helpers
+│   │   ├── contracts/  Compiled ABIs + placeholder addresses
+│   │   ├── cid/        CID validation + formatting
+│   │   ├── crypto/     WebCrypto AES-GCM encryption stub
+│   │   └── mock/       Deterministic mock data with /* TODO */ markers
+│   ├── states/         Zustand stores (theme, wallet, chains, cache, donations)
+│   ├── types/          Shared types (ChainId, ChainFamily, contracts, etc.)
+│   └── utils/          File processing helpers (generateCIDs, readFileContent, …)
+├── tailwind.config.ts
+└── package.json
+```
+
+## Supported chains (v2)
+
+| Family | Chains |
+|---|---|
+| **EVM** | Ethereum, Base, Optimism, Arbitrum One, Polygon |
+| **Substrate** | Autonomys Mainnet, Autonomys Taurus (testnet), Polkadot Asset Hub |
+| **Solana** | Mainnet, Devnet |
+| **Aptos** | Mainnet, Testnet |
+
+## Getting started
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Then open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open <http://localhost:3000>.
 
-You can start editing the page by modifying `src/app/page.tsx`. The page auto-updates as you edit the file.
+### Contracts (Foundry)
 
-## Requirements
-
-- Node.js **>= 20** (see `engines` in `package.json`)
-- pnpm **>= 10** (see `packageManager` in `package.json`)
-
-Enable [Corepack](https://nodejs.org/api/corepack.html) if you don't have pnpm installed yet — it'll pick up the version pinned in `package.json`:
+The webapp only consumes compiled ABIs and placeholder addresses. To deploy or
+test the contracts:
 
 ```bash
-corepack enable
-corepack prepare pnpm@10.28.1 --activate
+cd contracts
+forge install                 # installs forge-std
+forge build
+forge test
 ```
 
 ## Scripts
@@ -38,13 +73,29 @@ corepack prepare pnpm@10.28.1 --activate
 | `pnpm start`  | Serve the production build             |
 | `pnpm lint`   | Run ESLint across the project          |
 
-## Learn More
+## Requirements
 
-- [Next.js Documentation](https://nextjs.org/docs) — learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) — an interactive Next.js tutorial.
+- Node.js **>= 20**
+- pnpm **>= 10** (see `packageManager` in `package.json`)
+
+Enable [Corepack](https://nodejs.org/api/corepack.html) if you don't have pnpm installed yet:
+
+```bash
+corepack enable
+corepack prepare pnpm@10.28.1 --activate
+```
+
+## Mock-vs-real
+
+Every chain / contract interaction is mocked under `src/lib/mock/` with
+`/* TODO: … */` markers. Wire them to real RPC and contract reads as you
+deploy. The `src/lib/contracts/abis/*.json` files are already the compiled
+outputs from `contracts/out/`.
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+vercel deploy
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for details.
