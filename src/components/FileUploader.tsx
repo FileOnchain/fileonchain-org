@@ -42,7 +42,7 @@ const FileUploader = () => {
           2
         ).slice(0, SNIPPET_PREVIEW_CHARS);
         return (
-          <pre className="bg-gray-700 text-white p-4 rounded mb-4">
+          <pre className="bg-surface text-foreground p-4 rounded mb-4 border border-border">
             {jsonSnippet}...
           </pre>
         );
@@ -57,7 +57,7 @@ const FileUploader = () => {
 
     if (file?.type.startsWith("text/")) {
       return (
-        <pre className="bg-gray-700 text-white p-4 rounded mb-4">
+        <pre className="bg-surface text-foreground p-4 rounded mb-4 border border-border">
           {fileContent.slice(0, SNIPPET_PREVIEW_CHARS)}...
         </pre>
       );
@@ -83,7 +83,7 @@ const FileUploader = () => {
   return (
     <div
       className={`flex flex-col items-center gap-4 border-2 border-dashed p-12 rounded-md ${
-        dragActive ? "border-blue-500" : "border-gray-600"
+        dragActive ? "border-primary" : "border-border"
       }`}
       onDragEnter={handleDrag}
       onDragOver={handleDrag}
@@ -100,10 +100,10 @@ const FileUploader = () => {
         htmlFor="file-upload"
         className="flex flex-col items-center gap-2 cursor-pointer"
       >
-        <span className="text-gray-400 bg-gray-700 border border-gray-600 rounded p-2">
+        <span className="text-muted bg-surface border border-border rounded p-2">
           Choose File
         </span>
-        <p className="text-gray-500">or drag and drop here</p>
+        <p className="text-muted">or drag and drop here</p>
       </label>
       {file && (
         <div className="text-center mt-4">
@@ -116,7 +116,7 @@ const FileUploader = () => {
               <a
                 href={`/api/cid/${cids[0].cid.toString()}`}
                 target="_blank"
-                className="bg-blue-500 text-white p-2 rounded mb-4 inline-block"
+                className="bg-primary text-white p-2 rounded mb-4 inline-block hover:bg-primary-hover transition-colors"
               >
                 View file
               </a>
@@ -125,14 +125,14 @@ const FileUploader = () => {
           )}
           <button
             onClick={() => setIsWalletModalOpen(true)}
-            className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-700 mb-4"
+            className="bg-primary text-white py-2 px-4 rounded hover:bg-primary-hover transition-colors mb-4"
           >
             {selectedAccount ? selectedAccount.address : "Connect Wallet"}
           </button>
           <br />
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="bg-gray-600 text-white py-2 px-4 rounded hover:bg-gray-800 mb-4"
+            className="bg-muted text-white py-2 px-4 rounded hover:opacity-90 transition-opacity mb-4"
           >
             {isOpen ? "Hide" : "Show"} Multi-DAG Structure
           </button>
@@ -140,7 +140,7 @@ const FileUploader = () => {
             <p className="bg-red-500 text-white p-2 rounded mb-4">{error}</p>
           )}
           {isOpen && (
-            <div className="mt-4 w-full max-w-2xl bg-gray-800 text-white p-4 rounded mx-auto">
+            <div className="mt-4 w-full max-w-2xl bg-surface text-foreground p-4 rounded mx-auto border border-border">
               <h3 className="text-lg font-semibold mb-2">
                 Multi-DAG Structure
               </h3>
@@ -158,7 +158,7 @@ const FileUploader = () => {
                 ))}
               </ul>
               {selectedCidData && (
-                <div className="mt-4 bg-gray-700 text-white p-4 rounded break-words">
+                <div className="mt-4 bg-background text-foreground p-4 rounded break-words border border-border">
                   <h4 className="text-md font-semibold mb-2">CID Data</h4>
                   <pre
                     style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}

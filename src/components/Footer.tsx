@@ -12,7 +12,7 @@ const AUTHOR_LINKS = [
 ];
 
 const Footer = () => (
-  <footer className="flex justify-center items-center bg-gray-900 text-white py-4 w-full fixed bottom-0">
+  <footer className="flex justify-center items-center bg-surface text-foreground py-4 w-full fixed bottom-0 border-t border-border">
     <a
       href={GITHUB_REPO}
       target="_blank"
@@ -34,7 +34,7 @@ const Footer = () => (
         aria-label={label}
         className={index === 0 ? "ml-8" : "ml-4"}
       >
-        <Icon className="text-white hover:text-gray-400" size={24} />
+        <Icon className="text-foreground hover:text-primary transition-colors" size={24} />
       </a>
     ))}
   </footer>
