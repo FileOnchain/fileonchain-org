@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Identicon } from "@/components/ui/Identicon";
 import { useChain } from "@/hooks/useChain";
+import { CHAINS } from "@/lib/chains/registry";
 import { useSubstrateWallet } from "@/hooks/useSubstrateWallet";
 import { useEVMWallet } from "@/hooks/useEVMWallet";
 import { useSolanaWallet } from "@/hooks/useSolanaWallet";
@@ -109,23 +110,27 @@ export const ChainConnectModal = ({ open, onOpenChange }: ChainConnectModalProps
       description={`Connect a ${activeChain.family} wallet to anchor CIDs onchain.`}
       size="md"
     >
-      {/* Sub-family switcher (only EVM/Aptos have multiple testnets visible here) */}
+      {/* Family switcher — clicking a family selects the first chain in that
+          family so the modal body swaps to the matching connect flow. */}
       <div className="mb-4 flex flex-wrap gap-2">
-        {(["evm", "substrate", "solana", "aptos"] as const).map((fam) => (
-          <button
-            key={fam}
-            type="button"
-            onClick={() => setActiveChainId(`evm:1` as never)}
-            aria-pressed={chainFamily === fam}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium border transition-colors ${
-              chainFamily === fam
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-surface text-muted border-border hover:text-foreground"
-            }`}
-          >
-            {fam}
-          </button>
-        ))}
+        {(["evm", "substrate", "solana", "aptos"] as const).map((fam) => {
+          const firstOfFamily = CHAINS.find((c) => c.family === fam);
+          return (
+            <button
+              key={fam}
+              type="button"
+              onClick={() => firstOfFamily && setActiveChainId(firstOfFamily.id)}
+              aria-pressed={chainFamily === fam}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium border transition-colors ${
+                chainFamily === fam
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-surface text-muted border-border hover:text-foreground"
+              }`}
+            >
+              {fam}
+            </button>
+          );
+        })}
       </div>
 
       {chainFamily === "evm" && (
