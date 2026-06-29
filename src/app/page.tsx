@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import FileUploader from "@/components/FileUploader";
+import FileUploader from "@/components/FileUploaderClient";
 import Footer from "@/components/Footer";
 import ThemeSwitch from "@/components/ThemeSwitch";
 
