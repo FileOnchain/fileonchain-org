@@ -4,10 +4,11 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { FiMenu, FiX } from "react-icons/fi";
 import { cn } from "@/lib/cn";
 import ThemeSwitch from "@/components/ThemeSwitch";
+import ChainSwitcher from "@/components/chain/ChainSwitcher";
+import NavWallet from "@/components/layout/NavWallet";
 
 interface NavLink {
   href: string;
@@ -23,8 +24,8 @@ const PRIMARY_LINKS: NavLink[] = [
 ];
 
 /**
- * Nav — sticky top navigation. Stays translucent with backdrop blur so the
- * underlying hero / grid remains visible. Collapses to a hamburger menu
+ * Nav — sticky top navigation. Renders primary links, the chain switcher,
+ * the wallet button, and the theme toggle. Collapses to a hamburger menu
  * below the `md` breakpoint.
  */
 const Nav = () => {
@@ -33,7 +34,7 @@ const Nav = () => {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-surface/80 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-4 md:px-6">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 md:gap-6 md:px-6">
         <Link href="/" className="flex items-center gap-2 shrink-0" aria-label="FileOnChain home">
           <Image
             src="/logo/svg/fileonchain-logo-white-blue.svg"
@@ -56,7 +57,8 @@ const Nav = () => {
 
         <nav aria-label="Primary" className="hidden md:flex items-center gap-1">
           {PRIMARY_LINKS.map((link) => {
-            const active = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href));
+            const active =
+              pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href));
             return (
               <Link
                 key={link.href}
@@ -76,37 +78,10 @@ const Nav = () => {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          <DropdownMenu.Root>
-            <DropdownMenu.Trigger asChild>
-              <button
-                type="button"
-                aria-label="Connect wallet"
-                className={cn(
-                  "inline-flex items-center justify-center h-9 px-4 rounded-md text-sm font-medium",
-                  "bg-primary text-primary-foreground hover:bg-primary-hover",
-                  "transition-colors duration-base ease-out-soft",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                )}
-              >
-                Connect Wallet
-              </button>
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Portal>
-              <DropdownMenu.Content
-                align="end"
-                sideOffset={8}
-                className="z-50 min-w-[12rem] rounded-lg border border-border bg-surface-elevated p-1 shadow-elev-3 animate-fade-in"
-              >
-                <DropdownMenu.Item
-                  className="rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-surface focus:bg-surface cursor-default outline-none"
-                  disabled
-                >
-                  Wallet selection — Phase 8
-                </DropdownMenu.Item>
-              </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Root>
-
+          <div className="hidden md:block">
+            <ChainSwitcher />
+          </div>
+          <NavWallet />
           <ThemeSwitch />
 
           <button
@@ -123,9 +98,16 @@ const Nav = () => {
 
       {mobileOpen && (
         <nav aria-label="Primary mobile" className="md:hidden border-t border-border bg-surface">
-          <ul className="mx-auto flex max-w-7xl flex-col p-2">
+          <ul className="mx-auto flex max-w-7xl flex-col gap-1 p-2">
+            <li>
+              <div className="px-3 py-2">
+                <ChainSwitcher />
+              </div>
+            </li>
             {PRIMARY_LINKS.map((link) => {
-              const active = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href));
+              const active =
+                pathname === link.href ||
+                (link.href !== "/" && pathname.startsWith(link.href));
               return (
                 <li key={link.href}>
                   <Link
@@ -147,6 +129,7 @@ const Nav = () => {
           </ul>
         </nav>
       )}
+
     </header>
   );
 };
