@@ -82,8 +82,10 @@ const FileUploader = () => {
 
   return (
     <div
-      className={`flex flex-col items-center gap-4 border-2 border-dashed p-12 rounded-md ${
-        dragActive ? "border-primary" : "border-border"
+      role="region"
+      aria-label="File uploader"
+      className={`flex flex-col items-center gap-4 border-2 border-dashed p-8 md:p-12 rounded-md transition-colors duration-base ${
+        dragActive ? "border-primary ring-glow" : "border-border"
       }`}
       onDragEnter={handleDrag}
       onDragOver={handleDrag}
@@ -95,19 +97,22 @@ const FileUploader = () => {
         onChange={handleFileChange}
         className="hidden"
         id="file-upload"
+        aria-describedby="file-upload-help"
       />
       <label
         htmlFor="file-upload"
-        className="flex flex-col items-center gap-2 cursor-pointer"
+        className="flex flex-col items-center gap-2 cursor-pointer focus-within:outline-none"
       >
-        <span className="text-muted bg-surface border border-border rounded p-2">
+        <span className="inline-flex items-center justify-center h-10 px-4 rounded-md text-sm font-medium bg-surface border border-border text-foreground hover:bg-surface-elevated transition-colors">
           Choose File
         </span>
-        <p className="text-muted">or drag and drop here</p>
+        <p id="file-upload-help" className="text-muted text-sm">
+          or drag and drop here
+        </p>
       </label>
       {file && (
-        <div className="text-center mt-4">
-          <p className="mb-2">
+        <div className="text-center mt-4 w-full">
+          <p className="mb-2 font-mono text-sm break-all">
             Selected file: {truncateFileName(file.name, FILE_NAME_MAX_LENGTH)}
           </p>
           {renderFileSnippet()}
@@ -116,7 +121,8 @@ const FileUploader = () => {
               <a
                 href={`/api/cid/${cids[0].cid.toString()}`}
                 target="_blank"
-                className="bg-primary text-white p-2 rounded mb-4 inline-block hover:bg-primary-hover transition-colors"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center h-10 px-4 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary-hover transition-colors duration-base ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background mb-4"
               >
                 View file
               </a>
@@ -125,22 +131,24 @@ const FileUploader = () => {
           )}
           <button
             onClick={() => setIsWalletModalOpen(true)}
-            className="bg-primary text-white py-2 px-4 rounded hover:bg-primary-hover transition-colors mb-4"
+            className="inline-flex items-center justify-center h-10 px-4 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary-hover transition-colors duration-base ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background mb-4 font-mono break-all"
           >
             {selectedAccount ? selectedAccount.address : "Connect Wallet"}
           </button>
           <br />
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="bg-muted text-white py-2 px-4 rounded hover:opacity-90 transition-opacity mb-4"
+            className="inline-flex items-center justify-center h-10 px-4 rounded-md text-sm font-medium bg-muted text-white hover:opacity-90 transition-opacity duration-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background mb-4"
           >
             {isOpen ? "Hide" : "Show"} Multi-DAG Structure
           </button>
           {error && (
-            <p className="bg-red-500 text-white p-2 rounded mb-4">{error}</p>
+            <p role="alert" className="bg-danger text-white p-2 rounded mb-4">
+              {error}
+            </p>
           )}
           {isOpen && (
-            <div className="mt-4 w-full max-w-2xl bg-surface text-foreground p-4 rounded mx-auto border border-border">
+            <div className="mt-4 w-full max-w-2xl bg-surface text-foreground p-4 rounded mx-auto border border-border text-left">
               <h3 className="text-lg font-semibold mb-2">
                 Multi-DAG Structure
               </h3>
@@ -148,7 +156,7 @@ const FileUploader = () => {
                 {cids.map((item, index) => (
                   <li
                     key={index}
-                    className="break-words cursor-pointer hover:underline"
+                    className="break-words cursor-pointer hover:underline font-mono text-sm"
                     onClick={() =>
                       handleCidClick(item.cid, item.data, item.nextCid)
                     }
@@ -160,9 +168,7 @@ const FileUploader = () => {
               {selectedCidData && (
                 <div className="mt-4 bg-background text-foreground p-4 rounded break-words border border-border">
                   <h4 className="text-md font-semibold mb-2">CID Data</h4>
-                  <pre
-                    style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}
-                  >
+                  <pre className="font-mono text-xs whitespace-pre-wrap break-all">
                     {JSON.stringify(selectedCidData, null, 2)}
                   </pre>
                 </div>
