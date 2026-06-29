@@ -10,18 +10,19 @@ import {
   ChangeEvent,
   DragEvent,
   useCallback,
-  useEffect,
   useState,
 } from "react";
 import { ChunkData } from "@/utils/generateCIDs";
 import { readFileContent } from "@/utils/readFileContent";
+import { mockAnchorCID, MockUploadResult } from "@/lib/mock/upload";
+import { useChain } from "@/hooks/useChain";
+import { getMockCIDRecord } from "@/lib/mock/registry";
 
-const CHUNK_BUFFER_SIZE = 64 * 1024; // 64KB streaming buffer for the blockstore
+const CHUNK_BUFFER_SIZE = 64 * 1024;
 
-// Streams a File as an AsyncIterable<Buffer> for IPLD ingestion.
 function fileToBufferIterable(
   file: File,
-  chunkSize: number = CHUNK_BUFFER_SIZE
+  chunkSize: number = CHUNK_BUFFER_SIZE,
 ): AsyncIterable<Buffer> {
   let offset = 0;
   return {
@@ -47,21 +48,32 @@ type SelectedCidData = {
   nextCid?: string;
 };
 
+export interface CIDPreview {
+  cid: string;
+  chainId: string;
+  chainName: string;
+  chainShortName: string;
+  registryAddress: `0x${string}`;
+  txHash: string;
+  blockNumber: number;
+  timestamp: number;
+  submitter: string;
+  status: "anchored" | "pending" | "missing";
+}
+
 export const useFileUploader = () => {
+  const { activeChain } = useChain();
   const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [fileContent, setFileContent] = useState<string | null>(null);
-  // cids stays empty until generateCIDs is wired into the upload pipeline.
-  // The setter is retained so downstream callers can populate it then.
-  const [cids, ,] = useState<ChunkData[]>([]);
+  const [cids, setCids] = useState<ChunkData[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedCidData, setSelectedCidData] =
-    useState<SelectedCidData | null>(null);
+  const [selectedCidData, setSelectedCidData] = useState<SelectedCidData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // txHash is populated by the upload flow once it's wired up; for now the
-  // value stays null so the "View file" branch keys off fileFound alone.
-  const txHash: string | null = null;
+  const [txHash, setTxHash] = useState<string | null>(null);
   const [fileFound, setFileFound] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [preview, setPreview] = useState<CIDPreview | null>(null);
 
   const handleSearch = useCallback(async (chunks: ChunkData[]) => {
     if (chunks.length === 0) return;
@@ -74,29 +86,79 @@ export const useFileUploader = () => {
     }
   }, []);
 
-  useEffect(() => {
-    handleSearch(cids);
-  }, [cids, handleSearch]);
+  /**
+   * Run the full upload flow: ingest via IPLD, generate per-chunk CIDs,
+   * call the mock anchor to simulate on-chain confirmation, populate the
+   * preview panel.
+   */
+  const processFile = useCallback(
+    async (selectedFile: File) => {
+      setFile(selectedFile);
+      readFileContent(selectedFile, setFileContent);
+      setError(null);
+      setPreview(null);
+      setCids([]);
+      setIsUploading(true);
 
-  const processFile = useCallback(async (selectedFile: File) => {
-    setFile(selectedFile);
-    readFileContent(selectedFile, setFileContent);
-    setError(null);
+      try {
+        const blockstore = new MemoryBlockstore();
+        const fileBufferIterable = fileToBufferIterable(selectedFile);
 
-    const blockstore = new MemoryBlockstore();
-    const fileBufferIterable = fileToBufferIterable(selectedFile);
+        const fileCID = await processFileToIPLDFormat(
+          blockstore,
+          fileBufferIterable,
+          BigInt(selectedFile.size),
+          selectedFile.name,
+        );
 
-    const fileCID = await processFileToIPLDFormat(
-      blockstore,
-      fileBufferIterable,
-      BigInt(selectedFile.size),
-      selectedFile.name
-    );
+        const cidString = cidToString(fileCID);
+        // Ensure round-trip parse works
+        stringToCid(cidString);
 
-    // Round-trip the CID through its string form to confirm it serializes
-    // and parses cleanly — useful when handing it to downstream APIs.
-    stringToCid(cidToString(fileCID));
-  }, []);
+        // Mock on-chain anchor (Phase 10 — wires to real RPC later).
+        const result: MockUploadResult = await mockAnchorCID({
+          cid: cidString,
+          chain: activeChain,
+          fileSize: selectedFile.size,
+        });
+
+        setTxHash(result.txHash);
+
+        // Resolve a preview record from the mock registry.
+        const mockRecord = getMockCIDRecord(cidString, activeChain.id);
+        if (mockRecord) {
+          setPreview({
+            cid: cidString,
+            chainId: activeChain.id,
+            chainName: activeChain.name,
+            chainShortName: activeChain.shortName,
+            registryAddress: mockRecord.registryAddress,
+            txHash: result.txHash,
+            blockNumber: result.blockNumber,
+            timestamp: result.timestamp,
+            submitter: result.submitter,
+            status: "anchored",
+          });
+        }
+
+        // Phase 10 wires generateCIDs to populate the chunk list; for now we
+        // emit a single pseudo-chunk representing the fileCID.
+        setCids([
+          {
+            cid: fileCID,
+            data: new Uint8Array(),
+          },
+        ]);
+
+        await handleSearch([{ cid: fileCID, data: new Uint8Array() }]);
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [activeChain, handleSearch],
+  );
 
   const handleFileChange = useCallback(
     async (e: ChangeEvent<HTMLInputElement>) => {
@@ -104,7 +166,7 @@ export const useFileUploader = () => {
       if (!selected) return;
       await processFile(selected);
     },
-    [processFile]
+    [processFile],
   );
 
   const handleDrag = useCallback((e: DragEvent<HTMLDivElement>) => {
@@ -126,7 +188,7 @@ export const useFileUploader = () => {
       if (!selected) return;
       await processFile(selected);
     },
-    [processFile]
+    [processFile],
   );
 
   const handleCidClick = useCallback(
@@ -137,7 +199,7 @@ export const useFileUploader = () => {
         nextCid: nextCid ? nextCid.toString() : undefined,
       });
     },
-    []
+    [],
   );
 
   return {
@@ -150,6 +212,8 @@ export const useFileUploader = () => {
     txHash,
     error,
     fileFound,
+    isUploading,
+    preview,
     handleFileChange,
     handleDrag,
     handleDrop,
