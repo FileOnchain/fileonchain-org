@@ -16,7 +16,7 @@ export default function Home() {
       <div className="flex flex-col items-center mb-8">
         <Link href="/">
           <Image
-            src="/logo/svg/fileonchain-logo-black-blue.svg"
+            src="/logo/svg/fileonchain-logo-white-blue.svg"
             alt="Logo"
             width={150}
             height={150}
