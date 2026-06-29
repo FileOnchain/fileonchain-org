@@ -36,7 +36,7 @@ const ConnectWalletModal = ({ isOpen, onClose }: ConnectWalletModalProps) => {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-gray-800 p-6 rounded-md w-96 text-white">
+      <div className="bg-surface text-foreground p-6 rounded-md w-96 border border-border">
         <h2 className="text-xl mb-4">Connect Wallet</h2>
         <select
           value={networkId}
@@ -44,7 +44,7 @@ const ConnectWalletModal = ({ isOpen, onClose }: ConnectWalletModalProps) => {
             const network = networks.find((net) => net.name === e.target.value);
             setNetworkId(network?.id as NetworkId);
           }}
-          className="w-full p-2 mb-4 border rounded bg-gray-700 text-white border-gray-600"
+          className="w-full p-2 mb-4 border rounded bg-background text-foreground border-border"
         >
           {networks.map((network) => (
             <option key={network.name} value={network.name}>
@@ -60,7 +60,7 @@ const ConnectWalletModal = ({ isOpen, onClose }: ConnectWalletModalProps) => {
             );
             setSelectedAccount(account || null);
           }}
-          className="w-full p-2 mb-4 border rounded bg-gray-700 text-white border-gray-600"
+          className="w-full p-2 mb-4 border rounded bg-background text-foreground border-border"
         >
           <option value="" disabled>
             Select an account
@@ -73,13 +73,13 @@ const ConnectWalletModal = ({ isOpen, onClose }: ConnectWalletModalProps) => {
         </select>
         <button
           onClick={handleConnect}
-          className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-700"
+          className="w-full bg-primary text-white p-2 rounded hover:bg-primary-hover transition-colors"
         >
           Connect
         </button>
         <button
           onClick={onClose}
-          className="w-full bg-gray-500 text-white p-2 rounded mt-2 hover:bg-gray-700"
+          className="w-full bg-muted text-white p-2 rounded mt-2 hover:opacity-90 transition-opacity"
         >
           Cancel
         </button>
