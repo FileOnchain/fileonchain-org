@@ -2,35 +2,162 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Light theme — default. Primary #0B39A6 on a near-white surface. */
+/* -----------------------------------------------------------------------------
+ * FileOnChain design tokens.
+ *
+ * Light and dark palettes are exposed as CSS custom properties so Tailwind can
+ * reference them via `bg-primary`, `text-foreground`, etc. Components also read
+ * them directly via `var(--token)` for non-Tailwind contexts (e.g. inline SVG
+ * fills, third-party widget props).
+ *
+ * Motion durations and easing are intentionally co-located with colors so a
+ * single tweak to `--motion-base` ripples to every framer-motion animation
+ * that reads the value.
+ * --------------------------------------------------------------------------- */
 :root {
   --primary: #0b39a6;
   --primary-hover: #082c81;
+  --primary-foreground: #ffffff;
   --background: #ffffff;
   --foreground: #0f172a;
   --muted: #64748b;
+  --muted-foreground: #ffffff;
   --surface: #f8fafc;
+  --surface-elevated: #ffffff;
   --border: #e2e8f0;
+
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #3b82f6;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --elev-1: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.1);
+  --elev-2: 0 4px 6px rgba(15, 23, 42, 0.05), 0 10px 15px rgba(15, 23, 42, 0.1);
+  --elev-3: 0 10px 15px rgba(15, 23, 42, 0.1), 0 20px 25px rgba(15, 23, 42, 0.15);
+
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 320ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --font-mono: var(--font-geist-mono), ui-monospace, "JetBrains Mono", Menlo, monospace;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-/* Dark theme — primary #1657FD on a near-black surface. */
 :root.dark {
   --primary: #1657fd;
   --primary-hover: #3a76ff;
   --background: #000000;
   --foreground: #ffffff;
   --muted: #9ca3af;
+  --muted-foreground: #0f172a;
   --surface: #111827;
+  --surface-elevated: #1f2937;
   --border: #1f2937;
+
+  --accent: #a78bfa;
+  --accent-hover: #c4b5fd;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --info: #60a5fa;
+
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.6);
+  --elev-2: 0 4px 6px rgba(0, 0, 0, 0.5), 0 10px 15px rgba(0, 0, 0, 0.6);
+  --elev-3: 0 10px 15px rgba(0, 0, 0, 0.6), 0 20px 25px rgba(0, 0, 0, 0.7);
 }
 
 body {
   color: var(--foreground);
   background-color: var(--background);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  border-color: var(--border);
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  /* Animated grid backdrop for hero sections. */
+  .bg-grid {
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    background-position: -1px -1px;
+  }
+
+  .bg-grid-fade {
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+  }
+
+  /* Gradient text utility for hero headings. */
+  .text-gradient {
+    background-image: linear-gradient(120deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Glow ring used by the drop zone when a file is dragged over. */
+  .ring-glow {
+    box-shadow: 0 0 0 1px var(--primary), 0 0 32px -8px var(--primary);
+  }
+}
+
+@keyframes grid-pulse {
+  0%,
+  100% {
+    opacity: 0.18;
+  }
+  50% {
+    opacity: 0.32;
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-grid-pulse {
+  animation: grid-pulse 8s var(--ease-out) infinite;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2.4s var(--ease-out) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-grid-pulse,
+  .animate-pulse-soft {
+    animation: none;
   }
 }
