@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import ThemeProvider from "@/components/ThemeProvider";
+import Nav from "@/components/layout/Nav";
+import Footer from "@/components/layout/Footer";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -57,8 +59,12 @@ export default function RootLayout({
         {/* Pre-hydration theme application prevents the FOUC flash for dark users. */}
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
       </head>
-      <body className="bg-background text-foreground font-sans">
-        <ThemeProvider>{children}</ThemeProvider>
+      <body className="bg-background text-foreground font-sans min-h-screen flex flex-col">
+        <ThemeProvider>
+          <Nav />
+          <div className="flex-1">{children}</div>
+          <Footer />
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -2,8 +2,18 @@
 
 import { FaMoon, FaSun } from "react-icons/fa";
 import { useThemeStates } from "@/states/theme";
+import { cn } from "@/lib/cn";
 
-const ThemeSwitch = () => {
+interface ThemeSwitchProps {
+  className?: string;
+}
+
+/**
+ * ThemeSwitch — sun/moon toggle. Lives inline inside Nav (and other surfaces)
+ * via the `className` slot. The earlier floating top-right version was
+ * replaced by the global Nav in Phase 3.
+ */
+const ThemeSwitch = ({ className }: ThemeSwitchProps) => {
   const theme = useThemeStates((state) => state.theme);
   const toggleTheme = useThemeStates((state) => state.toggleTheme);
   const isDark = theme === "dark";
@@ -14,9 +24,12 @@ const ThemeSwitch = () => {
       onClick={toggleTheme}
       aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
       title={isDark ? "Switch to light theme" : "Switch to dark theme"}
-      className="fixed top-4 right-4 z-50 flex items-center justify-center w-10 h-10 rounded-full border border-border bg-surface text-foreground hover:bg-primary hover:text-primary-foreground transition-colors duration-base ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className={cn(
+        "inline-flex items-center justify-center h-9 w-9 rounded-md border border-border bg-surface text-foreground hover:bg-surface-elevated transition-colors duration-base ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        className,
+      )}
     >
-      {isDark ? <FaSun size={18} /> : <FaMoon size={18} />}
+      {isDark ? <FaSun size={16} /> : <FaMoon size={16} />}
     </button>
   );
 };
