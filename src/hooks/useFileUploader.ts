@@ -154,6 +154,7 @@ export const useFileUploader = () => {
     handleDrag,
     handleDrop,
     handleCidClick,
+    processFile,
     setIsOpen,
   };
 };
