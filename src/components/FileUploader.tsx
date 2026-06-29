@@ -1,180 +1,202 @@
 "use client";
 
+import * as React from "react";
 import Image from "next/image";
-import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useFileUploader } from "@/hooks/useFileUploader";
 import { useWalletStates } from "@/states/wallet";
 import { truncateFileName } from "@/utils/truncateFileName";
 import ConnectWalletModal from "./ConnectWalletModal";
+import DropZone from "@/components/upload/DropZone";
+import ChunkProgressList from "@/components/upload/ChunkProgressList";
+import { Button } from "@/components/ui/Button";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { CopyButton } from "@/components/ui/CopyButton";
+import { StatusStepper, Step } from "@/components/ui/StatusStepper";
+import CIDPreviewPanel from "@/components/registry/CIDPreviewPanel";
+import { cn } from "@/lib/cn";
 
 const SNIPPET_PREVIEW_CHARS = 500;
 const FILE_NAME_MAX_LENGTH = 40;
 
+const UPLOAD_STEPS: Step[] = [
+  { id: "select", label: "Select file", description: "Drop or pick a file to upload" },
+  { id: "hash", label: "Hash chunks", description: "Split into 64KB chunks, SHA-256 each" },
+  { id: "anchor", label: "Anchor onchain", description: "Submit tx to the registry contract" },
+  { id: "done", label: "Finalized", description: "Indexed and ready to retrieve" },
+];
+
 const FileUploader = () => {
   const {
     file,
-    dragActive,
     fileContent,
     cids,
-    isOpen,
     selectedCidData,
-    txHash,
-    fileFound,
     error,
-    handleFileChange,
-    handleDrag,
-    handleDrop,
+    fileFound,
     handleCidClick,
-    setIsOpen,
+    processFile,
   } = useFileUploader();
 
   const selectedAccount = useWalletStates((state) => state.selectedAccount);
-  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [isWalletModalOpen, setIsWalletModalOpen] = React.useState(false);
+  const [selectedChunkIndex, setSelectedChunkIndex] = React.useState<number | null>(null);
 
-  const renderFileSnippet = () => {
-    if (!fileContent) return null;
+  // Derive the current step from internal state.
+  const currentStep = file ? (cids.length > 0 ? "hash" : "select") : "select";
+  const stepStates = React.useMemo(() => {
+    const idx = UPLOAD_STEPS.findIndex((s) => s.id === currentStep);
+    return UPLOAD_STEPS.reduce<Record<string, "idle" | "active" | "done">>((acc, s, i) => {
+      acc[s.id] = i < idx ? "done" : i === idx ? "active" : "idle";
+      return acc;
+    }, {});
+  }, [currentStep]);
 
-    if (file?.type === "application/json") {
+  const handleFile = React.useCallback(
+    async (selected: File) => {
+      await processFile(selected);
+    },
+    [processFile],
+  );
+
+  const handleChunkClick = React.useCallback(
+    (chunk: (typeof cids)[number], index: number) => {
+      setSelectedChunkIndex(index);
+      handleCidClick(chunk.cid, chunk.data, chunk.nextCid);
+    },
+    [handleCidClick],
+  );
+
+  const renderSnippet = () => {
+    if (!fileContent || !file) return null;
+    if (file.type === "application/json") {
       try {
-        const jsonSnippet = JSON.stringify(
-          JSON.parse(fileContent),
-          null,
-          2
-        ).slice(0, SNIPPET_PREVIEW_CHARS);
+        const jsonSnippet = JSON.stringify(JSON.parse(fileContent), null, 2).slice(
+          0,
+          SNIPPET_PREVIEW_CHARS,
+        );
         return (
-          <pre className="bg-gray-700 text-white p-4 rounded mb-4">
-            {jsonSnippet}...
+          <pre className="bg-surface text-foreground p-4 rounded-md border border-border overflow-auto max-h-64 text-xs font-mono whitespace-pre-wrap break-all">
+            {jsonSnippet}…
           </pre>
         );
       } catch {
-        return (
-          <p className="bg-red-500 text-white p-4 rounded mb-4">
-            Invalid JSON file
-          </p>
-        );
+        return <p className="text-danger text-sm">Invalid JSON file</p>;
       }
     }
-
-    if (file?.type.startsWith("text/")) {
+    if (file.type.startsWith("text/")) {
       return (
-        <pre className="bg-gray-700 text-white p-4 rounded mb-4">
-          {fileContent.slice(0, SNIPPET_PREVIEW_CHARS)}...
+        <pre className="bg-surface text-foreground p-4 rounded-md border border-border overflow-auto max-h-64 text-xs font-mono whitespace-pre-wrap break-all">
+          {fileContent.slice(0, SNIPPET_PREVIEW_CHARS)}…
         </pre>
       );
     }
-
-    if (file?.type.startsWith("image/")) {
+    if (file.type.startsWith("image/")) {
       return (
-        <div className="flex justify-center items-center">
-          <Image
-            src={fileContent}
-            alt="Preview"
-            width={300}
-            height={300}
-            className="mb-4"
-          />
+        <div className="flex justify-center">
+          <Image src={fileContent} alt="Preview" width={300} height={300} className="rounded-md border border-border" />
         </div>
       );
     }
-
     return null;
   };
 
   return (
-    <div
-      className={`flex flex-col items-center gap-4 border-2 border-dashed p-12 rounded-md ${
-        dragActive ? "border-blue-500" : "border-gray-600"
-      }`}
-      onDragEnter={handleDrag}
-      onDragOver={handleDrag}
-      onDragLeave={handleDrag}
-      onDrop={handleDrop}
-    >
-      <input
-        type="file"
-        onChange={handleFileChange}
-        className="hidden"
-        id="file-upload"
-      />
-      <label
-        htmlFor="file-upload"
-        className="flex flex-col items-center gap-2 cursor-pointer"
-      >
-        <span className="text-gray-400 bg-gray-700 border border-gray-600 rounded p-2">
-          Choose File
-        </span>
-        <p className="text-gray-500">or drag and drop here</p>
-      </label>
-      {file && (
-        <div className="text-center mt-4">
-          <p className="mb-2">
-            Selected file: {truncateFileName(file.name, FILE_NAME_MAX_LENGTH)}
-          </p>
-          {renderFileSnippet()}
-          {(fileFound || txHash) && cids[0] && (
-            <>
-              <a
-                href={`/api/cid/${cids[0].cid.toString()}`}
-                target="_blank"
-                className="bg-blue-500 text-white p-2 rounded mb-4 inline-block"
-              >
-                View file
-              </a>
-              <br />
-            </>
-          )}
-          <button
-            onClick={() => setIsWalletModalOpen(true)}
-            className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-700 mb-4"
+    <div className="w-full max-w-3xl mx-auto space-y-6">
+      {!file && <DropZone onFile={handleFile} />}
+
+      <AnimatePresence>
+        {file && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="space-y-6"
           >
-            {selectedAccount ? selectedAccount.address : "Connect Wallet"}
-          </button>
-          <br />
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="bg-gray-600 text-white py-2 px-4 rounded hover:bg-gray-800 mb-4"
-          >
-            {isOpen ? "Hide" : "Show"} Multi-DAG Structure
-          </button>
-          {error && (
-            <p className="bg-red-500 text-white p-2 rounded mb-4">{error}</p>
-          )}
-          {isOpen && (
-            <div className="mt-4 w-full max-w-2xl bg-gray-800 text-white p-4 rounded mx-auto">
-              <h3 className="text-lg font-semibold mb-2">
-                Multi-DAG Structure
-              </h3>
-              <ul className="list-disc list-inside">
-                {cids.map((item, index) => (
-                  <li
-                    key={index}
-                    className="break-words cursor-pointer hover:underline"
-                    onClick={() =>
-                      handleCidClick(item.cid, item.data, item.nextCid)
-                    }
-                  >
-                    Chunk {index + 1}: {item.cid.toString()}
-                  </li>
-                ))}
-              </ul>
-              {selectedCidData && (
-                <div className="mt-4 bg-gray-700 text-white p-4 rounded break-words">
-                  <h4 className="text-md font-semibold mb-2">CID Data</h4>
-                  <pre
-                    style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}
-                  >
-                    {JSON.stringify(selectedCidData, null, 2)}
-                  </pre>
+            <Card>
+              <CardHeader>
+                <div className="min-w-0 flex-1">
+                  <CardTitle className="font-mono break-all">
+                    {truncateFileName(file.name, FILE_NAME_MAX_LENGTH)}
+                  </CardTitle>
+                  <CardDescription>
+                    {file.size.toLocaleString()} bytes · {file.type || "unknown type"}
+                  </CardDescription>
                 </div>
+                <Badge variant={fileFound ? "success" : "info"} size="sm">
+                  {fileFound ? "Found onchain" : "Ready"}
+                </Badge>
+              </CardHeader>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <div>
+                  <p className="mb-2 text-xs uppercase tracking-wide text-muted">Progress</p>
+                  <StatusStepper steps={UPLOAD_STEPS} current={currentStep} states={stepStates} />
+                </div>
+                <div>
+                  <p className="mb-2 text-xs uppercase tracking-wide text-muted">Preview</p>
+                  {renderSnippet() ?? (
+                    <p className="text-sm text-muted">No preview available for this file type.</p>
+                  )}
+                </div>
+              </div>
+
+              {error && (
+                <p role="alert" className="mt-4 text-sm text-danger">
+                  {error}
+                </p>
               )}
+
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Button onClick={() => setIsWalletModalOpen(true)}>
+                  {selectedAccount ? "Switch wallet" : "Connect wallet"}
+                </Button>
+                <Button variant="secondary" disabled>
+                  {selectedAccount
+                    ? `${selectedAccount.address.slice(0, 6)}…${selectedAccount.address.slice(-4)}`
+                    : "Sign & anchor"}
+                </Button>
+              </div>
+            </Card>
+
+            <CIDPreviewPanel data={null} />
+
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-foreground">Chunks</h3>
+                {cids.length > 0 && (
+                  <span className="text-xs text-muted">
+                    {cids.length} {cids.length === 1 ? "chunk" : "chunks"}
+                  </span>
+                )}
+              </div>
+              <ChunkProgressList
+                cids={cids}
+                onChunkClick={handleChunkClick}
+                selectedIndex={selectedChunkIndex}
+              />
             </div>
-          )}
-        </div>
-      )}
-      <ConnectWalletModal
-        isOpen={isWalletModalOpen}
-        onClose={() => setIsWalletModalOpen(false)}
-      />
+
+            {selectedCidData && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Chunk detail</CardTitle>
+                </CardHeader>
+                <pre className={cn("bg-surface text-foreground p-3 rounded-md border border-border overflow-auto max-h-72 text-xs font-mono whitespace-pre-wrap break-all")}>
+                  {JSON.stringify(selectedCidData, null, 2)}
+                </pre>
+                <div className="mt-3 flex justify-end">
+                  <CopyButton value={JSON.stringify(selectedCidData, null, 2)} label="Copy JSON" />
+                </div>
+              </Card>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <ConnectWalletModal isOpen={isWalletModalOpen} onClose={() => setIsWalletModalOpen(false)} />
     </div>
   );
 };

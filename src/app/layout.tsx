@@ -1,13 +1,59 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
+import ThemeProvider from "@/components/ThemeProvider";
+import { ToastProvider } from "@/components/ui/Toast";
+import Nav from "@/components/layout/Nav";
+import Footer from "@/components/layout/Footer";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const geistSans = localFont({
+  src: "../app/fonts/GeistVF.woff",
+  variable: "--font-geist-sans",
+  display: "swap",
+});
+
+const geistMono = localFont({
+  src: "../app/fonts/GeistMonoVF.woff",
+  variable: "--font-geist-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "File Upload App",
-  description: "A simple file uploading web app built with Next.js",
+  title: "FileOnChain — Multichain Onchain Storage",
+  description:
+    "Upload files permanently to Autonomys, Ethereum, Base, Optimism, Arbitrum, Polygon, Solana, and Aptos. Anchor CIDs onchain. Pay for private cache. Donate to keep public cache alive.",
+  applicationName: "FileOnChain",
+  manifest: "/favicon/site.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+      { url: "/favicon/favicon.ico", sizes: "any" },
+    ],
+    apple: [{ url: "/favicon/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  openGraph: {
+    title: "FileOnChain — Multichain Onchain Storage",
+    description:
+      "Permanent onchain file storage across 10 chains. Anchor CIDs, pay for private cache, support public infrastructure.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "FileOnChain — Multichain Onchain Storage",
+    description:
+      "Permanent onchain file storage across 10 chains. Anchor CIDs, pay for private cache, support public infrastructure.",
+  },
 };
+
+const themeBootstrapScript = `
+try {
+  var t = localStorage.getItem('fileonchain-theme');
+  if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  document.documentElement.classList.toggle('dark', t === 'dark');
+  document.documentElement.style.colorScheme = t;
+} catch (e) {}
+`;
 
 export default function RootLayout({
   children,
@@ -15,8 +61,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable}`}
+      suppressHydrationWarning
+    >
+      <head>
+        {/* Pre-hydration theme application prevents the FOUC flash for dark users. */}
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+      </head>
+      <body className="bg-background text-foreground font-sans min-h-screen flex flex-col">
+        <ThemeProvider>
+          <ToastProvider>
+            <Nav />
+            <div className="flex-1">{children}</div>
+            <Footer />
+          </ToastProvider>
+        </ThemeProvider>
+      </body>
     </html>
   );
 }

@@ -35,54 +35,69 @@ const ConnectWalletModal = ({ isOpen, onClose }: ConnectWalletModalProps) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-gray-800 p-6 rounded-md w-96 text-white">
-        <h2 className="text-xl mb-4">Connect Wallet</h2>
-        <select
-          value={networkId}
-          onChange={(e) => {
-            const network = networks.find((net) => net.name === e.target.value);
-            setNetworkId(network?.id as NetworkId);
-          }}
-          className="w-full p-2 mb-4 border rounded bg-gray-700 text-white border-gray-600"
-        >
-          {networks.map((network) => (
-            <option key={network.name} value={network.name}>
-              {network.name}
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="connect-wallet-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+    >
+      <div className="bg-surface-elevated text-foreground p-6 rounded-xl w-full max-w-md border border-border shadow-elev-3">
+        <h2 id="connect-wallet-title" className="text-xl font-semibold mb-4">
+          Connect Wallet
+        </h2>
+        <label className="block mb-3">
+          <span className="text-sm font-medium text-foreground">Network</span>
+          <select
+            value={networkId}
+            onChange={(e) => {
+              const network = networks.find((net) => net.name === e.target.value);
+              setNetworkId(network?.id as NetworkId);
+            }}
+            className="mt-1 w-full p-2 rounded-md bg-surface text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {networks.map((network) => (
+              <option key={network.name} value={network.name}>
+                {network.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block mb-4">
+          <span className="text-sm font-medium text-foreground">Account</span>
+          <select
+            value={selectedAccount?.address || ""}
+            onChange={(e) => {
+              const account = accounts.find(
+                (acc) => acc.address === e.target.value
+              );
+              setSelectedAccount(account || null);
+            }}
+            className="mt-1 w-full p-2 rounded-md bg-surface text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="" disabled>
+              Select an account
             </option>
-          ))}
-        </select>
-        <select
-          value={selectedAccount?.address || ""}
-          onChange={(e) => {
-            const account = accounts.find(
-              (acc) => acc.address === e.target.value
-            );
-            setSelectedAccount(account || null);
-          }}
-          className="w-full p-2 mb-4 border rounded bg-gray-700 text-white border-gray-600"
-        >
-          <option value="" disabled>
-            Select an account
-          </option>
-          {accounts.map((account) => (
-            <option key={account.address} value={account.address}>
-              {account.meta.name || account.address}
-            </option>
-          ))}
-        </select>
-        <button
-          onClick={handleConnect}
-          className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-700"
-        >
-          Connect
-        </button>
-        <button
-          onClick={onClose}
-          className="w-full bg-gray-500 text-white p-2 rounded mt-2 hover:bg-gray-700"
-        >
-          Cancel
-        </button>
+            {accounts.map((account) => (
+              <option key={account.address} value={account.address}>
+                {account.meta.name || account.address}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button
+            onClick={onClose}
+            className="inline-flex items-center justify-center h-10 px-4 rounded-md text-sm font-medium bg-surface text-foreground border border-border hover:bg-surface-elevated transition-colors duration-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleConnect}
+            className="inline-flex items-center justify-center h-10 px-4 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary-hover transition-colors duration-base ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            Connect
+          </button>
+        </div>
       </div>
     </div>
   );
