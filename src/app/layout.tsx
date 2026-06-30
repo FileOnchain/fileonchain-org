@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Instrument_Serif } from "next/font/google";
 import ThemeProvider from "@/components/ThemeProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import Nav from "@/components/layout/Nav";
 import Footer from "@/components/layout/Footer";
+import RouteFade from "@/components/layout/RouteFade";
+import ScrollProgress from "@/components/ScrollProgress";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -15,6 +18,22 @@ const geistSans = localFont({
 const geistMono = localFont({
   src: "../app/fonts/GeistMonoVF.woff",
   variable: "--font-geist-mono",
+  display: "swap",
+});
+
+/**
+ * Instrument Serif — used for the hero display heading & section kicker words.
+ *
+ * Picked specifically because it's a contemporary serif with optical sizing,
+ * distinctive italic, and a quirky contemporary personality that avoids the
+ * "Space Grotesk + Inter" AI-generated look while staying performant (single
+ * variable file, weights 400 normal + 400 italic from Google Fonts).
+ */
+const instrumentSerif = Instrument_Serif({
+  weight: ["400"],
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  variable: "--font-instrument-serif",
   display: "swap",
 });
 
@@ -63,18 +82,21 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable}`}
+      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable}`}
       suppressHydrationWarning
     >
       <head>
         {/* Pre-hydration theme application prevents the FOUC flash for dark users. */}
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
       </head>
-      <body className="bg-background text-foreground font-sans min-h-screen flex flex-col">
+      <body className="bg-background text-foreground font-sans min-h-screen flex flex-col antialiased">
         <ThemeProvider>
           <ToastProvider>
+            <ScrollProgress />
             <Nav />
-            <div className="flex-1">{children}</div>
+            <RouteFade>
+              <div className="flex-1">{children}</div>
+            </RouteFade>
             <Footer />
           </ToastProvider>
         </ThemeProvider>
