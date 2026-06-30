@@ -146,7 +146,7 @@ const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
               Rebuild & download
             </Button>
             <Link
-              href="/upload"
+              href="/#dropzone"
               className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               Anchor your own
