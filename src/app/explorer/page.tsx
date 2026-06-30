@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import LiveLedgerTicker, { StatCounter } from "@/components/LiveLedgerTicker";
 import { compactNumber, truncateCID } from "@/lib/cid/format";
-import { CHAINS } from "@/lib/chains/registry";
+import { CHAINS, CHAIN_FAMILY_LABELS } from "@/lib/chains/registry";
 import type { ChainFamily } from "@/types/types";
 import type {
   FileCategory,
@@ -17,13 +17,6 @@ import type {
 } from "@/lib/mock/cid-indexer";
 import RecentAnchorsTable from "@/components/explorer/RecentAnchorsTable";
 import ExplorerFilters from "@/components/explorer/ExplorerFilters";
-
-const FAMILY_LABELS = {
-  evm: "EVM",
-  substrate: "Substrate",
-  solana: "Solana",
-  aptos: "Aptos",
-} as const;
 
 /**
  * ExplorerShell — Etherscan-style home for the multichain CID indexer.
@@ -39,7 +32,7 @@ const FAMILY_LABELS = {
  * Subscan / Solana RPC queries).
  */
 const ExplorerShell = () => {
-  const [family, setFamily] = React.useState<ChainFamily | "all">("all");
+  const [runtime, setRuntime] = React.useState<ChainFamily | "all">("all");
   const [category, setCategory] = React.useState<FileCategory | "all">("all");
   const [stats, setStats] = React.useState<ExplorerStats | null>(null);
   const [rows, setRows] = React.useState<RecentAnchorRow[]>([]);
@@ -51,13 +44,10 @@ const ExplorerShell = () => {
     let cancelled = false;
     const load = async () => {
       setLoading(true);
-      const [{ getExplorerStats }, { getRecentAnchors }] = await Promise.all([
-        import("@/lib/mock/cid-indexer"),
-        import("@/lib/mock/cid-indexer"),
-      ]);
+      const mod = await import("@/lib/mock/cid-indexer");
       const [s, r] = await Promise.all([
-        getExplorerStats(),
-        getRecentAnchors(12, { family, category }),
+        mod.getExplorerStats(),
+        mod.getRecentAnchors(12, { runtime, category }),
       ]);
       if (cancelled) return;
       setStats(s);
@@ -68,7 +58,7 @@ const ExplorerShell = () => {
     return () => {
       cancelled = true;
     };
-  }, [family, category]);
+  }, [runtime, category]);
 
   const visible = rows.slice(0, pageSize);
 
@@ -186,42 +176,44 @@ const ExplorerShell = () => {
         <header className="flex items-end justify-between gap-3">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
-              Browse by chain
+              Browse by runtime
             </p>
             <h2 className="mt-1 text-lg font-bold text-foreground">
-              Drill into a single chain
+              Drill into a single runtime
             </h2>
           </div>
         </header>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {(["evm", "substrate", "solana", "aptos"] as ChainFamily[]).map((familyId) => {
-            const chains = CHAINS.filter((c) => c.family === familyId);
-            const mainnet = chains.filter((c) => !c.testnet).length;
-            const testnet = chains.length - mainnet;
-            return (
-              <Link
-                key={familyId}
-                href={`/explorer?family=${familyId}`}
-                className="group flex flex-col gap-2 rounded-2xl border border-border bg-surface p-4 transition-colors hover:border-primary/40 hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-                    {FAMILY_LABELS[familyId]}
-                  </span>
-                  <FiArrowRight
-                    size={14}
-                    className="text-muted transition-transform duration-base group-hover:translate-x-0.5 group-hover:text-primary"
-                  />
-                </div>
-                <p className="font-mono text-2xl font-bold tracking-tight tabular-nums text-foreground">
-                  {chains.length}
-                </p>
-                <p className="text-[11px] text-muted">
-                  {mainnet} mainnet · {testnet} testnet
-                </p>
-              </Link>
-            );
-          })}
+          {(["evm", "substrate", "solana", "aptos"] as ChainFamily[]).map(
+            (runtimeId) => {
+              const chains = CHAINS.filter((c) => c.family === runtimeId);
+              const mainnet = chains.filter((c) => !c.testnet).length;
+              const testnet = chains.length - mainnet;
+              return (
+                <Link
+                  key={runtimeId}
+                  href={`/explorer?runtime=${runtimeId}`}
+                  className="group flex flex-col gap-2 rounded-2xl border border-border bg-surface p-4 transition-colors hover:border-primary/40 hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+                      {CHAIN_FAMILY_LABELS[runtimeId]}
+                    </span>
+                    <FiArrowRight
+                      size={14}
+                      className="text-muted transition-transform duration-base group-hover:translate-x-0.5 group-hover:text-primary"
+                    />
+                  </div>
+                  <p className="font-mono text-2xl font-bold tracking-tight tabular-nums text-foreground">
+                    {chains.length}
+                  </p>
+                  <p className="text-[11px] text-muted">
+                    {mainnet} mainnet · {testnet} testnet
+                  </p>
+                </Link>
+              );
+            },
+          )}
         </div>
       </section>
 
@@ -243,9 +235,9 @@ const ExplorerShell = () => {
         </header>
 
         <ExplorerFilters
-          family={family}
+          runtime={runtime}
           category={category}
-          onFamilyChange={setFamily}
+          onRuntimeChange={setRuntime}
           onCategoryChange={setCategory}
         />
 
@@ -285,8 +277,9 @@ const ExplorerShell = () => {
         <p>
           The explorer indexes every CID that has been publicly anchored on the
           registry contracts across <span className="font-semibold text-foreground">{CHAINS.length} supported chains</span>.
-          Some testnet anchors are reported as <span className="font-semibold text-warning">pending</span> until finality;
-          some chains report a single tx per file, others per chunk. Status codes follow the
+          One chain is enough to retrieve a file — adding more chains is optional and
+          each chain charges its own gas. Some testnet anchors are reported as
+          {" "}<span className="font-semibold text-warning">pending</span> until finality; status codes follow the
           convention used by Etherscan and Subscan.
         </p>
       </section>

@@ -7,16 +7,16 @@ import type { FileCategory } from "@/lib/mock/cid-indexer";
 import { cn } from "@/lib/cn";
 
 interface ExplorerFiltersProps {
-  family: ChainFamily | "all";
+  runtime: ChainFamily | "all";
   category: FileCategory | "all";
-  onFamilyChange: (f: ChainFamily | "all") => void;
+  onRuntimeChange: (f: ChainFamily | "all") => void;
   onCategoryChange: (c: FileCategory | "all") => void;
 }
 
-const FAMILY_OPTIONS: Array<{ id: ChainFamily | "all"; label: string }> = [
-  { id: "all", label: "All families" },
-  { id: "evm", label: "EVM" },
-  { id: "substrate", label: "Substrate" },
+const RUNTIME_OPTIONS: Array<{ id: ChainFamily | "all"; label: string }> = [
+  { id: "all", label: "All runtimes" },
+  { id: "evm", label: "EVM-compatible" },
+  { id: "substrate", label: "Substrate-based" },
   { id: "solana", label: "Solana" },
   { id: "aptos", label: "Aptos" },
 ];
@@ -33,21 +33,21 @@ const CATEGORY_OPTIONS: Array<{ id: FileCategory | "all"; label: string }> = [
 
 /**
  * ExplorerFilters — sticky filter chips above the recent-anchors table.
- * Two pill groups (family + category). Selected chip is solid primary;
- * the rest are outlined. Chip pills underline-animate on hover.
+ * Two pill groups (runtime + category). Selected chip is solid primary;
+ * the rest are outlined.
  */
 const ExplorerFilters = ({
-  family,
+  runtime,
   category,
-  onFamilyChange,
+  onRuntimeChange,
   onCategoryChange,
 }: ExplorerFiltersProps) => (
   <div className="space-y-3">
     <FilterRow
-      label="Chain family"
-      options={FAMILY_OPTIONS}
-      active={family}
-      onSelect={onFamilyChange}
+      label="Runtime"
+      options={RUNTIME_OPTIONS}
+      active={runtime}
+      onSelect={onRuntimeChange}
     />
     <FilterRow
       label="File type"

@@ -277,6 +277,32 @@ export const getChainsByFamily = (family: ChainFamily): ChainConfig[] =>
   CHAINS.filter((c) => c.family === family);
 
 /**
+ * Display labels for each chain runtime — used by every surface that
+ * groups chains (chain switcher, explorer filters, chains grid). The
+ * intent is to surface the architecture plainly so a user can tell a
+ * "Base" address apart from a "Solana" address without learning the
+ * internal "family" word.
+ */
+export const CHAIN_FAMILY_LABELS: Record<ChainFamily, string> = {
+  evm: "EVM-compatible",
+  substrate: "Substrate-based",
+  solana: "Solana",
+  aptos: "Aptos",
+};
+
+/**
+ * Short tagline that explains the difference between EVM-compatible and
+ * Solana / Aptos in one line. Surfaced in the explorer filter tooltip
+ * and the onboarding flow.
+ */
+export const CHAIN_FAMILY_TAGLINES: Record<ChainFamily, string> = {
+  evm: "Same Ethereum tooling, different network.",
+  substrate: "Uses Substrate's `system.remark` as the on-chain storage primitive.",
+  solana: "Programs instead of contracts. Use a Solana wallet.",
+  aptos: "Move modules. Use an Aptos wallet.",
+};
+
+/**
  * Build an explorer link for a tx hash.
  */
 export const buildTxUrl = (chain: ChainConfig, txHash: string): string =>

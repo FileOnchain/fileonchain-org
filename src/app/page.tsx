@@ -66,11 +66,14 @@ export default function Home() {
                   Open infrastructure
                 </p>
                 <h3 className="mt-2 text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-                  Ten chains. One standard.
+                  Pick one chain. Or pay for more.
                 </h3>
                 <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted md:text-base">
-                  The onchain registry is the same contract shape on every supported family. Switch
-                  chains without rewriting your workflow — your CIDs stay valid, every time.
+                  Anchoring writes one transaction per chunk on the chain you pick. That chain
+                  alone is enough to retrieve the file. If you want redundancy you can add
+                  the same file on more chains — each chain charges its own gas, so the price
+                  stacks. Use the explorer to see what&apos;s already public before paying for an
+                  extra anchor.
                 </p>
               </div>
               <div className="flex flex-col items-stretch justify-center gap-2 md:items-end">
@@ -90,7 +93,7 @@ export default function Home() {
                   href="/donations"
                   className="inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
-                  Support public cache →
+                  Fund public cache →
                 </Link>
               </div>
             </div>

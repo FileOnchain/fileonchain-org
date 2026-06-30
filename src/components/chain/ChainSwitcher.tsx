@@ -6,33 +6,33 @@ import { FiCheck, FiChevronDown } from "react-icons/fi";
 import { ChainBadge } from "@/components/ui/ChainBadge";
 import { Badge } from "@/components/ui/Badge";
 import { useChain } from "@/hooks/useChain";
-import { CHAINS, type ChainConfig } from "@/lib/chains/registry";
+import { CHAINS, CHAIN_FAMILY_LABELS, type ChainConfig } from "@/lib/chains/registry";
 import { cn } from "@/lib/cn";
-
-const FAMILY_LABELS = {
-  evm: "EVM",
-  substrate: "Substrate",
-  solana: "Solana",
-  aptos: "Aptos",
-} as const;
 
 interface ChainSwitcherProps {
   variant?: "compact" | "full";
 }
 
 /**
- * ChainSwitcher — Radix DropdownMenu that lists all 12 chains grouped by
- * family. Selecting a chain updates the active chain store, which drives
- * the wallet modal's rendering.
+ * ChainSwitcher — Radix DropdownMenu that lists every supported chain
+ * grouped by runtime (EVM-compatible, Substrate-based, Solana, Aptos).
+ * Picking a chain writes it to the active-chain store, which then drives
+ * the wallet modal and any cost estimate surfaces.
  */
 export const ChainSwitcher = ({ variant = "full" }: ChainSwitcherProps) => {
   const { activeChain, setActiveChainId } = useChain();
 
   const groups = React.useMemo(() => {
-    return (["evm", "substrate", "solana", "aptos"] as const).map((family) => ({
-      family,
-      label: FAMILY_LABELS[family],
-      chains: CHAINS.filter((c) => c.family === family),
+    const runtimes: Array<"evm" | "substrate" | "solana" | "aptos"> = [
+      "evm",
+      "substrate",
+      "solana",
+      "aptos",
+    ];
+    return runtimes.map((runtime) => ({
+      runtime,
+      label: CHAIN_FAMILY_LABELS[runtime],
+      chains: CHAINS.filter((c) => c.family === runtime),
     }));
   }, []);
 
@@ -74,7 +74,7 @@ export const ChainSwitcher = ({ variant = "full" }: ChainSwitcherProps) => {
           className="z-50 min-w-[20rem] rounded-lg border border-border bg-surface-elevated p-1 shadow-elev-3 animate-fade-in"
         >
           {groups.map((group) => (
-            <div key={group.family} className="mb-1">
+            <div key={group.runtime} className="mb-1">
               <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
                 {group.label}
               </p>
@@ -93,13 +93,17 @@ export const ChainSwitcher = ({ variant = "full" }: ChainSwitcherProps) => {
                     shortName={chain.shortName}
                     size="sm"
                   />
-                  <span className="flex-1 truncate text-foreground">{chain.name}</span>
+                  <span className="flex-1 truncate text-foreground">
+                    {chain.name}
+                  </span>
                   {chain.testnet && (
                     <Badge variant="warning" size="sm">
                       Testnet
                     </Badge>
                   )}
-                  {chain.id === activeChain.id && <FiCheck size={14} className="text-success" />}
+                  {chain.id === activeChain.id && (
+                    <FiCheck size={14} className="text-success" />
+                  )}
                 </DropdownMenu.Item>
               ))}
             </div>

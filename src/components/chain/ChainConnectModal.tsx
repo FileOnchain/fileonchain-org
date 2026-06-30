@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Identicon } from "@/components/ui/Identicon";
 import { useChain } from "@/hooks/useChain";
-import { CHAINS } from "@/lib/chains/registry";
+import { CHAINS, CHAIN_FAMILY_LABELS } from "@/lib/chains/registry";
 import { useSubstrateWallet } from "@/hooks/useSubstrateWallet";
 import { useEVMWallet } from "@/hooks/useEVMWallet";
 import { useSolanaWallet } from "@/hooks/useSolanaWallet";
@@ -107,27 +107,29 @@ export const ChainConnectModal = ({ open, onOpenChange }: ChainConnectModalProps
       open={open}
       onOpenChange={onOpenChange}
       title="Connect wallet"
-      description={`Connect a ${activeChain.family} wallet to anchor CIDs onchain.`}
+      description={`Connect a ${CHAIN_FAMILY_LABELS[activeChain.family]} wallet to anchor CIDs onchain.`}
       size="md"
     >
-      {/* Family switcher — clicking a family selects the first chain in that
-          family so the modal body swaps to the matching connect flow. */}
+      {/* Runtime switcher — clicking a runtime jumps to the first chain
+          within it so the modal body swaps to the matching connect flow. */}
       <div className="mb-4 flex flex-wrap gap-2">
-        {(["evm", "substrate", "solana", "aptos"] as const).map((fam) => {
-          const firstOfFamily = CHAINS.find((c) => c.family === fam);
+        {(["evm", "substrate", "solana", "aptos"] as const).map((runtime) => {
+          const firstOfRuntime = CHAINS.find((c) => c.family === runtime);
           return (
             <button
-              key={fam}
+              key={runtime}
               type="button"
-              onClick={() => firstOfFamily && setActiveChainId(firstOfFamily.id)}
-              aria-pressed={chainFamily === fam}
+              onClick={() =>
+                firstOfRuntime && setActiveChainId(firstOfRuntime.id)
+              }
+              aria-pressed={chainFamily === runtime}
               className={`rounded-md px-3 py-1.5 text-xs font-medium border transition-colors ${
-                chainFamily === fam
+                chainFamily === runtime
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-surface text-muted border-border hover:text-foreground"
               }`}
             >
-              {fam}
+              {CHAIN_FAMILY_LABELS[runtime]}
             </button>
           );
         })}

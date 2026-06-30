@@ -142,7 +142,8 @@ const DropZone = ({ onFile, isLoading = false, hint, className }: DropZoneProps)
           </motion.p>
         </AnimatePresence>
         <p id={`${inputId}-help`} className="mt-1 text-sm text-muted">
-          {hint ?? "Files are split into chunks, hashed, and pinned to a registry onchain."}
+          {hint ??
+            "Each chunk becomes its own transaction on the chosen chain. The registry contract stores each tx hash against the chunk's CID."}
         </p>
       </div>
 

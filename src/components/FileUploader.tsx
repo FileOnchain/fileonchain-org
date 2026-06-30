@@ -9,6 +9,7 @@ import { truncateFileName } from "@/utils/truncateFileName";
 import ConnectWalletModal from "./ConnectWalletModal";
 import DropZone from "@/components/upload/DropZone";
 import ChunkProgressList from "@/components/upload/ChunkProgressList";
+import CostEstimatePanel from "@/components/upload/CostEstimatePanel";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -21,10 +22,11 @@ const SNIPPET_PREVIEW_CHARS = 500;
 const FILE_NAME_MAX_LENGTH = 40;
 
 const UPLOAD_STEPS: Step[] = [
-  { id: "select", label: "Select file", description: "Drop or pick a file to upload" },
-  { id: "hash", label: "Hash chunks", description: "Split into 64KB chunks, SHA-256 each" },
-  { id: "anchor", label: "Anchor onchain", description: "Submit tx to the registry contract" },
-  { id: "done", label: "Finalized", description: "Indexed and ready to retrieve" },
+  { id: "select", label: "1 · Select file", description: "Drop or pick a file to upload" },
+  { id: "split", label: "2 · Split & hash", description: "Slice into 64KB chunks, SHA-256 each" },
+  { id: "send", label: "3 · Send chunks", description: "One transaction per chunk on the chain" },
+  { id: "register", label: "4 · Register", description: "Write each tx hash into the registry contract" },
+  { id: "done", label: "Done", description: "Indexed and retrievable from the chain" },
 ];
 
 const FileUploader = () => {
@@ -43,8 +45,12 @@ const FileUploader = () => {
   const [isWalletModalOpen, setIsWalletModalOpen] = React.useState(false);
   const [selectedChunkIndex, setSelectedChunkIndex] = React.useState<number | null>(null);
 
-  // Derive the current step from internal state.
-  const currentStep = file ? (cids.length > 0 ? "hash" : "select") : "select";
+  // Derive the current step from internal state. The split/hash step runs
+  // locally; the send/register steps would run on-chain in production but
+  // currently derive the same active state since the mock indexer is one-shot.
+  const currentStep = file
+    ? (cids.length > 0 ? "register" : "select")
+    : "select";
   const stepStates = React.useMemo(() => {
     const idx = UPLOAD_STEPS.findIndex((s) => s.id === currentStep);
     return UPLOAD_STEPS.reduce<Record<string, "idle" | "active" | "done">>((acc, s, i) => {
@@ -160,6 +166,11 @@ const FileUploader = () => {
                 </Button>
               </div>
             </Card>
+
+            {/* Cost estimate — only show once the chunk count is known.
+                Falls back to the file's rough byte-to-chunk split before
+                the split runs (assumes 64KB chunks). */}
+            <CostEstimatePanel chunkCount={Math.max(1, cids.length > 0 ? cids.length : Math.ceil((file?.size ?? 0) / 65_536))} />
 
             <CIDPreviewPanel data={null} />
 

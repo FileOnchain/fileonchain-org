@@ -33,7 +33,7 @@ const STEPS: Step[] = [
     body: (
       <>
         FileOnChain anchors CIDs on <strong className="text-foreground">10 chains</strong> across
-        four families — EVM, Substrate, Solana, Aptos. Switch any time from the chain selector.
+        four runtimes — EVM-compatible, Substrate-based, Solana, and Aptos. Switch any time from the chain selector at the top of the page.
       </>
     ),
     Icon: FiLayers,
@@ -44,7 +44,7 @@ const STEPS: Step[] = [
     lead: "Sign once, anchor forever.",
     body: (
       <>
-        Use any wallet that fits the chain family — MetaMask, Phantom, Petra, or a Substrate
+        Use any wallet that fits the chain you picked — MetaMask, Phantom, Petra, or a Substrate
         extension. The wallet only signs the registry tx; it never sees your file.
       </>
     ),
@@ -56,8 +56,10 @@ const STEPS: Step[] = [
     lead: "That's it.",
     body: (
       <>
-        Drag onto the dropzone or paste a CID into the explorer. Chunks, CIDs, and the
-        onchain anchor all happen automatically — you can retrieve anywhere, anytime.
+        Drag the file onto the dropzone. We split, hash, and submit one transaction
+        per chunk on the chain you chose. The registry contract takes a small fee
+        per chunk — gas scales with how busy the chain is, so the total cost depends
+        on the network.
       </>
     ),
     Icon: FiUpload,

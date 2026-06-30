@@ -152,7 +152,7 @@ const seedHash = async (cid: string, chainId: string): Promise<string> => {
 };
 
 interface SearchFilters {
-  family?: ChainFamily | "all";
+  runtime?: ChainFamily | "all";
   status?: AnchorStatus | "all";
   category?: FileCategory | "all";
 }
@@ -162,8 +162,8 @@ const matchesFilters = (
   hits: SearchHit[],
   filters: SearchFilters,
 ): boolean => {
-  if (filters.family && filters.family !== "all") {
-    if (!hits.some((h) => h.family === filters.family)) return false;
+  if (filters.runtime && filters.runtime !== "all") {
+    if (!hits.some((h) => h.family === filters.runtime)) return false;
   }
   if (filters.status && filters.status !== "all") {
     if (!hits.some((h) => h.status === filters.status)) return false;

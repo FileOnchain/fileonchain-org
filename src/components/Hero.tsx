@@ -71,9 +71,10 @@ const Hero = ({ activeChain, chainCount = 10 }: HeroProps) => (
           transition={{ duration: 0.5, delay: 0.9, ease: EASE_OUT }}
           className="max-w-xl text-pretty text-base leading-relaxed text-muted md:text-lg"
         >
-          Split any file into <span className="font-semibold text-foreground">content-addressed chunks</span>,
-          pin CIDs onchain across <span className="font-semibold text-foreground">{chainCount} chains</span> —
-          EVM, Substrate, Solana, Aptos — and rebuild anywhere with a single lookup.
+          Pick a chain, drop a file. We split it into 64&nbsp;KB chunks, send each chunk
+          as a separate transaction, and write the tx-hash <span className="font-semibold text-foreground">into
+          the registry contract</span> under each chunk&apos;s CID. The platform takes a
+          small fee at contract level — that&apos;s it. The cost depends on the chain&apos;s gas.
         </motion.p>
 
         {/* CTAs — magnetic primary + ghost outline */}
@@ -128,7 +129,7 @@ const Hero = ({ activeChain, chainCount = 10 }: HeroProps) => (
             value={4821043}
             format={compactNumber}
             label="Files anchored"
-            hint="Across all families"
+            hint="Across every runtime"
           />
           <StatCounter
             value={99}
