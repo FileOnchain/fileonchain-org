@@ -71,10 +71,15 @@ export default {
           "0%": { opacity: "0", transform: "translateY(8px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        "shimmer": {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
       },
       animation: {
         "fade-in": "fade-in var(--motion-base) var(--ease-out)",
         "fade-up": "fade-up var(--motion-base) var(--ease-out)",
+        "shimmer": "shimmer 2.4s linear infinite",
       },
     },
   },

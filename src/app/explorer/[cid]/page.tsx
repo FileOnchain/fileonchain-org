@@ -1,11 +1,8 @@
+import * as React from "react";
+import Link from "next/link";
 import { PageShell } from "@/components/layout/PageShell";
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
-import { CopyButton } from "@/components/ui/CopyButton";
-import { searchCID } from "@/lib/mock/cid-indexer";
-import { validateOrError } from "@/lib/cid/validate";
-import { truncateCID } from "@/lib/cid/format";
-import ExplorerHitCard from "@/components/explorer/ExplorerHitCard";
-import DataRebuilder from "@/components/explorer/DataRebuilder";
+import { lookupFile } from "@/lib/mock/cid-indexer";
+import ExplorerDetailClient from "./ExplorerDetailClient";
 
 interface PageProps {
   params: Promise<{ cid: string }>;
@@ -13,63 +10,38 @@ interface PageProps {
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Server component — looks up the registered file (if any) and pre-fetches
+ * the anchor hits + chunks. Hands off rendering to the client component so
+ * the chunk table can hydrate smoothly on the browser.
+ */
 export default async function ExplorerCIDPage({ params }: PageProps) {
   const { cid } = await params;
-  const error = validateOrError(cid);
-  if (error) {
+  const result = await lookupFile(cid);
+  if (!result) {
     return (
       <PageShell size="wide" padding="lg">
-        <Card>
-          <CardHeader>
-            <CardTitle>Invalid CID</CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </CardHeader>
-        </Card>
+        <div className="rounded-2xl border border-dashed border-border bg-surface p-8 text-center">
+          <p className="text-base font-semibold text-foreground">
+            No public record for this CID
+          </p>
+          <p className="mt-2 text-sm text-muted">
+            The CID may be valid on a chain but hasn&apos;t been indexed yet, or it
+            was never anchored on FileOnChain. Try one of the seeded examples
+            on the explorer index.
+          </p>
+          <Link
+            href="/explorer"
+            className="mt-4 inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
+          >
+            Back to explorer
+          </Link>
+        </div>
       </PageShell>
     );
   }
 
-  const hits = await searchCID(cid);
-
   return (
-    <PageShell size="wide" padding="lg">
-      <div className="mb-8 space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
-          CID detail
-        </p>
-        <div className="flex items-center gap-2 break-all">
-          <h1 className="font-mono text-base md:text-lg text-foreground" title={cid}>
-            {truncateCID(cid, 16, 12)}
-          </h1>
-          <CopyButton value={cid} ariaLabel="Copy full CID" />
-        </div>
-        <p className="text-muted text-sm">
-          Found on {hits.length} {hits.length === 1 ? "chain" : "chains"}. Chain-specific anchors and tx hashes below.
-        </p>
-      </div>
-
-      {hits.length > 0 && (
-        <div className="mb-6">
-          <DataRebuilder cid={cid} chainCount={hits.length} />
-        </div>
-      )}
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        {hits.map((hit) => (
-          <ExplorerHitCard key={hit.chainId} hit={hit} cid={cid} />
-        ))}
-      </div>
-
-      {hits.length === 0 && (
-        <Card variant="outlined" className="border-dashed">
-          <CardHeader>
-            <CardTitle>No chains report this CID</CardTitle>
-            <CardDescription>
-              The mock indexer only knows a small set of seeded CIDs. Try one of the examples on the explorer index.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      )}
-    </PageShell>
+    <ExplorerDetailClient file={result.file} hits={result.hits} />
   );
 }

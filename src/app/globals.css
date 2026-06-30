@@ -15,63 +15,85 @@
  * that reads the value.
  * --------------------------------------------------------------------------- */
 :root {
-  --primary: #0b39a6;
-  --primary-hover: #082c81;
+  /* Brand — deep cobalt for the primary, warm ember for the secondary "ledger" accent.
+   * Avoids the obvious blue+purple cliché while staying accessible. */
+  --primary: #1652e0;
+  --primary-hover: #0e3fb4;
   --primary-foreground: #ffffff;
-  --background: #ffffff;
-  --foreground: #0f172a;
-  --muted: #64748b;
+  --background: #faf9f6;
+  --foreground: #0b0d12;
+  --muted: #4b5563;
   --muted-foreground: #ffffff;
-  --surface: #f8fafc;
+  --surface: #f4f2ec;
   --surface-elevated: #ffffff;
-  --border: #e2e8f0;
+  --border: #e5e1d6;
 
-  --accent: #7c3aed;
-  --accent-hover: #6d28d9;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --info: #3b82f6;
+  /* Ember — a warm sandy orange used as the "ledger" accent for hero gradient & stats. */
+  --accent: #c2410c;
+  --accent-hover: #9a3412;
+  --success: #0f766e;
+  --warning: #b45309;
+  --danger: #b91c1c;
+  --info: #1d4ed8;
 
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
-  --radius-xl: 24px;
+  --radius-xl: 28px;
 
-  --elev-1: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.1);
-  --elev-2: 0 4px 6px rgba(15, 23, 42, 0.05), 0 10px 15px rgba(15, 23, 42, 0.1);
-  --elev-3: 0 10px 15px rgba(15, 23, 42, 0.1), 0 20px 25px rgba(15, 23, 42, 0.15);
+  --elev-1: 0 1px 2px rgba(11, 13, 18, 0.05), 0 1px 3px rgba(11, 13, 18, 0.08);
+  --elev-2: 0 4px 6px rgba(11, 13, 18, 0.05), 0 10px 22px rgba(11, 13, 18, 0.09);
+  --elev-3: 0 14px 30px rgba(11, 13, 18, 0.12), 0 28px 60px rgba(11, 13, 18, 0.18);
 
-  --motion-fast: 120ms;
-  --motion-base: 200ms;
-  --motion-slow: 320ms;
+  --motion-fast: 140ms;
+  --motion-base: 220ms;
+  --motion-slow: 420ms;
+  --motion-glacial: 1400ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 
   --font-mono: var(--font-geist-mono), ui-monospace, "JetBrains Mono", Menlo, monospace;
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--font-instrument-serif), "Cormorant Garamond", "Iowan Old Style", Georgia, serif;
+
+  /* Ambient mesh colors — used by the BackgroundMesh layer. */
+  --mesh-a: #1652e0;
+  --mesh-b: #c2410c;
+  --mesh-c: #0f766e;
+  --mesh-d: #f59e0b;
+
+  /* Grid line color for hero — slightly warmer than border. */
+  --grid-line: rgba(11, 13, 18, 0.05);
 }
 
 :root.dark {
-  --primary: #1657fd;
-  --primary-hover: #3a76ff;
-  --background: #000000;
-  --foreground: #ffffff;
+  --primary: #5e8bff;
+  --primary-hover: #8aa9ff;
+  --background: #0b0d12;
+  --foreground: #f4f2ec;
   --muted: #9ca3af;
-  --muted-foreground: #0f172a;
-  --surface: #111827;
-  --surface-elevated: #1f2937;
-  --border: #1f2937;
+  --muted-foreground: #0b0d12;
+  --surface: #11141b;
+  --surface-elevated: #1a1e27;
+  --border: #232833;
 
-  --accent: #a78bfa;
-  --accent-hover: #c4b5fd;
-  --success: #34d399;
+  --accent: #fb923c;
+  --accent-hover: #fdba74;
+  --success: #2dd4bf;
   --warning: #fbbf24;
   --danger: #f87171;
-  --info: #60a5fa;
+  --info: #93c5fd;
 
-  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.6);
-  --elev-2: 0 4px 6px rgba(0, 0, 0, 0.5), 0 10px 15px rgba(0, 0, 0, 0.6);
-  --elev-3: 0 10px 15px rgba(0, 0, 0, 0.6), 0 20px 25px rgba(0, 0, 0, 0.7);
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.5);
+  --elev-2: 0 4px 6px rgba(0, 0, 0, 0.5), 0 10px 18px rgba(0, 0, 0, 0.6);
+  --elev-3: 0 16px 30px rgba(0, 0, 0, 0.55), 0 30px 60px rgba(0, 0, 0, 0.7);
+
+  --mesh-a: #5e8bff;
+  --mesh-b: #fb923c;
+  --mesh-c: #2dd4bf;
+  --mesh-d: #f59e0b;
+
+  --grid-line: rgba(255, 255, 255, 0.04);
 }
 
 body {
@@ -99,41 +121,64 @@ body {
     font-family: var(--font-mono);
   }
 
+  /* Display headings — Instrument Serif + Geist. Used by the hero. */
+  .font-display {
+    font-family: var(--font-display);
+    font-feature-settings: "liga" 1, "calt" 1, "ss01" 1;
+    letter-spacing: -0.02em;
+  }
+
   /* Animated grid backdrop for hero sections. */
   .bg-grid {
     background-image:
-      linear-gradient(var(--border) 1px, transparent 1px),
-      linear-gradient(90deg, var(--border) 1px, transparent 1px);
-    background-size: 48px 48px;
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 56px 56px;
     background-position: -1px -1px;
   }
 
   .bg-grid-fade {
-    mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
-    -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
-  }
-
-  /* Gradient text utility for hero headings. */
-  .text-gradient {
-    background-image: linear-gradient(120deg, var(--primary), var(--accent));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    mask-image: radial-gradient(ellipse 70% 60% at center, black 30%, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at center, black 30%, transparent 80%);
   }
 
   /* Glow ring used by the drop zone when a file is dragged over. */
   .ring-glow {
     box-shadow: 0 0 0 1px var(--primary), 0 0 32px -8px var(--primary);
   }
+
+  /* Subtle inset highlight that makes surface-elevated cards "lift" off the page. */
+  .surface-lift {
+    background: var(--surface-elevated);
+    box-shadow:
+      var(--elev-2),
+      inset 0 1px 0 0 color-mix(in srgb, var(--foreground) 4%, transparent);
+  }
+
+  /* Hairline "ledger" rule — used as separators between hero stats / sections. */
+  .hairline {
+    height: 1px;
+    background: color-mix(in srgb, var(--foreground) 14%, transparent);
+  }
+
+  /* Pointer-cursor magnetic-hover wrapper base. */
+  .magnetic {
+    transition: transform var(--motion-base) var(--ease-out);
+    will-change: transform;
+  }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Keyframes                                                                    */
+/* -------------------------------------------------------------------------- */
 
 @keyframes grid-pulse {
   0%,
   100% {
-    opacity: 0.18;
+    opacity: 0.16;
   }
   50% {
-    opacity: 0.32;
+    opacity: 0.34;
   }
 }
 
@@ -147,6 +192,92 @@ body {
   }
 }
 
+/* Ambient mesh background — slow, drift-y, multi-color. ~18s loop. */
+@keyframes mesh-drift {
+  0% {
+    transform: translate3d(-2%, -1%, 0) rotate(0deg) scale(1.05);
+  }
+  33% {
+    transform: translate3d(3%, -3%, 0) rotate(8deg) scale(1.12);
+  }
+  66% {
+    transform: translate3d(-3%, 2%, 0) rotate(-6deg) scale(0.98);
+  }
+  100% {
+    transform: translate3d(-2%, -1%, 0) rotate(0deg) scale(1.05);
+  }
+}
+
+/* Subtle vertical float used by the chunk-flow visual's pieces. */
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes float-y-sm {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* Marquee for the chain ticker — pauses on hover. */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Particle pulse — used for the orbit dots. */
+@keyframes orbit-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* New: shimmer for in-pill chips. */
+@keyframes chip-shimmer {
+  from {
+    transform: translateX(-150%);
+  }
+  to {
+    transform: translateX(150%);
+  }
+}
+
+/* New: blinking caret for the typed-intro effect. */
+@keyframes caret-blink {
+  0%,
+  60% {
+    opacity: 1;
+  }
+  61%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-caret {
+  animation: caret-blink 1s steps(1) infinite;
+}
+
 .animate-grid-pulse {
   animation: grid-pulse 8s var(--ease-out) infinite;
 }
@@ -155,9 +286,40 @@ body {
   animation: pulse-soft 2.4s var(--ease-out) infinite;
 }
 
+.animate-mesh-drift {
+  animation: mesh-drift 18s var(--ease-in-out) infinite;
+}
+
+.animate-float {
+  animation: float-y 5s var(--ease-in-out) infinite;
+}
+
+.animate-float-sm {
+  animation: float-y-sm 4s var(--ease-in-out) infinite;
+}
+
+.animate-marquee {
+  animation: marquee 32s linear infinite;
+}
+
+.animate-marquee-slow {
+  animation: marquee 48s linear infinite;
+}
+
+.animate-orbit-pulse {
+  animation: orbit-pulse 2.6s var(--ease-in-out) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-grid-pulse,
-  .animate-pulse-soft {
-    animation: none;
+  .animate-pulse-soft,
+  .animate-mesh-drift,
+  .animate-float,
+  .animate-float-sm,
+  .animate-marquee,
+  .animate-marquee-slow,
+  .animate-orbit-pulse,
+  .animate-caret {
+    animation: none !important;
   }
 }
