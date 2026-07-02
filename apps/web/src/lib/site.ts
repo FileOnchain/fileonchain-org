@@ -18,6 +18,11 @@ export const siteConfig = {
   ogDescription:
     "Permanent onchain file storage across 10 chains. Anchor CIDs, pay for private cache, support public infrastructure.",
   twitter: "@fileonchain",
+  /** Public profiles — Organization JSON-LD `sameAs` and footer links. */
+  socials: {
+    twitter: "https://x.com/fileonchain",
+    github: "https://github.com/FileOnchain",
+  },
 } as const;
 
 /** Google Analytics 4 measurement id (e.g. `G-XXXXXXXXXX`), empty when unset. */
