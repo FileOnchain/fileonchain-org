@@ -6,6 +6,12 @@ interface PageShellProps {
   className?: string;
   size?: "narrow" | "default" | "wide";
   padding?: "none" | "sm" | "md" | "lg";
+  /**
+   * Renders a faded grid + soft primary tint behind the top of the page so
+   * interior routes share the home page's paper-and-ink atmosphere instead of
+   * sitting on a flat background.
+   */
+  atmosphere?: boolean;
 }
 
 const sizeClasses = {
@@ -30,8 +36,31 @@ export const PageShell = ({
   className,
   size = "default",
   padding = "md",
+  atmosphere = false,
 }: PageShellProps) => (
-  <main className={cn("mx-auto w-full", sizeClasses[size], paddingClasses[padding], className)}>
+  <main
+    className={cn(
+      "relative mx-auto w-full",
+      sizeClasses[size],
+      paddingClasses[padding],
+      className,
+    )}
+  >
+    {atmosphere && (
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[440px] overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-grid bg-grid-fade opacity-70" />
+        <div
+          className="absolute -top-40 left-1/2 h-[380px] w-[760px] -translate-x-1/2 rounded-full opacity-[0.08] blur-3xl"
+          style={{
+            background:
+              "radial-gradient(closest-side, var(--primary) 0%, var(--accent) 55%, transparent 100%)",
+          }}
+        />
+      </div>
+    )}
     {children}
   </main>
 );
