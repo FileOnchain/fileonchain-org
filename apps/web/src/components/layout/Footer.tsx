@@ -1,79 +1,190 @@
-"use client";
-
 import * as React from "react";
-import { motion } from "framer-motion";
-import { FaGithub, FaHeart, FaLinkedin, FaTwitter } from "react-icons/fa";
-import { CHAINS } from "@fileonchain/sdk";
+import Link from "next/link";
+import Image from "next/image";
+import { FaGithub, FaLinkedin, FaTwitter } from "react-icons/fa";
+import { CHAINS, CHAIN_FAMILY_LABELS, type ChainFamily } from "@fileonchain/sdk";
+import { siteConfig } from "@/lib/site";
 
-const GITHUB_REPO = "https://github.com/FileOnchain/fileonchain-web";
+const GITHUB_REPO = "https://github.com/FileOnchain/fileonchain-org";
+
+const PRODUCT_LINKS = [
+  { href: "/", label: "Upload" },
+  { href: "/explorer", label: "Explorer" },
+  { href: "/cache", label: "Private cache" },
+  { href: "/donations", label: "Donations" },
+  { href: "/dashboard", label: "Dashboard" },
+] as const;
+
+const RESOURCE_LINKS = [
+  { href: GITHUB_REPO, label: "GitHub repository" },
+  { href: `${GITHUB_REPO}/tree/main/packages/sdk`, label: "SDK · @fileonchain/sdk" },
+  { href: `${GITHUB_REPO}/tree/main/contracts`, label: "Contracts" },
+  { href: "/#faq", label: "FAQ", internal: true },
+] as const;
+
+const ORG_SOCIALS = [
+  { href: siteConfig.socials.github, label: "FileOnChain on GitHub", Icon: FaGithub },
+  { href: siteConfig.socials.twitter, label: "FileOnChain on X", Icon: FaTwitter },
+] as const;
+
 const AUTHOR_LINKS = [
-  { href: "https://github.com/marc-aurele-besner", label: "GitHub", Icon: FaGithub },
+  { href: "https://github.com/marc-aurele-besner", label: "Marc-Aurèle on GitHub", Icon: FaGithub },
   {
     href: "https://www.linkedin.com/in/marc-aurele-besner/",
-    label: "LinkedIn",
+    label: "Marc-Aurèle on LinkedIn",
     Icon: FaLinkedin,
   },
-  { href: "https://x.com/marcaureleb", label: "Twitter", Icon: FaTwitter },
-];
+  { href: "https://x.com/marcaureleb", label: "Marc-Aurèle on X", Icon: FaTwitter },
+] as const;
 
-const EASE_OUT = [0.16, 1, 0.3, 1] as const;
+const FAMILIES: ChainFamily[] = ["evm", "substrate", "solana", "aptos"];
+
+const columnHeading =
+  "text-[10px] font-semibold uppercase tracking-[0.22em] text-muted";
+const footerLink =
+  "text-sm text-muted transition-colors duration-base hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded-sm";
+const iconLink =
+  "text-muted transition-colors duration-base hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded";
 
 /**
  * Footer — bottom of the layout chrome. Lives in `layout.tsx` (not page) so
  * it persists across routes. Reserves flow space (no `fixed bottom-0`) so it
  * never overlaps content.
  *
- * SSR-fallback friendly: the wrapper is fully visible in static HTML so even
- * if framer-motion chunks fail to hydrate, the footer is still rendered. The
- * `initial` state only animates when hydration succeeds.
+ * Server component on purpose: pure navigation + brand chrome, no motion, so
+ * it ships zero client JS and is always present in static HTML.
  */
 const Footer = () => (
   <footer className="mt-16 border-t border-border bg-surface/40">
-    <motion.div
-      initial={false}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.1 }}
-      transition={{ duration: 0.5, ease: EASE_OUT }}
-      style={{ opacity: 1 }}
-      className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 md:px-6"
-    >
-      {/* Top row — editorial wordmark + chain count */}
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-sm font-semibold tracking-tight text-foreground">
-          FileOnChain
-        </p>
-        <p className="font-mono text-[11px] text-muted">
-          {CHAINS.length} chains · anchored forever
-        </p>
+    <div className="mx-auto max-w-7xl px-4 py-12 md:px-6">
+      <div className="grid gap-10 md:grid-cols-12">
+        {/* Brand column ------------------------------------------------ */}
+        <div className="flex flex-col items-start gap-4 md:col-span-5">
+          <Link
+            href="/"
+            className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded-md"
+            aria-label="FileOnChain home"
+          >
+            <Image
+              src="/logo/svg/fileonchain-logo-white-blue.svg"
+              alt=""
+              width={28}
+              height={28}
+              className="dark:hidden"
+            />
+            <Image
+              src="/logo/svg/fileonchain-logo-clear-blue.svg"
+              alt=""
+              width={28}
+              height={28}
+              className="hidden dark:block"
+            />
+            <span className="font-semibold tracking-tight text-foreground">
+              {siteConfig.name}
+            </span>
+          </Link>
+          <p className="max-w-xs text-sm leading-relaxed text-muted">
+            Permanent file storage, anchored one transaction at a time across
+            EVM, Substrate, Solana, and Aptos chains.
+          </p>
+          <div className="flex items-center gap-3">
+            {ORG_SOCIALS.map(({ href, label, Icon }) => (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={label}
+                className={iconLink}
+              >
+                <Icon size={18} />
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* Link columns ------------------------------------------------ */}
+        <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:col-span-7">
+          <nav aria-label="Product" className="flex flex-col gap-3">
+            <p className={columnHeading}>Product</p>
+            <ul className="flex flex-col gap-2">
+              {PRODUCT_LINKS.map(({ href, label }) => (
+                <li key={href}>
+                  <Link href={href} className={footerLink}>
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <nav aria-label="Resources" className="flex flex-col gap-3">
+            <p className={columnHeading}>Resources</p>
+            <ul className="flex flex-col gap-2">
+              {RESOURCE_LINKS.map(({ href, label, ...rest }) => (
+                <li key={href}>
+                  {"internal" in rest ? (
+                    <Link href={href} className={footerLink}>
+                      {label}
+                    </Link>
+                  ) : (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={footerLink}
+                    >
+                      {label}
+                    </a>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <nav aria-label="Networks" className="flex flex-col gap-3">
+            <p className={columnHeading}>Networks</p>
+            <ul className="flex flex-col gap-2">
+              {FAMILIES.map((family) => {
+                const count = CHAINS.filter((c) => c.family === family).length;
+                return (
+                  <li key={family}>
+                    <Link
+                      href={`/explorer?runtime=${family}`}
+                      className={`${footerLink} inline-flex items-baseline gap-1.5`}
+                    >
+                      {CHAIN_FAMILY_LABELS[family]}
+                      <span className="font-mono text-[11px] tabular-nums text-muted/70">
+                        {count}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        </div>
       </div>
 
-      {/* Hairline */}
-      <div className="hairline" />
-
-      {/* Bottom row — author / repo */}
-      <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-muted md:justify-between">
-        <a
-          href={GITHUB_REPO}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 text-foreground hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded"
-        >
-          <FaGithub size={16} />
-          <span>GitHub Repo</span>
-        </a>
-        <p className="inline-flex items-center gap-1.5">
-          Made with{" "}
-          <motion.span
-            initial={false}
-            animate={{ scale: [1, 1.18, 1] }}
-            transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 1.4 }}
-            className="inline-flex text-danger"
+      {/* Legal / meta bar --------------------------------------------- */}
+      <div className="hairline mt-10 opacity-60" />
+      <div className="mt-6 flex flex-col items-center justify-between gap-3 text-xs text-muted sm:flex-row">
+        <p>
+          © {new Date().getFullYear()} {siteConfig.name} ·{" "}
+          <a
+            href={`${GITHUB_REPO}/blob/main/LICENSE`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-colors duration-base hover:text-foreground"
           >
-            <FaHeart />
-          </motion.span>{" "}
-          by Marc-Aurèle
+            MIT License
+          </a>
         </p>
-        <div className="inline-flex items-center gap-3">
+        <p className="font-mono text-[11px]">
+          {CHAINS.length} chains · anchored forever
+        </p>
+        <div className="flex items-center gap-3">
+          <span>Built by Marc-Aurèle Besner</span>
           {AUTHOR_LINKS.map(({ href, label, Icon }) => (
             <a
               key={label}
@@ -81,14 +192,14 @@ const Footer = () => (
               target="_blank"
               rel="noopener noreferrer"
               aria-label={label}
-              className="text-muted transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded"
+              className={iconLink}
             >
-              <Icon size={18} />
+              <Icon size={14} />
             </a>
           ))}
         </div>
       </div>
-    </motion.div>
+    </div>
   </footer>
 );
 
