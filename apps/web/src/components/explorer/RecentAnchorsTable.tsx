@@ -12,7 +12,7 @@ import {
   formatRelativeTime,
   truncateCID,
 } from "@/lib/cid/format";
-import { buildTxUrl, getChain } from "@/lib/chains/registry";
+import { buildTxUrl, getChain } from "@fileonchain/sdk";
 
 interface RecentAnchorsTableProps {
   rows: RecentAnchorRow[];

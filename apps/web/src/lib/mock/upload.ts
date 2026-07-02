@@ -1,6 +1,6 @@
 import { keccak256, stringToBytes } from "viem";
-import type { ChainFamily } from "@/types/types";
-import type { ChainConfig } from "@/lib/chains/registry";
+import type { ChainFamily } from "@fileonchain/sdk";
+import type { ChainConfig } from "@fileonchain/sdk";
 
 /* TODO: real viem writeContract / polkadot signAndSend / solana sendTransaction */
 

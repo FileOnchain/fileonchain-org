@@ -7,7 +7,7 @@ import { ChainBadge } from "@/components/ui/ChainBadge";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useDonationsStates } from "@/states/donations";
-import { getChain } from "@/lib/chains/registry";
+import { getChain } from "@fileonchain/sdk";
 import { truncateCID } from "@/lib/cid/format";
 import { FiHeart } from "react-icons/fi";
 

@@ -9,8 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
 import { useDonation } from "@/hooks/useDonation";
-import { CHAINS } from "@/lib/chains/registry";
-import { isValidCID } from "@/lib/cid/validate";
+import { CHAINS, isValidCID } from "@fileonchain/sdk";
 import type { DonationRecipient } from "@/lib/mock/donations";
 
 interface DonateModalProps {

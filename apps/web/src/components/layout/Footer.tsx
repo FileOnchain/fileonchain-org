@@ -3,7 +3,7 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import { FaGithub, FaHeart, FaLinkedin, FaTwitter } from "react-icons/fa";
-import { CHAINS } from "@/lib/chains/registry";
+import { CHAINS } from "@fileonchain/sdk";
 
 const GITHUB_REPO = "https://github.com/FileOnchain/fileonchain-web";
 const AUTHOR_LINKS = [

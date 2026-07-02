@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { CHAINS } from "@/lib/chains/registry";
+import { CHAINS } from "@fileonchain/sdk";
 import Image from "next/image";
 
 interface ChainTickerProps {

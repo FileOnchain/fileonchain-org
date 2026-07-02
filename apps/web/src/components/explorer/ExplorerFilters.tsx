@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import type { ChainFamily } from "@/types/types";
+import type { ChainFamily } from "@fileonchain/sdk";
 import type { FileCategory } from "@/lib/mock/cid-indexer";
 import { cn } from "@/lib/cn";
 

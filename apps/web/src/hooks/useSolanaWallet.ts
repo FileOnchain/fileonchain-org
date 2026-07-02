@@ -84,8 +84,8 @@ export const useSolanaWallet = () => {
 
   const getConnection = useCallback(async () => {
     const { Connection } = await import("@solana/web3.js");
-    const { getSolanaClusters } = await import("@/lib/chains/solana");
-    const mainnet = getSolanaClusters().find((c) => c.chainId === "solana:mainnet");
+    const { getChain } = await import("@fileonchain/sdk");
+    const mainnet = getChain("solana:mainnet");
     return new Connection(mainnet?.rpcUrl ?? "https://api.mainnet-beta.solana.com");
   }, []);
 

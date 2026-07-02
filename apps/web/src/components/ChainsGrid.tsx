@@ -9,7 +9,7 @@ import {
   CHAIN_FAMILY_LABELS,
   CHAIN_FAMILY_TAGLINES,
   type ChainConfig,
-} from "@/lib/chains/registry";
+} from "@fileonchain/sdk";
 import { useChain } from "@/hooks/useChain";
 import { Badge } from "@/components/ui/Badge";
 import ScrollReveal from "@/components/ScrollReveal";

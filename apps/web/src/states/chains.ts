@@ -1,7 +1,10 @@
 import { create } from "zustand";
-import { CHAINS, DEFAULT_CHAIN_ID } from "@/lib/chains/registry";
-import type { ChainConfig } from "@/lib/chains/registry";
-import type { ChainId } from "@/types/types";
+import {
+  CHAINS,
+  DEFAULT_CHAIN_ID,
+  type ChainConfig,
+  type ChainId,
+} from "@fileonchain/sdk";
 
 interface ChainsState {
   activeChainId: ChainId;

@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { ChainBadge } from "@/components/ui/ChainBadge";
 import { Badge } from "@/components/ui/Badge";
 import { CopyButton } from "@/components/ui/CopyButton";
-import { buildTxUrl, getChain } from "@/lib/chains/registry";
+import { buildTxUrl, getChain } from "@fileonchain/sdk";
 import { truncateCID, formatTimestamp, formatBlockNumber } from "@/lib/cid/format";
 import type { SearchHit } from "@/lib/mock/cid-indexer";
 

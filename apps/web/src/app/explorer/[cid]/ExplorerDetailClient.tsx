@@ -24,7 +24,7 @@ import {
   truncateAddress,
   truncateCID,
 } from "@/lib/cid/format";
-import { buildTxUrl, getChain } from "@/lib/chains/registry";
+import { buildTxUrl, getChain } from "@fileonchain/sdk";
 import type {
   RegisteredFile,
   SearchHit,

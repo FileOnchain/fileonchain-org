@@ -1,9 +1,7 @@
 "use client";
 
 import { useChainsStates } from "@/states/chains";
-import { getChain } from "@/lib/chains/registry";
-import type { ChainConfig } from "@/lib/chains/registry";
-import type { ChainId } from "@/types/types";
+import { getChain, type ChainConfig, type ChainId } from "@fileonchain/sdk";
 
 /**
  * useChain — convenience hook around the chains store. Returns the active

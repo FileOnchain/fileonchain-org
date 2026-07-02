@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { createPublicClient, createWalletClient, custom, http, type WalletClient } from "viem";
 import { mainnet } from "viem/chains";
 import { useWalletStates } from "@/states/wallet";
-import { getChain } from "@/lib/chains/registry";
+import { getChain } from "@fileonchain/sdk";
 
 /* TODO: wire to viem WalletClient — currently only stubs the connection */
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getMockCIDRecordsAcrossChains } from "@/lib/mock/registry";
-import { isValidCID } from "@/lib/cid/validate";
+import { isValidCID } from "@fileonchain/sdk";
 
 /* TODO: replace with real resolver that streams the file from IPFS/IPLD */
 

@@ -1,7 +1,7 @@
 {
   "name": "@fileonchain/sdk",
   "version": "0.1.0",
-  "description": "Anchor file and folder CIDs on-chain with the FileOnChain contracts — supported networks, contract addresses, ABIs, and chain clients.",
+  "description": "Anchor file and folder CIDs on-chain with the FileOnChain contracts \u2014 supported networks, contract addresses, ABIs, and chain clients.",
   "license": "MIT",
   "repository": {
     "type": "git",

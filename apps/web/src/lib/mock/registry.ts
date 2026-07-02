@@ -1,8 +1,10 @@
 import { keccak256, stringToBytes } from "viem";
-import { CHAINS } from "@/lib/chains/registry";
-import { getRegistryAddress } from "@/lib/contracts/addresses";
-import type { CIDRegistryRecord } from "@/types/types";
-import type { ChainId } from "@/types/types";
+import {
+  CHAINS,
+  getRegistryAddress,
+  type ChainId,
+  type CIDRegistryRecord,
+} from "@fileonchain/sdk";
 
 const EVM_CHAIN_IDS = CHAINS.filter((c) => c.family === "evm").map((c) => c.id);
 

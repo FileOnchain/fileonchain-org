@@ -1,6 +1,9 @@
-import { CHAINS, getChain } from "@/lib/chains/registry";
-import type { ChainId } from "@/types/types";
-import type { ChainFamily } from "@/types/types";
+import {
+  CHAINS,
+  getChain,
+  type ChainFamily,
+  type ChainId,
+} from "@fileonchain/sdk";
 
 /* TODO: wire to The Graph / Goldsky / Subscan / Solana RPC / Aptos indexer */
 

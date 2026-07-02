@@ -8,8 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import LiveLedgerTicker, { StatCounter } from "@/components/LiveLedgerTicker";
 import { compactNumber, truncateCID } from "@/lib/cid/format";
-import { CHAINS, CHAIN_FAMILY_LABELS } from "@/lib/chains/registry";
-import type { ChainFamily } from "@/types/types";
+import { CHAINS, CHAIN_FAMILY_LABELS, type ChainFamily } from "@fileonchain/sdk";
 import type {
   FileCategory,
   ExplorerStats,

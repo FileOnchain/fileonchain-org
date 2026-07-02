@@ -1,6 +1,7 @@
 import { ApiPromise, NetworkId } from "@autonomys/auto-utils";
 import { create } from "zustand";
-import type { Account, ChainFamily } from "@/types/types";
+import type { ChainFamily } from "@fileonchain/sdk";
+import type { Account } from "@/types/types";
 
 interface WalletState {
   /** Currently connected chain family, or null when no wallet is connected. */

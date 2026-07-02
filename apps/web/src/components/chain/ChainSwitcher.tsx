@@ -6,7 +6,7 @@ import { FiCheck, FiChevronDown } from "react-icons/fi";
 import { ChainBadge } from "@/components/ui/ChainBadge";
 import { Badge } from "@/components/ui/Badge";
 import { useChain } from "@/hooks/useChain";
-import { CHAINS, CHAIN_FAMILY_LABELS, type ChainConfig } from "@/lib/chains/registry";
+import { CHAINS, CHAIN_FAMILY_LABELS, type ChainConfig } from "@fileonchain/sdk";
 import { cn } from "@/lib/cn";
 
 interface ChainSwitcherProps {

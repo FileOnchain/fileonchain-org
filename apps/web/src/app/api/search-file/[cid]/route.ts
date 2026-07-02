@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isValidCID } from "@/lib/cid/validate";
+import { isValidCID } from "@fileonchain/sdk";
 
 /* TODO: replace with real file-content lookup from IPFS/IPLD storage */
 

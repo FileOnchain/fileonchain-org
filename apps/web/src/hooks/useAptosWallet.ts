@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { useWalletStates } from "@/states/wallet";
-import { getAptosNetworks } from "@/lib/chains/aptos";
+import { getChain } from "@fileonchain/sdk";
 
 /* TODO: wire to Petra / Martian wallet standard via aptos-wallet-adapter */
 
@@ -73,7 +73,7 @@ export const useAptosWallet = () => {
   }, []);
 
   const getNetworkRpcUrl = useCallback((network: "mainnet" | "testnet" = "mainnet") => {
-    return getAptosNetworks().find((n) => n.testnet === (network === "testnet"))?.rpcUrl ?? "";
+    return getChain(network === "testnet" ? "aptos:testnet" : "aptos:mainnet")?.rpcUrl ?? "";
   }, []);
 
   return { address: aptosAddress, connect, disconnect, getClient, getNetworkRpcUrl };

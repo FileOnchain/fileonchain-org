@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 import webpack from "webpack";
 
 const nextConfig: NextConfig = {
+  // The SDK is consumed straight from its TypeScript source in the workspace.
+  transpilePackages: ["@fileonchain/sdk"],
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // The client bundle is fed by packages that reach for Node built-ins

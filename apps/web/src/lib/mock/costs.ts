@@ -1,5 +1,5 @@
-import { CHAINS } from "@/lib/chains/registry";
-import type { ChainId } from "@/types/types";
+import { CHAINS } from "@fileonchain/sdk";
+import type { ChainId } from "@fileonchain/sdk";
 
 /**
  * Per-chain cost model. Used to surface a realistic gas estimate on the

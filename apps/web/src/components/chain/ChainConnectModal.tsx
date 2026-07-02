@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Identicon } from "@/components/ui/Identicon";
 import { useChain } from "@/hooks/useChain";
-import { CHAINS, CHAIN_FAMILY_LABELS } from "@/lib/chains/registry";
+import { CHAINS, CHAIN_FAMILY_LABELS } from "@fileonchain/sdk";
 import { useSubstrateWallet } from "@/hooks/useSubstrateWallet";
 import { useEVMWallet } from "@/hooks/useEVMWallet";
 import { useSolanaWallet } from "@/hooks/useSolanaWallet";
