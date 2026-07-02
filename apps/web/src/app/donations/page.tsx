@@ -16,6 +16,14 @@ export const metadata: Metadata = {
     url: "/donations",
     type: "website",
   },
+  // Without this, the root layout's twitter block (homepage copy) is
+  // inherited wholesale — metadata merges shallowly per top-level key.
+  twitter: {
+    card: "summary_large_image",
+    title: "Donations · FileOnChain",
+    description:
+      "Fund the public cache that keeps onchain files retrievable for everyone.",
+  },
 };
 
 export default function DonationsPage() {
