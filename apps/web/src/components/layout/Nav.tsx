@@ -19,6 +19,7 @@ interface NavLink {
 const PRIMARY_LINKS: NavLink[] = [
   { href: "/", label: "Upload" },
   { href: "/explorer", label: "Explorer" },
+  { href: "/leaderboard", label: "Leaderboard" },
   { href: "/cache", label: "Cache" },
   { href: "/donations", label: "Donations" },
   { href: "/dashboard", label: "Dashboard" },
