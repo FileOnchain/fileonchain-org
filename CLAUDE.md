@@ -95,7 +95,11 @@ no trailing slash; defaults to `https://fileonchain.org`) and
 `layout.tsx` sets `metadataBase`, a title `template`, default OG/Twitter tags,
 `robots`, Organization + WebSite JSON-LD, and mounts `<GoogleAnalytics>` from
 `@next/third-parties/google` **only when `gaId` is set**. `robots.ts` and
-`sitemap.ts` under `src/app/` are generated from `siteConfig`. **Per-page
+`sitemap.ts` under `src/app/` are generated from `siteConfig`. **Custom
+events:** fire them through `trackEvent(name, params)` in `src/lib/analytics.ts`
+— a typed wrapper over `sendGAEvent` that no-ops when `gaId` is unset. Add new
+events to the `AnalyticsEvents` map (GA4 snake_case names, flat scalar params,
+no PII) rather than calling `sendGAEvent` directly. **Per-page
 metadata:** server pages export `metadata`/`generateMetadata` directly; client
 pages (`cache`, `explorer`) carry a sibling `layout.tsx` that exports it (a
 Client Component can't). Each page sets its own `alternates.canonical`;

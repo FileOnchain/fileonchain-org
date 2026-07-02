@@ -5,6 +5,7 @@ import { keccak256, stringToBytes } from "viem";
 import { useCacheStates } from "@/states/cache";
 import { CACHE_PRICING } from "@/lib/mock/cache";
 import type { CacheTier } from "@/lib/mock/cache";
+import { trackEvent } from "@/lib/analytics";
 
 /* TODO: real wagmi/viem writeContract call to CachePayments.payForCache */
 
@@ -38,6 +39,8 @@ export const useCachePayment = () => {
       };
 
       addEntry(entry);
+
+      trackEvent("cache_purchase", { tier });
 
       return { txHash };
     },

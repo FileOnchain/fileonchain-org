@@ -17,6 +17,7 @@ import type {
 } from "@/lib/mock/cid-indexer";
 import RecentAnchorsTable from "@/components/explorer/RecentAnchorsTable";
 import ExplorerFilters from "@/components/explorer/ExplorerFilters";
+import { trackEvent } from "@/lib/analytics";
 
 /**
  * ExplorerShell — Etherscan-style home for the multichain CID indexer.
@@ -86,7 +87,10 @@ const ExplorerShell = () => {
             e.preventDefault();
             const fd = new FormData(e.currentTarget);
             const q = String(fd.get("cid") ?? "").trim();
-            if (q) window.location.assign(`/explorer/${encodeURIComponent(q)}`);
+            if (q) {
+              trackEvent("cid_search", { source: "explorer_index" });
+              window.location.assign(`/explorer/${encodeURIComponent(q)}`);
+            }
           }}
           className="flex flex-col gap-2 sm:flex-row"
           role="search"

@@ -17,6 +17,7 @@ import { readFileContent } from "@/utils/readFileContent";
 import { mockAnchorCID, MockUploadResult } from "@/lib/mock/upload";
 import { useChain } from "@/hooks/useChain";
 import { getMockCIDRecord } from "@/lib/mock/registry";
+import { trackEvent } from "@/lib/analytics";
 
 const CHUNK_BUFFER_SIZE = 64 * 1024;
 
@@ -151,8 +152,21 @@ export const useFileUploader = () => {
         ]);
 
         await handleSearch([{ cid: fileCID, data: new Uint8Array() }]);
+
+        trackEvent("file_upload", {
+          chain_id: activeChain.id,
+          chain_family: activeChain.family,
+          file_size: selectedFile.size,
+          status: "success",
+        });
       } catch (e) {
         setError((e as Error).message);
+        trackEvent("file_upload", {
+          chain_id: activeChain.id,
+          chain_family: activeChain.family,
+          file_size: selectedFile.size,
+          status: "error",
+        });
       } finally {
         setIsUploading(false);
       }

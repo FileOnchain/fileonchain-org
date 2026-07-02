@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { keccak256, stringToBytes } from "viem";
 import { useDonationsStates } from "@/states/donations";
 import type { DonationRecipient } from "@/lib/mock/donations";
+import { trackEvent } from "@/lib/analytics";
 
 /* TODO: real DonationEscrow.donate + ERC-20 approval */
 
@@ -36,6 +37,8 @@ export const useDonation = () => {
         timestamp: Math.floor(Date.now() / 1000),
         txHash,
       });
+
+      trackEvent("donation", { recipient_type: recipientType });
 
       return { txHash };
     },
