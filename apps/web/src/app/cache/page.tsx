@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { PageShell } from "@/components/layout/PageShell";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
 import CachePricingTable from "@/components/cache/CachePricingTable";
 import CacheMyList from "@/components/cache/CacheMyList";
@@ -37,25 +37,19 @@ export default function CachePage() {
   };
 
   return (
-    <PageShell size="wide" padding="lg">
-      <div className="mb-8 space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
-          Private cache
-        </p>
-        <h1 className="text-3xl md:text-4xl font-bold text-foreground">
-          Pay for private, encrypted storage
-        </h1>
-        <p className="text-muted max-w-2xl">
-          Encrypt files client-side with AES-GCM, anchor a CID onchain, and grant address-based access.
-          Funds go to the FileOnChain treasury.
-        </p>
-      </div>
+    <PageShell size="wide" padding="lg" atmosphere>
+      <PageHeader
+        className="mb-8"
+        index="03"
+        kicker="Private cache"
+        title="Private, encrypted storage."
+        lede="Encrypt files client-side with AES-GCM, anchor a CID onchain, and grant address-based access. Funds go to the FileOnChain treasury."
+      />
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="pricing">Pricing</TabsTrigger>
           <TabsTrigger value="my">My cache</TabsTrigger>
-          <TabsTrigger value="access">Access list</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pricing">
@@ -64,21 +58,10 @@ export default function CachePage() {
 
         <TabsContent value="my">
           <CacheMyList onManageAccess={(id) => setAccessEntryId(id)} />
-        </TabsContent>
-
-        <TabsContent value="access">
-          <Card variant="outlined" className="border-dashed">
-            <CardHeader>
-              <CardTitle>Access list</CardTitle>
-              <CardDescription>
-                Open an entry from &ldquo;My cache&rdquo; to manage its grantees. Each grant is on-chain via
-                CachePayments.grantAccess.
-              </CardDescription>
-            </CardHeader>
-            <p className="text-sm text-muted">
-              Switch to the My cache tab to manage access for a specific entry.
-            </p>
-          </Card>
+          <p className="mt-4 text-xs text-muted">
+            Access is granted per entry — open an entry&apos;s grantee list to add or
+            revoke addresses. Each grant is on-chain via CachePayments.grantAccess.
+          </p>
         </TabsContent>
       </Tabs>
 

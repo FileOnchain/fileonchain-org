@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { FiArrowRight, FiSearch } from "react-icons/fi";
 import { PageShell } from "@/components/layout/PageShell";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import LiveLedgerTicker, { StatCounter } from "@/components/LiveLedgerTicker";
@@ -63,22 +64,15 @@ const ExplorerShell = () => {
   const visible = rows.slice(0, pageSize);
 
   return (
-    <PageShell size="wide" padding="lg">
+    <PageShell size="wide" padding="lg" atmosphere>
       {/* Header ----------------------------------------------- */}
       <section className="space-y-6">
-        <div className="flex flex-col items-start gap-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
-            Cross-chain indexer
-          </p>
-          <h1 className="text-balance text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-            CID Explorer.
-          </h1>
-          <p className="max-w-2xl text-sm leading-relaxed text-muted md:text-base">
-            Every file that has been publicly anchored on FileOnChain. Search a
-            CID to see which chains committed it, the on-chain tx hash, block
-            number, and submitter. Or browse recent anchors below.
-          </p>
-        </div>
+        <PageHeader
+          index="02"
+          kicker="Cross-chain indexer"
+          title="Every anchor, on every chain."
+          lede="Every file that has been publicly anchored on FileOnChain. Search a CID to see which chains committed it, the on-chain tx hash, block number, and submitter. Or browse recent anchors below."
+        />
 
         {/* Search bar (sticky visual style, not actually sticky) */}
         <form
@@ -97,8 +91,10 @@ const ExplorerShell = () => {
         >
           <Input
             name="cid"
+            aria-label="CID to search"
             placeholder="bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
             leftAddon={<FiSearch size={14} />}
+            className="font-mono"
             fullWidth
           />
           <Button type="submit">Search chains</Button>

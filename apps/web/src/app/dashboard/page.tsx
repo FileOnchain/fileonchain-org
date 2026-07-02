@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FiFileText, FiHeart, FiInbox, FiLock } from "react-icons/fi";
+import { FiHeart, FiInbox, FiLock } from "react-icons/fi";
 import { PageShell } from "@/components/layout/PageShell";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -71,18 +72,18 @@ const formatAgo = (ts: number): string => {
   return `${Math.floor(diff / 86_400)}d ago`;
 };
 
-const Stat = ({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) => (
-  <Card>
-    <div className="flex items-start gap-3">
-      <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
-        {icon}
-      </span>
-      <div>
-        <p className="text-xs uppercase tracking-wide text-muted">{label}</p>
-        <p className="text-2xl font-bold text-foreground">{value}</p>
-      </div>
-    </div>
-  </Card>
+/** Ledger-style stat — mono numeral + tracked label, matching the hero's stat row. */
+const Stat = ({ label, value, hint }: { label: string; value: string | number; hint?: string }) => (
+  <div className="flex min-w-0 flex-col items-start gap-1">
+    <span className="truncate font-mono text-3xl font-semibold tabular-nums tracking-tight text-foreground md:text-4xl">
+      {value}
+    </span>
+    <span className="truncate text-[11px] font-medium uppercase tracking-wider text-muted">
+      {label}
+    </span>
+    {hint && <span className="truncate text-[10px] text-muted/70">{hint}</span>}
+    <span aria-hidden className="mt-2 h-px w-10 bg-primary/40" />
+  </div>
 );
 
 export const metadata: Metadata = {
@@ -99,24 +100,19 @@ export default function DashboardPage() {
   const privateCount = MOCK_ITEMS.filter((item) => item.private).length;
 
   return (
-    <PageShell size="wide" padding="lg">
-      <div className="mb-8 space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
-          Dashboard
-        </p>
-        <h1 className="text-3xl md:text-4xl font-bold text-foreground">
-          Your onchain files
-        </h1>
-        <p className="text-muted max-w-2xl">
-          All files you&apos;ve anchored onchain. Switch chains, manage private cache, or donate back to keep
-          the public layer alive.
-        </p>
-      </div>
+    <PageShell size="wide" padding="lg" atmosphere>
+      <PageHeader
+        className="mb-8"
+        index="05"
+        kicker="Your ledger"
+        title="Your onchain files."
+        lede="All files you've anchored onchain. Switch chains, manage private cache, or donate back to keep the public layer alive."
+      />
 
-      <div className="grid gap-4 sm:grid-cols-3 mb-8">
-        <Stat label="Total files" value={total} icon={<FiFileText size={18} />} />
-        <Stat label="Bytes stored" value={formatSize(totalBytes)} icon={<FiInbox size={18} />} />
-        <Stat label="Private entries" value={privateCount} icon={<FiLock size={18} />} />
+      <div className="mb-8 grid grid-cols-1 gap-6 rounded-2xl border border-border bg-surface p-6 sm:grid-cols-3 sm:gap-8">
+        <Stat label="Total files" value={total} hint="Anchored from this wallet" />
+        <Stat label="Bytes stored" value={formatSize(totalBytes)} hint="Across all chains" />
+        <Stat label="Private entries" value={privateCount} hint="Encrypted cache" />
       </div>
 
       {MOCK_ITEMS.length === 0 ? (
@@ -138,7 +134,14 @@ export default function DashboardPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 className="text-sm font-medium text-foreground truncate">{item.filename}</h3>
+                      <h3 className="text-sm font-medium text-foreground truncate">
+                        <Link
+                          href={`/explorer/${item.cid}`}
+                          className="transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+                        >
+                          {item.filename}
+                        </Link>
+                      </h3>
                       {item.private && (
                         <Badge variant="private" size="sm">
                           🔒 Private
