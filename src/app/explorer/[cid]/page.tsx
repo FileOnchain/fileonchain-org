@@ -1,7 +1,9 @@
+import type { Metadata } from "next";
 import * as React from "react";
 import Link from "next/link";
 import { PageShell } from "@/components/layout/PageShell";
 import { lookupFile } from "@/lib/mock/cid-indexer";
+import { truncateCID } from "@/lib/cid/format";
 import ExplorerDetailClient from "./ExplorerDetailClient";
 
 interface PageProps {
@@ -9,6 +11,36 @@ interface PageProps {
 }
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { cid } = await params;
+  const result = await lookupFile(cid);
+  const canonical = `/explorer/${cid}`;
+
+  if (!result) {
+    return {
+      title: `Unknown CID · ${truncateCID(cid)}`,
+      description: `No public record for ${cid} on FileOnChain yet.`,
+      alternates: { canonical },
+      // Nothing to index for an unresolved CID.
+      robots: { index: false, follow: true },
+    };
+  }
+
+  const { name, description, category } = result.file;
+  const title = `${name} · ${truncateCID(cid)}`;
+  const desc =
+    description ||
+    `${name} — a ${category} file anchored onchain. View its CID records and chunk map on FileOnChain.`;
+
+  return {
+    title,
+    description: desc,
+    alternates: { canonical },
+    openGraph: { title: `${title} · FileOnChain`, description: desc, url: canonical, type: "website" },
+    twitter: { card: "summary_large_image", title, description: desc },
+  };
+}
 
 /**
  * Server component — looks up the registered file (if any) and pre-fetches

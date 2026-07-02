@@ -1,7 +1,22 @@
+import type { Metadata } from "next";
 import { PageShell } from "@/components/layout/PageShell";
 import DonationsFeed from "@/components/donations/DonationsFeed";
 import DonateButton from "@/components/donations/DonateButton";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
+
+export const metadata: Metadata = {
+  title: "Donations",
+  description:
+    "Support FileOnChain's public cache. Donate to the platform, fund pinning for a specific CID, or back the public cache layer for a single chain.",
+  alternates: { canonical: "/donations" },
+  openGraph: {
+    title: "Donations · FileOnChain",
+    description:
+      "Fund the public cache that keeps onchain files retrievable for everyone.",
+    url: "/donations",
+    type: "website",
+  },
+};
 
 export default function DonationsPage() {
   return (

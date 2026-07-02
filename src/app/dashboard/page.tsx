@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { FiFileText, FiHeart, FiInbox, FiLock } from "react-icons/fi";
 import { PageShell } from "@/components/layout/PageShell";
@@ -83,6 +84,14 @@ const Stat = ({ label, value, icon }: { label: string; value: string | number; i
     </div>
   </Card>
 );
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+  description: "Your anchored files, private cache, and donation history.",
+  // Per-user view — keep it out of the index.
+  robots: { index: false, follow: false },
+  alternates: { canonical: "/dashboard" },
+};
 
 export default function DashboardPage() {
   const total = MOCK_ITEMS.length;
