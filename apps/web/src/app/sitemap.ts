@@ -11,6 +11,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const routes: { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"] }[] = [
     { path: "/", priority: 1, changeFrequency: "weekly" },
     { path: "/explorer", priority: 0.8, changeFrequency: "hourly" },
+    { path: "/leaderboard", priority: 0.7, changeFrequency: "daily" },
     { path: "/cache", priority: 0.7, changeFrequency: "weekly" },
     { path: "/donations", priority: 0.6, changeFrequency: "weekly" },
   ];

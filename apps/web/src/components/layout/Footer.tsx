@@ -10,6 +10,7 @@ const GITHUB_REPO = "https://github.com/FileOnchain/fileonchain-org";
 const PRODUCT_LINKS = [
   { href: "/", label: "Upload" },
   { href: "/explorer", label: "Explorer" },
+  { href: "/leaderboard", label: "Leaderboard" },
   { href: "/cache", label: "Private cache" },
   { href: "/donations", label: "Donations" },
   { href: "/dashboard", label: "Dashboard" },
