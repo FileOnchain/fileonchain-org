@@ -63,7 +63,11 @@ export const DonationsFeed = () => {
                     />
                   )}
                 </div>
-                <span className="text-xs text-muted shrink-0">{formatAgo(d.timestamp)}</span>
+                {/* Relative time is derived from Date.now(), which differs between
+                    the server render and hydration — suppress the text mismatch. */}
+                <span className="text-xs text-muted shrink-0" suppressHydrationWarning>
+                  {formatAgo(d.timestamp)}
+                </span>
               </div>
 
               {d.memo && (

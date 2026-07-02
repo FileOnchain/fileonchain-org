@@ -40,7 +40,9 @@ export const StatCounter = ({
     const start = performance.now();
     const dur = 1100;
     const tick = (t: number) => {
-      const k = Math.min(1, (t - start) / dur);
+      // Clamp below too — a rAF timestamp can land before `start` was sampled,
+      // which would drive the eased value negative.
+      const k = Math.min(1, Math.max(0, (t - start) / dur));
       const eased = 1 - Math.pow(1 - k, 3);
       setDisplay(value * eased);
       if (k < 1) raf = requestAnimationFrame(tick);

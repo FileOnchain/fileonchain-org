@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FiAlertTriangle, FiArrowLeft, FiCompass } from "react-icons/fi";
+import { CHAINS } from "@fileonchain/sdk";
 import { PageShell } from "@/components/layout/PageShell";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -53,7 +54,7 @@ export default function NotFound() {
         <EmptyState
           icon={<FiCompass size={20} />}
           title="Looking for a specific CID?"
-          description="Search by content address across all 12 supported chains."
+          description={`Search by content address across all ${CHAINS.length} supported chains.`}
         />
       </div>
     </PageShell>
