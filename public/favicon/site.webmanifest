@@ -1,6 +1,11 @@
 {
-  "name": "FileOnChain",
+  "id": "/",
+  "name": "FileOnChain — Multichain Onchain Storage",
   "short_name": "FileOnChain",
+  "description": "Anchor file CIDs across Autonomys, Ethereum, Base, Optimism, Arbitrum, Polygon, Solana, and Aptos. Pay for a private cache; fund the public one.",
+  "start_url": "/",
+  "scope": "/",
+  "categories": ["utilities", "productivity", "developer"],
   "icons": [
     {
       "src": "/favicon/web-app-manifest-192x192.png",
@@ -15,7 +20,7 @@
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
+  "theme_color": "#0b0d12",
+  "background_color": "#0b0d12",
   "display": "standalone"
 }

@@ -9,6 +9,7 @@ import {
 import { useEffect } from "react";
 import { useWalletStates } from "@/states/wallet";
 import { Account } from "@/types/types";
+import { trackEvent } from "@/lib/analytics";
 
 export const useWallet = () => {
   const networkId = useWalletStates((state) => state.networkId);
@@ -46,6 +47,7 @@ export const useWallet = () => {
     const injector = await web3FromSource(account.meta.source);
     api.setSigner(injector.signer);
     setSelectedAccount(account);
+    trackEvent("wallet_connect", { family: "substrate" });
   };
 
   return { connectWallet };

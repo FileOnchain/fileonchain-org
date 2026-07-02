@@ -86,6 +86,33 @@ call to make (`upload.ts` → viem `writeContract` / polkadot `signAndSend`;
 `donations.ts` → their contracts). When implementing real behavior, replace the
 mock body and keep the exported signature stable so callers don't change.
 
+### SEO & analytics
+
+`src/lib/site.ts` holds `siteConfig` (name, canonical `url`, shared
+descriptions) and `gaId`. Both read from env: `NEXT_PUBLIC_SITE_URL` (origin,
+no trailing slash; defaults to `https://fileonchain.org`) and
+`NEXT_PUBLIC_GA_ID` (GA4 id — see `.env.example`). The root
+`layout.tsx` sets `metadataBase`, a title `template`, default OG/Twitter tags,
+`robots`, Organization + WebSite JSON-LD, and mounts `<GoogleAnalytics>` from
+`@next/third-parties/google` **only when `gaId` is set**. `robots.ts` and
+`sitemap.ts` under `src/app/` are generated from `siteConfig`. **Custom
+events:** fire them through `trackEvent(name, params)` in `src/lib/analytics.ts`
+— a typed wrapper over `sendGAEvent` that no-ops when `gaId` is unset. Add new
+events to the `AnalyticsEvents` map (GA4 snake_case names, flat scalar params,
+no PII) rather than calling `sendGAEvent` directly. **Structured data:**
+Organization + WebSite JSON-LD lives in the root layout; the home FAQ emits
+`FAQPage` JSON-LD from `src/lib/faq.ts` (single source shared with
+`FaqAccordion`). **Social image:** `src/app/opengraph-image.tsx` renders the
+default OG/Twitter card via `next/og` `ImageResponse` (no static asset).
+**Verification:** set `GOOGLE_SITE_VERIFICATION` (server-only env) to emit the
+Search Console meta tag. `viewport`/`theme-color` are a `viewport` export in the
+root layout. **Per-page
+metadata:** server pages export `metadata`/`generateMetadata` directly; client
+pages (`cache`, `explorer`) carry a sibling `layout.tsx` that exports it (a
+Client Component can't). Each page sets its own `alternates.canonical`;
+`/dashboard` is `robots: { index: false }`. Prefer editing `siteConfig` over
+hardcoding URLs or titles.
+
 ## Gotchas
 
 - **Client/server boundaries.** Wallet code, Zustand stores, and anything using

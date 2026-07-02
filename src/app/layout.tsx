@@ -1,12 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Instrument_Serif } from "next/font/google";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import ThemeProvider from "@/components/ThemeProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import Nav from "@/components/layout/Nav";
 import Footer from "@/components/layout/Footer";
 import RouteFade from "@/components/layout/RouteFade";
 import ScrollProgress from "@/components/ScrollProgress";
+import { siteConfig, gaId, googleSiteVerification } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -38,11 +40,39 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "FileOnChain — Multichain Onchain Storage",
-  description:
-    "Upload files permanently to Autonomys, Ethereum, Base, Optimism, Arbitrum, Polygon, Solana, and Aptos. Anchor CIDs onchain. Pay for private cache. Donate to keep public cache alive.",
-  applicationName: "FileOnChain",
+  metadataBase: new URL(siteConfig.url),
+  title: {
+    default: siteConfig.title,
+    // Sub-pages set a short `title` string; it renders as "Page · FileOnChain".
+    template: `%s · ${siteConfig.name}`,
+  },
+  description: siteConfig.description,
+  applicationName: siteConfig.name,
   manifest: "/favicon/site.webmanifest",
+  alternates: { canonical: "/" },
+  keywords: [
+    "onchain storage",
+    "file to blockchain",
+    "CID anchoring",
+    "IPFS",
+    "Autonomys",
+    "Ethereum",
+    "Solana",
+    "Aptos",
+    "Polkadot",
+    "decentralized storage",
+  ],
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   icons: {
     icon: [
       { url: "/favicon/favicon.svg", type: "image/svg+xml" },
@@ -52,17 +82,68 @@ export const metadata: Metadata = {
     apple: [{ url: "/favicon/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
-    title: "FileOnChain — Multichain Onchain Storage",
-    description:
-      "Permanent onchain file storage across 10 chains. Anchor CIDs, pay for private cache, support public infrastructure.",
+    title: siteConfig.title,
+    description: siteConfig.ogDescription,
+    url: siteConfig.url,
+    siteName: siteConfig.name,
     type: "website",
+    locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "FileOnChain — Multichain Onchain Storage",
-    description:
-      "Permanent onchain file storage across 10 chains. Anchor CIDs, pay for private cache, support public infrastructure.",
+    title: siteConfig.title,
+    description: siteConfig.ogDescription,
+    creator: siteConfig.twitter,
   },
+  // Emits <meta name="google-site-verification"> only when the token is set.
+  verification: googleSiteVerification
+    ? { google: googleSiteVerification }
+    : undefined,
+};
+
+/**
+ * Viewport + theme-color. The browser UI tint tracks the active theme:
+ * cream in light, near-black in dark — matching `--background` in globals.css.
+ */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#faf9f6" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0d12" },
+  ],
+  colorScheme: "light dark",
+};
+
+/**
+ * Organization + WebSite structured data. Gives search engines an explicit
+ * name/URL/logo for the knowledge panel and enables the sitelinks search box.
+ */
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${siteConfig.url}/#organization`,
+      name: siteConfig.name,
+      url: siteConfig.url,
+      logo: `${siteConfig.url}/logo/svg/fileonchain-logo-clear-blue.svg`,
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${siteConfig.url}/#website`,
+      name: siteConfig.name,
+      url: siteConfig.url,
+      description: siteConfig.description,
+      publisher: { "@id": `${siteConfig.url}/#organization` },
+      potentialAction: {
+        "@type": "SearchAction",
+        target: {
+          "@type": "EntryPoint",
+          urlTemplate: `${siteConfig.url}/explorer?q={search_term_string}`,
+        },
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ],
 };
 
 const themeBootstrapScript = `
@@ -88,6 +169,10 @@ export default function RootLayout({
       <head>
         {/* Pre-hydration theme application prevents the FOUC flash for dark users. */}
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
       </head>
       <body className="bg-background text-foreground font-sans min-h-screen flex flex-col antialiased">
         <ThemeProvider>
@@ -101,6 +186,9 @@ export default function RootLayout({
           </ToastProvider>
         </ThemeProvider>
       </body>
+      {/* Google Analytics 4 — only mounts when NEXT_PUBLIC_GA_ID is configured,
+          so local/dev builds don't ship an empty gtag. */}
+      {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
     </html>
   );
 }
