@@ -5,29 +5,38 @@ architecture or conventions change.
 
 ## What this is
 
-FileOnChain — a Next.js webapp for anchoring file CIDs across four chain
-families (EVM, Substrate, Solana, Aptos), paying for an encrypted private
-cache, and funding public infrastructure via donations. A separate Foundry
-workspace under `contracts/` holds the Solidity registry / cache / donation
-contracts.
+FileOnChain — a pnpm workspace monorepo:
+
+- **`apps/web`** — Next.js webapp for anchoring file CIDs across four chain
+  families (EVM, Substrate, Solana, Aptos), paying for an encrypted private
+  cache, and funding public infrastructure via donations.
+- **`packages/sdk`** — `@fileonchain/sdk`, the publishable SDK. **Single
+  source of truth** for supported networks, contract addresses, ABIs, and the
+  anchor clients. The webapp consumes it via `workspace:*`.
+- **`contracts/`** — Foundry workspace with the Solidity registry / cache /
+  donation contracts.
 
 **The webapp is a front-end shell over a mock backend.** Every chain and
-contract interaction currently resolves through `src/lib/mock/*`. Real RPC and
-contract wiring is a deliberate TODO — see "Mock layer" below.
+contract interaction currently resolves through `apps/web/src/lib/mock/*`.
+The SDK's EVM/Substrate clients are the real seam — see "Mock layer" below.
 
 ## Commands
 
+Run from the repo root:
+
 ```bash
-pnpm dev            # dev server on http://localhost:3000
-pnpm build          # production build (runs tsc + lint; the real gate)
-pnpm lint           # ESLint (next lint)
-pnpm start          # serve the production build
-pnpm clean          # rm -rf .next
-npx tsc --noEmit    # standalone typecheck
+pnpm dev            # webapp dev server on http://localhost:3000
+pnpm build          # builds SDK then webapp (tsc + lint; the real gate)
+pnpm lint           # SDK typecheck + webapp ESLint
+pnpm start          # serve the webapp production build
+pnpm clean          # remove build outputs
 ```
 
+Or scope to one package: `pnpm --filter @fileonchain/sdk build`,
+`pnpm --filter @fileonchain/web dev`.
+
 There is no unit-test runner for the webapp. **Verify changes with
-`pnpm build`** — it typechecks and lints the whole app and catches
+`pnpm build`** — it typechecks and lints everything and catches
 server/client boundary errors that `tsc` alone misses.
 
 Contracts (only when touching Solidity):
@@ -36,18 +45,47 @@ Contracts (only when touching Solidity):
 cd contracts && forge build && forge test
 ```
 
+After changing a contract, regenerate the SDK ABIs:
+`cd packages/sdk && node scripts/extract-abis.mjs`.
+
 ## Package manager & runtime
 
-pnpm **>= 10** (pinned via `packageManager: pnpm@10.28.1`) and Node **>= 20**.
-Use pnpm, not npm/yarn/bun — a `pnpm-lock.yaml` and pnpm-specific
-`overrides` / `onlyBuiltDependencies` block is in `package.json`. The
-`@polkadot/*` overrides pin transitive versions to keep the API surface
-consistent; don't remove them casually.
+pnpm **>= 10** (pinned via `packageManager: pnpm@10.28.1` in the root
+manifest) and Node **>= 20**. Use pnpm, not npm/yarn/bun. The root
+`package.json` carries workspace-wide `pnpm.overrides` /
+`onlyBuiltDependencies`; the `@polkadot/*` overrides pin transitive versions
+to keep the API surface consistent — don't remove them casually (see Gotchas).
 
 ## Architecture
 
-- **`@/*` path alias** → `src/*` (see `tsconfig.json`). Always import with
-  `@/...`, matching the existing code.
+### The SDK — source of truth (`packages/sdk`)
+
+- `src/chains.ts` — `ChainConfig` registry. `CHAINS` is a
+  `readonly ChainConfig[]`; look up with `getChain(id)` /
+  `getChainsByFamily(family)`; `DEFAULT_CHAIN_ID` is
+  `substrate:autonomys-mainnet`. Contract addresses live **on the chain
+  entries** (`registryContract`, `cacheContract`, `donationContract`,
+  `programId`, `moduleAddress`, `palletContract`) — no separate address maps.
+  Explorer URLs come from `buildTxUrl` / `buildAddressUrl`. **To add or change
+  a chain or a deployed address, edit `chains.ts` — never hardcode chain data
+  in webapp components.**
+- `src/types.ts` — `ChainFamily`, `ChainId` (template-literal
+  `` `${ChainFamily}:${string}` ``), `CIDRegistryRecord`.
+- `src/abis/*` — generated from `contracts/out` by `scripts/extract-abis.mjs`;
+  don't hand-edit.
+- `src/evm/` (`@fileonchain/sdk/evm`) — real `FileRegistry.anchorCID` /
+  `getCIDRecord` via viem. `src/substrate/` (`@fileonchain/sdk/substrate`) —
+  anchoring via versioned `system.remarkWithEvent` JSON payloads
+  (`buildAnchorRemark` / `parseAnchorRemark`). viem and @polkadot/api are
+  **optional peer deps**; the core entry stays dependency-free.
+- Package `exports` point at `src/*.ts` for the workspace (the webapp lists
+  the SDK in `transpilePackages`); `publishConfig.exports` point at `dist/`
+  (built with tsup) for npm consumers.
+
+### The webapp (`apps/web`)
+
+- **`@/*` path alias** → `apps/web/src/*`. Shared chain types/metadata import
+  from `@fileonchain/sdk`; only web-specific code uses `@/...`.
 - **`src/app/`** — App Router. Routes: `/` (upload), `/explorer` (+ `/explorer/[cid]`),
   `/cache`, `/donations`, `/dashboard`. API routes under `app/api/`
   (`cid`, `search-file`, `upload-fallback`).
@@ -61,37 +99,27 @@ consistent; don't remove them casually.
 - **`src/states/`** — Zustand stores, exported as `use<Name>States`
   (`useWalletStates`, `useChainsStates`, `useThemeStates`, `useCacheStates`,
   `useDonationsStates`).
-- **`src/lib/`** — `chains/` (registry + Solana/Aptos helpers), `contracts/`
-  (compiled ABIs + placeholder addresses), `cid/` (validate/format), `crypto/`
-  (AES-GCM stub), `mock/` (see below).
-- **`src/types/types.ts`** — shared types. `ChainFamily`, `ChainId`
-  (a template-literal `` `${ChainFamily}:${string}` ``, e.g.
-  `substrate:autonomys-mainnet`), `Account`, `CIDRegistryRecord`.
-
-### Chain registry — the source of truth
-
-`src/lib/chains/registry.ts` is the single source of chain metadata. `CHAINS`
-is a `readonly ChainConfig[]`; look up with `getChain(id)` and
-`getChainsByFamily(family)`. `DEFAULT_CHAIN_ID` is
-`substrate:autonomys-mainnet`. Explorer URLs come from `buildTxUrl` /
-`buildAddressUrl`. **To add or change a chain, edit `registry.ts` — do not
-hardcode chain data in components.**
+- **`src/lib/`** — `cid/format.ts` (display formatting), `crypto/` (AES-GCM
+  stub), `mock/` (see below), `site.ts` / `analytics.ts` / `faq.ts` (SEO).
+- **`src/types/types.ts`** — web-only types (`Account`). `ChainFamily`,
+  `ChainId`, `CIDRegistryRecord` come from `@fileonchain/sdk`.
 
 ### Mock layer
 
-`src/lib/mock/*` returns deterministic fake data and is the seam for real
-integration. Each file carries a `/* TODO: wire to … */` marker naming the real
-call to make (`upload.ts` → viem `writeContract` / polkadot `signAndSend`;
-`registry.ts` → contract reads; `cid-indexer.ts` → an indexer; `cache.ts`,
-`donations.ts` → their contracts). When implementing real behavior, replace the
-mock body and keep the exported signature stable so callers don't change.
+`apps/web/src/lib/mock/*` returns deterministic fake data and is the seam for
+real integration. Each file carries a `/* TODO: wire to … */` marker naming
+the real call to make (`upload.ts` → `@fileonchain/sdk/evm` `anchorCID` /
+`@fileonchain/sdk/substrate` `anchorCIDWithRemark`; `registry.ts` → contract
+reads; `cid-indexer.ts` → an indexer; `cache.ts`, `donations.ts` → their
+contracts). When implementing real behavior, replace the mock body and keep
+the exported signature stable so callers don't change.
 
 ### SEO & analytics
 
 `src/lib/site.ts` holds `siteConfig` (name, canonical `url`, shared
 descriptions) and `gaId`. Both read from env: `NEXT_PUBLIC_SITE_URL` (origin,
 no trailing slash; defaults to `https://fileonchain.org`) and
-`NEXT_PUBLIC_GA_ID` (GA4 id — see `.env.example`). The root
+`NEXT_PUBLIC_GA_ID` (GA4 id — see `apps/web/.env.example`). The root
 `layout.tsx` sets `metadataBase`, a title `template`, default OG/Twitter tags,
 `robots`, Organization + WebSite JSON-LD, and mounts `<GoogleAnalytics>` from
 `@next/third-parties/google` **only when `gaId` is set**. `robots.ts` and
@@ -115,19 +143,29 @@ hardcoding URLs or titles.
 
 ## Gotchas
 
+- **`@polkadot/util-crypto` must stay on 13.5.9 everywhere.** The root
+  overrides pin it, but pnpm's auto-installed peers can still materialize
+  14.x, whose `@scure/sr25519` code SWC-minifies into an illegal octal escape
+  inside a template literal and breaks `next build`. That's why `apps/web`
+  lists `@polkadot/util` and `@polkadot/util-crypto` as direct deps — they
+  satisfy the peers of `@polkadot/extension-dapp` / `@autonomys/auto-utils`
+  with the pinned version. If `pnpm-lock.yaml` ever grows a
+  `util-crypto@14` entry, the build will fail at "Collecting page data".
 - **Client/server boundaries.** Wallet code, Zustand stores, and anything using
   `window`/browser crypto must run in Client Components (`"use client"`). Chain
   SDKs pull in browser-only globals — dynamic-import them inside client code
-  where needed (e.g. `useSolanaWallet` does `await import("@/lib/chains/solana")`).
-- **Webpack stub for `@autonomys/auto-dag-data`.** `next.config.ts` replaces the
-  package's `dist/encryption/index.js` with `src/utils/empty-module.ts` and
-  ignores `@peculiar/webcrypto`, because that subpath instantiates
-  `node:crypto` at module load and breaks the client bundle. The uploader never
-  uses encryption. **Do not delete `src/utils/empty-module.ts`** — it has no
-  TS importers but is referenced by the webpack config.
-- **`src/utils/uploadChunks.ts` and `src/lib/crypto/aes.ts`** are real
-  implementation stubs kept for future wiring, even though nothing imports them
-  yet. Leave them unless intentionally wiring real uploads.
+  where needed.
+- **Webpack stub for `@autonomys/auto-dag-data`.** `apps/web/next.config.ts`
+  replaces the package's `dist/encryption/index.js` with
+  `src/utils/empty-module.ts` and ignores `@peculiar/webcrypto`, because that
+  subpath instantiates `node:crypto` at module load and breaks the client
+  bundle. The uploader never uses encryption. **Do not delete
+  `apps/web/src/utils/empty-module.ts`** — it has no TS importers but is
+  referenced by the webpack config.
+- **`apps/web/src/utils/uploadChunks.ts` and `src/lib/crypto/aes.ts`** are
+  real implementation stubs kept for future wiring, even though nothing
+  imports them yet. Leave them unless intentionally wiring real uploads.
+- **Vercel** builds from Root Directory `apps/web`.
 
 ## Conventions
 
@@ -135,8 +173,9 @@ hardcoding URLs or titles.
   `tailwind-merge` (via `src/lib/cn.ts`) for conditional classes.
 - Match surrounding naming: `use<Name>States` for stores, `use<Family>Wallet`
   for wallet hooks, `PascalCase.tsx` for components.
-- Keep imports on the `@/` alias. Prefer editing the chain registry / mock layer
-  over sprinkling constants through components.
+- Keep webapp imports on the `@/` alias; shared chain data imports from
+  `@fileonchain/sdk`. Prefer editing the SDK chain registry / mock layer over
+  sprinkling constants through components.
 - Before finishing a change, run `pnpm build` and confirm it's green.
 
 ## Git workflow

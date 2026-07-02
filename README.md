@@ -5,6 +5,7 @@ Anchor CIDs onchain, pay for private encrypted cache, and fund public infrastruc
 
 ## Stack
 
+- **pnpm workspace** monorepo: webapp + publishable SDK + Foundry contracts
 - **Next.js 15** (App Router) + **React 19 RC**
 - **TypeScript** + **Tailwind CSS 3**
 - **Zustand** for state, **Radix UI** primitives, **framer-motion** for transitions
@@ -15,23 +16,32 @@ Anchor CIDs onchain, pay for private encrypted cache, and fund public infrastruc
 
 ```
 fileonchain-org/
-├── contracts/          Foundry project: FileRegistry, CachePayments, DonationEscrow + tests
-├── public/             Static assets (logos, chain icons)
-├── src/
-│   ├── app/            App Router routes (upload, explorer, cache, donations, dashboard)
-│   ├── components/     UI primitives (ui/), layout (Nav/Footer/PageShell), features
-│   ├── hooks/          useSubstrateWallet, useEVMWallet, useSolanaWallet, useAptosWallet, …
-│   ├── lib/
-│   │   ├── chains/     12-chain registry + per-family helpers
-│   │   ├── contracts/  Compiled ABIs + placeholder addresses
-│   │   ├── cid/        CID validation + formatting
-│   │   ├── crypto/     WebCrypto AES-GCM encryption stub
-│   │   └── mock/       Deterministic mock data with /* TODO */ markers
-│   ├── states/         Zustand stores (theme, wallet, chains, cache, donations)
-│   ├── types/          Shared types (ChainId, ChainFamily, contracts, etc.)
-│   └── utils/          File processing helpers (generateCIDs, readFileContent, …)
-├── tailwind.config.ts
-└── package.json
+├── apps/
+│   └── web/            Next.js webapp (fileonchain.org)
+│       ├── public/     Static assets (logos, chain icons)
+│       └── src/
+│           ├── app/         App Router routes (upload, explorer, cache, donations, dashboard)
+│           ├── components/  UI primitives (ui/), layout (Nav/Footer/PageShell), features
+│           ├── hooks/       useSubstrateWallet, useEVMWallet, useSolanaWallet, useAptosWallet, …
+│           ├── lib/         cid formatting, crypto stub, mock/ (deterministic mock data)
+│           ├── states/      Zustand stores (theme, wallet, chains, cache, donations)
+│           ├── types/       Web-only types
+│           └── utils/       File processing helpers (generateCIDs, readFileContent, …)
+├── packages/
+│   └── sdk/            @fileonchain/sdk — networks, contract addresses, ABIs, anchor clients
+└── contracts/          Foundry project: FileRegistry, CachePayments, DonationEscrow + tests
+```
+
+## The SDK
+
+[`@fileonchain/sdk`](packages/sdk/README.md) lets anyone anchor file and folder
+CIDs with the FileOnChain contracts without going through the frontend. It is
+the single source of truth for supported networks and deployed contract
+addresses — the webapp consumes it as a workspace dependency.
+
+```ts
+import { CHAINS, getChain } from "@fileonchain/sdk";
+import { anchorCID } from "@fileonchain/sdk/evm";
 ```
 
 ## Supported chains (v2)
@@ -47,15 +57,13 @@ fileonchain-org/
 
 ```bash
 pnpm install
-pnpm dev
+pnpm dev        # runs the webapp on http://localhost:3000
 ```
-
-Open <http://localhost:3000>.
 
 ### Contracts (Foundry)
 
-The webapp only consumes compiled ABIs and placeholder addresses. To deploy or
-test the contracts:
+The SDK ships ABIs generated from `contracts/out/`. To deploy or test the
+contracts:
 
 ```bash
 cd contracts
@@ -66,12 +74,14 @@ forge test
 
 ## Scripts
 
-| Command       | What it does                           |
-| ------------- | -------------------------------------- |
-| `pnpm dev`    | Run the development server             |
-| `pnpm build`  | Produce a production build             |
-| `pnpm start`  | Serve the production build             |
-| `pnpm lint`   | Run ESLint across the project          |
+Run from the repo root:
+
+| Command       | What it does                                     |
+| ------------- | ------------------------------------------------ |
+| `pnpm dev`    | Run the webapp development server                |
+| `pnpm build`  | Build every package (SDK first, then the webapp) |
+| `pnpm start`  | Serve the webapp production build                |
+| `pnpm lint`   | Typecheck the SDK + ESLint the webapp            |
 
 ## Requirements
 
@@ -87,12 +97,15 @@ corepack prepare pnpm@10.28.1 --activate
 
 ## Mock-vs-real
 
-Every chain / contract interaction is mocked under `src/lib/mock/` with
-`/* TODO: … */` markers. Wire them to real RPC and contract reads as you
-deploy. The `src/lib/contracts/abis/*.json` files are already the compiled
-outputs from `contracts/out/`.
+Every chain / contract interaction in the webapp is mocked under
+`apps/web/src/lib/mock/` with `/* TODO: … */` markers. The SDK's EVM and
+Substrate clients are the real seam — wire the mocks to them as contracts
+deploy and the addresses in `packages/sdk/src/chains.ts` fill in.
 
 ## Deploy on Vercel
+
+The webapp lives in `apps/web` — set the Vercel project's **Root Directory**
+to `apps/web`.
 
 ```bash
 vercel deploy
