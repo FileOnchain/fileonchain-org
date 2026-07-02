@@ -15,8 +15,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/donations", priority: 0.6, changeFrequency: "weekly" },
   ];
 
+  // Evaluated at build time, so lastModified tracks the deploy — the
+  // strongest freshness signal we can give without per-route data.
+  const lastModified = new Date();
+
   return routes.map(({ path, priority, changeFrequency }) => ({
     url: `${siteConfig.url}${path}`,
+    lastModified,
     changeFrequency,
     priority,
   }));
