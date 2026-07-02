@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.*
 
@@ -10,14 +10,15 @@
 pnpm-debug.log*
 
 # testing
-/coverage
+coverage/
 
 # next.js
-/.next/
-/out/
+.next/
+apps/web/out/
 
-# production
-/build
+# build output
+dist/
+build/
 
 # misc
 .DS_Store
