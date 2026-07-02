@@ -1,8 +1,20 @@
 import type { Metadata } from "next";
 import { PageShell } from "@/components/layout/PageShell";
+import { PageHeader } from "@/components/layout/PageHeader";
 import DonationsFeed from "@/components/donations/DonationsFeed";
 import DonateButton from "@/components/donations/DonateButton";
+import DonationImpactStrip from "@/components/donations/DonationImpactStrip";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
+import { CopyButton } from "@/components/ui/CopyButton";
+
+const TREASURY_ADDRESS = "0x0001Treasury0000000000000000000000";
+
+const HOW_IT_WORKS_STEPS = [
+  "Pick a recipient tier — platform, a CID, or a chain.",
+  "Enter amount + memo (optional).",
+  "Submit a transaction through DonationEscrow.",
+  "Treasury forwards funds to maintain the public cache.",
+] as const;
 
 export const metadata: Metadata = {
   title: "Donations",
@@ -28,20 +40,18 @@ export const metadata: Metadata = {
 
 export default function DonationsPage() {
   return (
-    <PageShell size="wide" padding="lg">
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
-            Donations
-          </p>
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground">
-            Support the public cache
-          </h1>
-          <p className="text-muted max-w-2xl">
-            Donate to the platform, fund pinning for a specific CID, or back the public cache layer for a single chain.
-          </p>
-        </div>
-        <DonateButton label="Donate now" variant="primary" size="md" />
+    <PageShell size="wide" padding="lg" atmosphere>
+      <PageHeader
+        className="mb-8"
+        index="04"
+        kicker="Public infrastructure"
+        title="Keep the public cache alive."
+        lede="Donate to the platform, fund pinning for a specific CID, or back the public cache layer for a single chain. Every contribution keeps anchored files retrievable for everyone."
+        actions={<DonateButton label="Donate now" variant="primary" size="md" />}
+      />
+
+      <div className="mb-8">
+        <DonationImpactStrip />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -58,20 +68,26 @@ export default function DonationsPage() {
             <CardHeader>
               <CardTitle>How donations work</CardTitle>
             </CardHeader>
-            <ol className="space-y-2 text-sm text-muted list-decimal list-inside">
-              <li>Pick a recipient tier — platform, a CID, or a chain.</li>
-              <li>Enter amount + memo (optional).</li>
-              <li>Submit a transaction through DonationEscrow.</li>
-              <li>Treasury forwards funds to maintain the public cache.</li>
+            <ol className="space-y-3">
+              {HOW_IT_WORKS_STEPS.map((step, i) => (
+                <li key={step} className="flex items-start gap-3 text-sm text-muted">
+                  <span className="mt-0.5 font-mono text-[10px] font-semibold tracking-widest text-primary">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span>{step}</span>
+                </li>
+              ))}
             </ol>
           </Card>
           <Card variant="outlined">
             <CardHeader>
               <CardTitle>Treasury</CardTitle>
+              <CardDescription>DonationEscrow forwards here.</CardDescription>
             </CardHeader>
-            <p className="font-mono text-xs text-muted break-all">
-              0x0001Treasury0000000000000000000000
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="font-mono text-xs text-muted break-all">{TREASURY_ADDRESS}</p>
+              <CopyButton value={TREASURY_ADDRESS} ariaLabel="Copy treasury address" />
+            </div>
           </Card>
         </div>
       </div>

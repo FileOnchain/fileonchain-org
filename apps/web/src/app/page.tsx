@@ -55,7 +55,9 @@ export default function Home() {
         <CacheExplainer />
 
         {/* 7 · FAQ --------------------------------------------------- */}
-        <FaqAccordion />
+        <div id="faq" className="scroll-mt-24 w-full">
+          <FaqAccordion />
+        </div>
 
         {/* 8 · Closing editorial block -------------------------------- */}
         <ScrollReveal as="section" className="mt-4 w-full">
