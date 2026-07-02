@@ -1,0 +1,64 @@
+{
+  "name": "@fileonchain/sdk",
+  "version": "0.1.0",
+  "description": "Anchor file and folder CIDs on-chain with the FileOnChain contracts — supported networks, contract addresses, ABIs, and chain clients.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FileOnchain/fileonchain-org.git",
+    "directory": "packages/sdk"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./evm": "./src/evm/index.ts",
+    "./substrate": "./src/substrate/index.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      },
+      "./evm": {
+        "types": "./dist/evm/index.d.ts",
+        "import": "./dist/evm/index.js",
+        "require": "./dist/evm/index.cjs"
+      },
+      "./substrate": {
+        "types": "./dist/substrate/index.d.ts",
+        "import": "./dist/substrate/index.js",
+        "require": "./dist/substrate/index.cjs"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "lint": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "@polkadot/api": ">=15",
+    "viem": "^2"
+  },
+  "peerDependenciesMeta": {
+    "@polkadot/api": {
+      "optional": true
+    },
+    "viem": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@polkadot/api": "^15.10.2",
+    "tsup": "^8.5.0",
+    "typescript": "^5",
+    "viem": "^2.53.1"
+  }
+}

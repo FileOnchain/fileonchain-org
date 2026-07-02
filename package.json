@@ -17,6 +17,7 @@
     },
     "onlyBuiltDependencies": [
       "bufferutil",
+      "esbuild",
       "protobufjs",
       "sharp",
       "unrs-resolver",
