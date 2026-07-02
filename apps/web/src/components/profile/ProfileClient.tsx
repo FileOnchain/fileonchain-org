@@ -1,0 +1,336 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import { FiArrowRight, FiAward, FiLink } from "react-icons/fi";
+import { CHAIN_FAMILY_LABELS } from "@fileonchain/sdk";
+import { PageShell } from "@/components/layout/PageShell";
+import { Button } from "@/components/ui/Button";
+import { CopyButton } from "@/components/ui/CopyButton";
+import { Identicon } from "@/components/ui/Identicon";
+import { StatCounter } from "@/components/LiveLedgerTicker";
+import CategoryIcon from "@/components/explorer/CategoryIcon";
+import RuntimeChip from "@/components/profile/RuntimeChip";
+import LinkWalletModal from "@/components/profile/LinkWalletModal";
+import { useIdentityStates, hydrateIdentity } from "@/states/identity";
+import { useWalletStates } from "@/states/wallet";
+import type { LinkedWallet, PublicProfile } from "@/lib/mock/profiles";
+import type { RegisteredFile } from "@/lib/mock/cid-indexer";
+import { formatBytes, truncateAddress, truncateCID } from "@/lib/cid/format";
+
+interface ProfileClientProps {
+  profile: PublicProfile;
+}
+
+/**
+ * ProfileClient — public profile for an uploader identity. When the
+ * connected wallet owns this profile, the linked-wallets card becomes
+ * editable (link/unlink per runtime) and locally recorded links are merged
+ * into the display.
+ */
+const ProfileClient = ({ profile }: ProfileClientProps) => {
+  const [linkModalOpen, setLinkModalOpen] = React.useState(false);
+  const [files, setFiles] = React.useState<RegisteredFile[]>([]);
+  const [filesLoaded, setFilesLoaded] = React.useState(false);
+
+  // Identity store is localStorage-backed — hydrate after mount so the SSR
+  // markup stays deterministic (same pattern as the theme store).
+  const identityHydrated = useIdentityStates((s) => s.hydrated);
+  const localLinks = useIdentityStates((s) => s.linked);
+  React.useEffect(() => {
+    if (!identityHydrated) hydrateIdentity();
+  }, [identityHydrated]);
+
+  const chainFamily = useWalletStates((s) => s.chainFamily);
+  const evmAddress = useWalletStates((s) => s.evmAddress);
+  const solanaAddress = useWalletStates((s) => s.solanaAddress);
+  const aptosAddress = useWalletStates((s) => s.aptosAddress);
+  const substrateAccount = useWalletStates((s) => s.selectedAccount);
+
+  const connectedAddress =
+    chainFamily === "evm"
+      ? evmAddress
+      : chainFamily === "solana"
+        ? solanaAddress
+        : chainFamily === "aptos"
+          ? aptosAddress
+          : substrateAccount?.address ?? null;
+
+  const lowered = profile.address.toLowerCase();
+  const isOwn =
+    Boolean(connectedAddress) &&
+    (connectedAddress!.toLowerCase() === lowered ||
+      profile.linkedWallets.some(
+        (w) => w.address.toLowerCase() === connectedAddress!.toLowerCase(),
+      ));
+
+  // Registry links come with the profile; the owner's locally recorded links
+  // override per family so the page reflects the modal immediately.
+  const displayedLinks: LinkedWallet[] = React.useMemo(() => {
+    if (!isOwn || !identityHydrated) return profile.linkedWallets;
+    const byFamily = new Map(profile.linkedWallets.map((w) => [w.family, w]));
+    for (const w of localLinks) byFamily.set(w.family, w);
+    return Array.from(byFamily.values());
+  }, [isOwn, identityHydrated, profile.linkedWallets, localLinks]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void import("@/lib/mock/cid-indexer").then(async (mod) => {
+      const rows = await mod.getFilesByUploader(profile.address, undefined, 8);
+      if (cancelled) return;
+      setFiles(rows);
+      setFilesLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [profile.address]);
+
+  return (
+    <PageShell size="wide" padding="lg" atmosphere>
+      {/* Ledger rule — mirrors PageHeader's kicker row. */}
+      <div className="flex items-center gap-3">
+        <span className="font-mono text-[10px] font-semibold tracking-[0.22em] text-primary">
+          N°07
+        </span>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
+          Public profile
+        </p>
+        <span aria-hidden className="hairline min-w-8 flex-1 opacity-60" />
+      </div>
+
+      {/* Identity header */}
+      <header className="mt-5 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <div className="flex min-w-0 items-start gap-4">
+          <Identicon
+            value={profile.handle ?? profile.address}
+            size={64}
+            rounded={false}
+          />
+          <div className="min-w-0 space-y-2">
+            <h1 className="truncate text-3xl font-bold leading-[1.02] tracking-tight text-foreground md:text-4xl">
+              {profile.handle ?? truncateAddress(profile.address)}
+            </h1>
+            <div className="flex items-center gap-1.5">
+              <span className="truncate font-mono text-xs text-muted" title={profile.address}>
+                {truncateAddress(profile.address, 10)}
+              </span>
+              <CopyButton value={profile.address} ariaLabel="Copy address" />
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+              {profile.rank && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-0.5 font-mono text-[11px] text-foreground">
+                  <FiAward size={12} className="text-accent" />
+                  Rank {String(profile.rank).padStart(2, "0")}
+                </span>
+              )}
+              <span>
+                First seen{" "}
+                {new Date(profile.firstSeen * 1000).toLocaleDateString(undefined, {
+                  month: "short",
+                  year: "numeric",
+                })}
+              </span>
+              {isOwn && (
+                <span className="rounded-full bg-primary/10 px-2.5 py-0.5 font-medium text-primary">
+                  This is you
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {isOwn && (
+            <Button
+              leftIcon={<FiLink size={14} />}
+              onClick={() => setLinkModalOpen(true)}
+            >
+              Link wallets
+            </Button>
+          )}
+          <Link
+            href="/leaderboard"
+            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md border border-border bg-surface-elevated px-4 text-sm font-medium text-foreground transition-all duration-base ease-out-soft hover:border-primary/50 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            Leaderboard →
+          </Link>
+        </div>
+      </header>
+
+      {/* Stat strip */}
+      <div className="mt-8 grid grid-cols-2 gap-6 rounded-2xl border border-border bg-surface p-6 sm:gap-8 md:grid-cols-4">
+        <StatCounter
+          value={profile.stats.files}
+          label="Public files"
+          hint="Indexed anchors"
+          format={(n) => Math.round(n).toString()}
+        />
+        <StatCounter
+          value={profile.stats.bytes}
+          label="Bytes anchored"
+          hint="Across all files"
+          format={(n) => formatBytes(n)}
+        />
+        <StatCounter
+          value={profile.stats.anchors}
+          label="Onchain anchors"
+          hint={`Across ${profile.stats.chains || "—"} chains`}
+          format={(n) => Math.round(n).toString()}
+        />
+        <StatCounter
+          value={profile.stats.donatedUsdc}
+          label="Donated"
+          hint="Public cache funding"
+          format={(n) => Math.round(n).toString()}
+          suffix=" USDC"
+        />
+      </div>
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-3">
+        {/* Anchored files ---------------------------------------- */}
+        <section className="lg:col-span-2">
+          <header className="mb-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
+              Anchored files
+            </p>
+            <h2 className="mt-1 text-lg font-bold text-foreground">
+              Public anchors by this identity
+            </h2>
+          </header>
+          {!filesLoaded ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-16 animate-pulse rounded-lg border border-border bg-surface"
+                />
+              ))}
+            </div>
+          ) : files.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-surface p-8 text-center text-sm text-muted">
+              No public anchors indexed for this identity yet.
+              {isOwn && (
+                <>
+                  {" "}
+                  <Link
+                    href="/"
+                    className="font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
+                  >
+                    Anchor your first file →
+                  </Link>
+                </>
+              )}
+            </div>
+          ) : (
+            <ul className="overflow-hidden rounded-2xl border border-border bg-surface divide-y divide-border">
+              {files.map((file) => (
+                <li key={file.cid}>
+                  <Link
+                    href={`/explorer/${file.cid}`}
+                    className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-elevated text-primary">
+                      <CategoryIcon category={file.category} size={16} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold text-foreground">
+                        {file.name}
+                      </p>
+                      <p className="truncate font-mono text-[11px] text-muted">
+                        {truncateCID(file.cid, 10, 8)} · {formatBytes(file.sizeBytes)} ·{" "}
+                        {file.chunkCount} chunks
+                      </p>
+                    </div>
+                    <FiArrowRight
+                      size={14}
+                      className="shrink-0 text-muted transition-transform duration-base group-hover:translate-x-0.5 group-hover:text-primary"
+                    />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Linked wallets ---------------------------------------- */}
+        <section>
+          <header className="mb-4 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
+                Identity
+              </p>
+              <h2 className="mt-1 text-lg font-bold text-foreground">
+                Linked wallets
+              </h2>
+            </div>
+          </header>
+          <div className="rounded-2xl border border-border bg-surface p-4">
+            <ul className="space-y-3">
+              {/* Primary wallet */}
+              <li className="flex items-center gap-2.5">
+                <RuntimeChip family={profile.family} />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-foreground">
+                    {CHAIN_FAMILY_LABELS[profile.family]}
+                    <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
+                      Primary
+                    </span>
+                  </p>
+                  <p className="truncate font-mono text-[11px] text-muted">
+                    {truncateAddress(profile.address, 8)}
+                  </p>
+                </div>
+              </li>
+              {displayedLinks.map((wallet) => (
+                <li key={`${wallet.family}:${wallet.address}`} className="flex items-center gap-2.5">
+                  <RuntimeChip family={wallet.family} />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-foreground">
+                      {CHAIN_FAMILY_LABELS[wallet.family]}
+                    </p>
+                    <p className="truncate font-mono text-[11px] text-muted">
+                      {truncateAddress(wallet.address, 8)}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {displayedLinks.length === 0 && (
+              <p className="mt-3 text-xs text-muted">
+                No other runtimes linked yet.
+              </p>
+            )}
+            {isOwn ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                fullWidth
+                className="mt-4"
+                leftIcon={<FiLink size={14} />}
+                onClick={() => setLinkModalOpen(true)}
+              >
+                Manage linked wallets
+              </Button>
+            ) : (
+              <p className="mt-4 text-xs text-muted">
+                Linked wallets are proven with a signature from both addresses,
+                so activity on any runtime rolls up to one identity.
+              </p>
+            )}
+          </div>
+        </section>
+      </div>
+
+      {isOwn && (
+        <LinkWalletModal
+          open={linkModalOpen}
+          onOpenChange={setLinkModalOpen}
+          primaryAddress={profile.address}
+          primaryFamily={profile.family}
+        />
+      )}
+    </PageShell>
+  );
+};
+
+export default ProfileClient;

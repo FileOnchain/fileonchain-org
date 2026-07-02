@@ -107,6 +107,14 @@ export default function DashboardPage() {
         kicker="Your ledger"
         title="Your onchain files."
         lede="All files you've anchored onchain. Switch chains, manage private cache, or donate back to keep the public layer alive."
+        actions={
+          <Link
+            href="/profile"
+            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md border border-border bg-surface-elevated px-4 text-sm font-medium text-foreground transition-all duration-base ease-out-soft hover:border-primary/50 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            Public profile →
+          </Link>
+        }
       />
 
       <div className="mb-8 grid grid-cols-1 gap-6 rounded-2xl border border-border bg-surface p-6 sm:grid-cols-3 sm:gap-8">
