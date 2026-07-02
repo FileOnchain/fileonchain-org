@@ -17,23 +17,30 @@ const STEPS = [
   {
     n: "01",
     Icon: FiLayers,
-    title: "Split",
+    title: "Split & hash",
     body:
-      "We slice your file into 64KB pieces — small enough to fit any chain's tx payload, large enough to keep tx count low.",
+      "We slice your file into 64KB chunks and SHA-256 each one. The chunks are linked so the root CID commits to the whole file, in order. 64KB is small enough to fit any chain's tx payload, large enough to keep tx count down.",
   },
   {
     n: "02",
     Icon: FiLink,
-    title: "Hash",
+    title: "Send as transactions",
     body:
-      "Each chunk is SHA-256 hashed into a content identifier and linked to the next. The root CID commits to the entire file, in order.",
+      "On the chain you picked, each chunk is sent as a separate transaction. The chunk bytes go in the tx calldata — every chunk is its own on-chain write. Number of transactions = number of chunks.",
   },
   {
     n: "03",
     Icon: FiShield,
-    title: "Anchor",
+    title: "Register in the contract",
     body:
-      "The root CID is written to a registry contract on the chain you choose. Anyone can verify, retrieve, and rebuild the file — forever.",
+      "The registry smart contract takes each tx hash and stores it against the chunk's CID. The platform charges a small fee at the contract level — paid once per chunk, in the chain's native token.",
+  },
+  {
+    n: "04",
+    Icon: FiSearch,
+    title: "Retrieve from one chain",
+    body:
+      "To rebuild the file you only need one chain — read the chunk CIDs from the registry, fetch the chunks by their tx hashes, verify, and reassemble. Anchoring the same file on a second chain is optional, and pays the chain's gas again.",
   },
 ] as const;
 
@@ -47,17 +54,19 @@ const HowItWorks = () => (
           The pipeline
         </p>
         <h2 className="text-balance text-3xl font-bold tracking-tight md:text-4xl text-foreground">
-          Three steps from file to forever.
+          Four steps from file to onchain.
         </h2>
       </div>
       <p className="max-w-sm text-sm text-muted">
-        Everything is content-addressed and reproducible — no central pinning service required.
+        Each chunk is its own transaction on the chain you pick. The registry
+        contract stores the mapping from chunk CID to its tx hash; the platform
+        takes a fee at contract level per chunk registration.
       </p>
     </header>
 
-    <div className="relative grid grid-cols-1 gap-4 md:grid-cols-3">
-      {/* Hairline rule connecting the cards on desktop. */}
-      <div className="pointer-events-none absolute left-0 right-0 top-9 hidden h-px md:block">
+    <div className="relative grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Hairline rule connecting the cards on wide screens. */}
+      <div className="pointer-events-none absolute left-0 right-0 top-9 hidden h-px lg:block">
         <div className="hairline" />
       </div>
 
@@ -109,14 +118,15 @@ const HowItWorks = () => (
       <div className="flex items-center gap-2">
         <FiSearch size={14} className="text-primary" />
         <span>
-          Tip — paste any CID into the{" "}
+          Cost reminder — every chain charges its own gas, so anchoring the same
+          file on N chains costs roughly N× more. Use the{" "}
           <Link
             href="/explorer"
             className="font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
           >
             explorer
           </Link>{" "}
-          to see which chain anchored it.
+          to check what&apos;s already public before paying for a duplicate anchor.
         </span>
       </div>
       <Link

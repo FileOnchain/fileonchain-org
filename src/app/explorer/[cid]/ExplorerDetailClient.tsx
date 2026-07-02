@@ -71,7 +71,7 @@ const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
 
   const anchoredHits = hits.filter((h) => h.status === "anchored");
   const pendingHits = hits.filter((h) => h.status === "pending");
-  const familySet = new Set(hits.map((h) => h.family));
+  const runtimeSet = new Set(hits.map((h) => h.family));
 
   return (
     <PageShell size="wide" padding="lg">
@@ -166,7 +166,7 @@ const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
           <DetailStat
             label="Chains"
             value={compactNumber(hits.length)}
-            hint={`${familySet.size} families · ${anchoredHits.length} anchored, ${pendingHits.length} pending`}
+            hint={`${runtimeSet.size} runtime${runtimeSet.size === 1 ? "" : "s"} · ${anchoredHits.length} anchored, ${pendingHits.length} pending`}
           />
           <DetailStat
             label="Submitter"

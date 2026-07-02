@@ -4,25 +4,27 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { FiCheck } from "react-icons/fi";
-import { CHAINS, type ChainConfig } from "@/lib/chains/registry";
+import {
+  CHAINS,
+  CHAIN_FAMILY_LABELS,
+  CHAIN_FAMILY_TAGLINES,
+  type ChainConfig,
+} from "@/lib/chains/registry";
 import { useChain } from "@/hooks/useChain";
 import { Badge } from "@/components/ui/Badge";
 import ScrollReveal from "@/components/ScrollReveal";
 
 /**
  * ChainsGrid — editorial grid of every supported chain, grouped by
- * family. Each tile shows the icon, full name, family tag, native
- * currency, and whether it's a testnet. The active chain gets a
- * highlighted ring. Clicking a tile sets it as the active chain — this
- * keeps the explorer / wallet / upload flow in sync.
+ * runtime (EVM-compatible, Substrate-based, Solana, Aptos). Each tile
+ * shows the icon, full name, runtime tag, native currency, and whether
+ * it's a testnet. The active chain gets a highlighted ring. Clicking a
+ * tile sets it as the active chain — this keeps the explorer / wallet
+ * / upload flow in sync.
  */
 
-const FAMILY_LABELS = {
-  evm: "EVM",
-  substrate: "Substrate",
-  solana: "Solana",
-  aptos: "Aptos",
-} as const;
+const RUNTIMES = ["evm", "substrate", "solana", "aptos"] as const;
+type Runtime = (typeof RUNTIMES)[number];
 
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 
@@ -44,9 +46,7 @@ const ChainTile = ({ chain, active, onSelect }: ChainTileProps) => {
       aria-pressed={active}
       className={
         "group relative flex w-full items-center gap-3 overflow-hidden rounded-xl border bg-surface p-3 text-left transition-colors duration-base ease-out-soft hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary " +
-        (active
-          ? "border-primary bg-primary/5"
-          : "border-border")
+        (active ? "border-primary bg-primary/5" : "border-border")
       }
     >
       <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-elevated">
@@ -74,7 +74,6 @@ const ChainTile = ({ chain, active, onSelect }: ChainTileProps) => {
           {chain.name} · {chain.nativeCurrency.symbol}
         </span>
       </div>
-      {/* Hover edge bar */}
       <span
         aria-hidden
         className="absolute inset-y-0 left-0 w-0.5 origin-top scale-y-0 bg-primary transition-transform duration-base ease-out-soft group-hover:scale-y-100"
@@ -85,7 +84,6 @@ const ChainTile = ({ chain, active, onSelect }: ChainTileProps) => {
 
 const ChainsGrid = () => {
   const { activeChain, setActiveChainId } = useChain();
-  const families = ["evm", "substrate", "solana", "aptos"] as const;
 
   return (
     <ScrollReveal as="section" stagger amount={0.15} className="w-full">
@@ -95,35 +93,43 @@ const ChainsGrid = () => {
             Supported chains
           </p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-            {CHAINS.length} chains, four families.
+            {CHAINS.length} chains across four runtimes.
           </h2>
         </div>
         <p className="max-w-sm text-sm text-muted">
-          Pick a chain to anchor on. The registry contract shape and the chunk format
-          stay identical — only the final write destination changes.
+          Each chain runs its own contract. Anchoring the same file on multiple chains
+          is optional — and each chain charges its own transaction fees, so redundancy
+          has a real cost.
         </p>
       </header>
 
       <div className="space-y-6">
-        {families.map((family) => {
-          const chains = CHAINS.filter((c) => c.family === family);
+        {RUNTIMES.map((runtime: Runtime) => {
+          const chains = CHAINS.filter((c) => c.family === runtime);
           return (
             <motion.section
-              key={family}
+              key={runtime}
               variants={{
                 hidden: { opacity: 0, y: 12 },
-                show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE_OUT } },
+                show: {
+                  opacity: 1,
+                  y: 0,
+                  transition: { duration: 0.5, ease: EASE_OUT },
+                },
               }}
               className="rounded-2xl border border-border bg-surface-elevated/40 p-4 md:p-5"
             >
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
-                  {FAMILY_LABELS[family]}
+                  {CHAIN_FAMILY_LABELS[runtime]}
                 </span>
                 <span className="font-mono text-[10px] text-muted">
                   {chains.length} {chains.length === 1 ? "chain" : "chains"}
                 </span>
               </div>
+              <p className="mb-3 text-[11px] text-muted/90">
+                {CHAIN_FAMILY_TAGLINES[runtime]}
+              </p>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {chains.map((chain) => (
                   <ChainTile

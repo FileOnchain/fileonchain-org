@@ -20,7 +20,7 @@ const FEATURES = [
     eyebrow: "Permanence",
     title: "Anchored forever",
     body:
-      "Once the registry tx is included in a block, the CID lives as long as the chain does. There is no central pinning service that can disappear overnight.",
+      "Once the registry tx is included in a block, the chunk's CID and its tx hash are as durable as the chain itself. No central pinning service that can disappear overnight.",
     iconBg: "bg-success/10 text-success",
     indicator: "live",
   },
@@ -29,16 +29,16 @@ const FEATURES = [
     eyebrow: "Verifiability",
     title: "Content-addressed",
     body:
-      "Each CID is a SHA-256 of the chunk's bytes. Retrieval proves you're getting the exact bytes you anchored — bit-for-bit, no surprises.",
+      "Each chunk's CID is a SHA-256 of its bytes. Retrieval proves you're getting the exact bytes you anchored — bit-for-bit, no surprises.",
     iconBg: "bg-info/10 text-info",
     indicator: "sha-256",
   },
   {
     Icon: FiRepeat,
-    eyebrow: "Multichain",
-    title: "One standard, ten chains",
+    eyebrow: "Choice",
+    title: "Pick one chain — or several",
     body:
-      "Same registry shape across EVM, Substrate, Solana, and Aptos. Move files between chains without rewriting your workflow — CIDs stay valid.",
+      "Anchor the file to the chain you want. One chain is enough to retrieve. You can repeat the anchor on more chains for redundancy — each chain charges its own gas.",
     iconBg: "bg-primary/10 text-primary",
     indicator: "10 chains",
   },

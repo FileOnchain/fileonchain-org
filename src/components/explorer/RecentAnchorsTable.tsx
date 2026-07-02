@@ -30,7 +30,7 @@ const RecentAnchorsTable = ({ rows }: RecentAnchorsTableProps) => {
   if (rows.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-surface p-10 text-center text-sm text-muted">
-        No recent anchors for this filter. Try widening the family or category.
+        No recent anchors for this combination. Try a different runtime or file type.
       </div>
     );
   }
