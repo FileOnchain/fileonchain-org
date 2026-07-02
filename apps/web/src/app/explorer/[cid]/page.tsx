@@ -4,6 +4,7 @@ import Link from "next/link";
 import { PageShell } from "@/components/layout/PageShell";
 import { lookupFile } from "@/lib/mock/cid-indexer";
 import { truncateCID } from "@/lib/cid/format";
+import { siteConfig } from "@/lib/site";
 import ExplorerDetailClient from "./ExplorerDetailClient";
 
 interface PageProps {
@@ -73,7 +74,35 @@ export default async function ExplorerCIDPage({ params }: PageProps) {
     );
   }
 
+  // Breadcrumb structured data — lets Google render "Home › Explorer › file"
+  // instead of the raw URL in search results.
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: siteConfig.url },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Explorer",
+        item: `${siteConfig.url}/explorer`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: result.file.name,
+        item: `${siteConfig.url}/explorer/${cid}`,
+      },
+    ],
+  };
+
   return (
-    <ExplorerDetailClient file={result.file} hits={result.hits} />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <ExplorerDetailClient file={result.file} hits={result.hits} />
+    </>
   );
 }

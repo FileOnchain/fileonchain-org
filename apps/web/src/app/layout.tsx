@@ -93,6 +93,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: siteConfig.title,
     description: siteConfig.ogDescription,
+    site: siteConfig.twitter,
     creator: siteConfig.twitter,
   },
   // Emits <meta name="google-site-verification"> only when the token is set.
@@ -126,6 +127,7 @@ const structuredData = {
       name: siteConfig.name,
       url: siteConfig.url,
       logo: `${siteConfig.url}/logo/svg/fileonchain-logo-clear-blue.svg`,
+      sameAs: [siteConfig.socials.twitter, siteConfig.socials.github],
     },
     {
       "@type": "WebSite",
