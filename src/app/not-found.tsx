@@ -6,7 +6,8 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 export const metadata = {
-  title: "404 — Not Found · FileOnChain",
+  // Bare title — the root layout's title template appends "· FileOnChain".
+  title: "404 — Not Found",
 };
 
 /**

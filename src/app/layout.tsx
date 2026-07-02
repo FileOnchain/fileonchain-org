@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Instrument_Serif } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
@@ -8,7 +8,7 @@ import Nav from "@/components/layout/Nav";
 import Footer from "@/components/layout/Footer";
 import RouteFade from "@/components/layout/RouteFade";
 import ScrollProgress from "@/components/ScrollProgress";
-import { siteConfig, gaId } from "@/lib/site";
+import { siteConfig, gaId, googleSiteVerification } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -95,6 +95,22 @@ export const metadata: Metadata = {
     description: siteConfig.ogDescription,
     creator: siteConfig.twitter,
   },
+  // Emits <meta name="google-site-verification"> only when the token is set.
+  verification: googleSiteVerification
+    ? { google: googleSiteVerification }
+    : undefined,
+};
+
+/**
+ * Viewport + theme-color. The browser UI tint tracks the active theme:
+ * cream in light, near-black in dark — matching `--background` in globals.css.
+ */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#faf9f6" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0d12" },
+  ],
+  colorScheme: "light dark",
 };
 
 /**

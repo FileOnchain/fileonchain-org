@@ -22,3 +22,10 @@ export const siteConfig = {
 
 /** Google Analytics 4 measurement id (e.g. `G-XXXXXXXXXX`), empty when unset. */
 export const gaId = process.env.NEXT_PUBLIC_GA_ID ?? "";
+
+/**
+ * Google Search Console verification token (the `content` value of the
+ * `google-site-verification` meta tag). Read on the server at render time, so
+ * it doesn't need the `NEXT_PUBLIC_` prefix. Empty → no tag emitted.
+ */
+export const googleSiteVerification = process.env.GOOGLE_SITE_VERIFICATION ?? "";

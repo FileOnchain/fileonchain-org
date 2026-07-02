@@ -99,7 +99,14 @@ no trailing slash; defaults to `https://fileonchain.org`) and
 events:** fire them through `trackEvent(name, params)` in `src/lib/analytics.ts`
 — a typed wrapper over `sendGAEvent` that no-ops when `gaId` is unset. Add new
 events to the `AnalyticsEvents` map (GA4 snake_case names, flat scalar params,
-no PII) rather than calling `sendGAEvent` directly. **Per-page
+no PII) rather than calling `sendGAEvent` directly. **Structured data:**
+Organization + WebSite JSON-LD lives in the root layout; the home FAQ emits
+`FAQPage` JSON-LD from `src/lib/faq.ts` (single source shared with
+`FaqAccordion`). **Social image:** `src/app/opengraph-image.tsx` renders the
+default OG/Twitter card via `next/og` `ImageResponse` (no static asset).
+**Verification:** set `GOOGLE_SITE_VERIFICATION` (server-only env) to emit the
+Search Console meta tag. `viewport`/`theme-color` are a `viewport` export in the
+root layout. **Per-page
 metadata:** server pages export `metadata`/`generateMetadata` directly; client
 pages (`cache`, `explorer`) carry a sibling `layout.tsx` that exports it (a
 Client Component can't). Each page sets its own `alternates.canonical`;
