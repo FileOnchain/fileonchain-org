@@ -16,7 +16,9 @@
   "exports": {
     ".": "./src/index.ts",
     "./evm": "./src/evm/index.ts",
-    "./substrate": "./src/substrate/index.ts"
+    "./substrate": "./src/substrate/index.ts",
+    "./solana": "./src/solana/index.ts",
+    "./aptos": "./src/aptos/index.ts"
   },
   "publishConfig": {
     "access": "public",
@@ -35,6 +37,16 @@
         "types": "./dist/substrate/index.d.ts",
         "import": "./dist/substrate/index.js",
         "require": "./dist/substrate/index.cjs"
+      },
+      "./solana": {
+        "types": "./dist/solana/index.d.ts",
+        "import": "./dist/solana/index.js",
+        "require": "./dist/solana/index.cjs"
+      },
+      "./aptos": {
+        "types": "./dist/aptos/index.d.ts",
+        "import": "./dist/aptos/index.js",
+        "require": "./dist/aptos/index.cjs"
       }
     }
   },
@@ -45,10 +57,14 @@
   },
   "peerDependencies": {
     "@polkadot/api": ">=15",
+    "@solana/web3.js": "^1",
     "viem": "^2"
   },
   "peerDependenciesMeta": {
     "@polkadot/api": {
+      "optional": true
+    },
+    "@solana/web3.js": {
       "optional": true
     },
     "viem": {
@@ -57,6 +73,8 @@
   },
   "devDependencies": {
     "@polkadot/api": "^15.10.2",
+    "@solana/web3.js": "^1.98.4",
+    "@types/node": "^20",
     "tsup": "^8.5.0",
     "typescript": "^5",
     "viem": "^2.53.1"

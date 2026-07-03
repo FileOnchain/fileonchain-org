@@ -158,7 +158,13 @@ importers:
     devDependencies:
       '@polkadot/api':
         specifier: 15.10.2
-        version: 15.10.2(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+        version: 15.10.2(bufferutil@4.1.0)
+      '@solana/web3.js':
+        specifier: ^1.98.4
+        version: 1.98.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)
+      '@types/node':
+        specifier: ^20
+        version: 20.19.43
       tsup:
         specifier: ^8.5.0
         version: 8.5.1(jiti@1.21.7)(postcss@8.5.16)(tsx@4.23.0)(typescript@5.9.3)
@@ -5556,6 +5562,20 @@ snapshots:
   '@polkadot-api/utils@0.1.0':
     optional: true
 
+  '@polkadot/api-augment@15.10.2(bufferutil@4.1.0)':
+    dependencies:
+      '@polkadot/api-base': 15.10.2(bufferutil@4.1.0)
+      '@polkadot/rpc-augment': 15.10.2(bufferutil@4.1.0)
+      '@polkadot/types': 15.10.2
+      '@polkadot/types-augment': 15.10.2
+      '@polkadot/types-codec': 15.10.2
+      '@polkadot/util': 13.5.9
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
   '@polkadot/api-augment@15.10.2(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
     dependencies:
       '@polkadot/api-base': 15.10.2(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -5564,6 +5584,18 @@ snapshots:
       '@polkadot/types-augment': 15.10.2
       '@polkadot/types-codec': 15.10.2
       '@polkadot/util': 13.5.9
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
+  '@polkadot/api-base@15.10.2(bufferutil@4.1.0)':
+    dependencies:
+      '@polkadot/rpc-core': 15.10.2(bufferutil@4.1.0)
+      '@polkadot/types': 15.10.2
+      '@polkadot/util': 13.5.9
+      rxjs: 7.8.2
       tslib: 2.8.1
     transitivePeerDependencies:
       - bufferutil
@@ -5582,6 +5614,23 @@ snapshots:
       - supports-color
       - utf-8-validate
 
+  '@polkadot/api-derive@15.10.2(bufferutil@4.1.0)':
+    dependencies:
+      '@polkadot/api': 15.10.2(bufferutil@4.1.0)
+      '@polkadot/api-augment': 15.10.2(bufferutil@4.1.0)
+      '@polkadot/api-base': 15.10.2(bufferutil@4.1.0)
+      '@polkadot/rpc-core': 15.10.2(bufferutil@4.1.0)
+      '@polkadot/types': 15.10.2
+      '@polkadot/types-codec': 15.10.2
+      '@polkadot/util': 13.5.9
+      '@polkadot/util-crypto': 13.5.9(@polkadot/util@13.5.9)
+      rxjs: 7.8.2
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
   '@polkadot/api-derive@15.10.2(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
     dependencies:
       '@polkadot/api': 15.10.2(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -5592,6 +5641,30 @@ snapshots:
       '@polkadot/types-codec': 15.10.2
       '@polkadot/util': 13.5.9
       '@polkadot/util-crypto': 13.5.9(@polkadot/util@13.5.9)
+      rxjs: 7.8.2
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
+  '@polkadot/api@15.10.2(bufferutil@4.1.0)':
+    dependencies:
+      '@polkadot/api-augment': 15.10.2(bufferutil@4.1.0)
+      '@polkadot/api-base': 15.10.2(bufferutil@4.1.0)
+      '@polkadot/api-derive': 15.10.2(bufferutil@4.1.0)
+      '@polkadot/keyring': 13.5.9(@polkadot/util-crypto@13.5.9(@polkadot/util@13.5.9))(@polkadot/util@13.5.9)
+      '@polkadot/rpc-augment': 15.10.2(bufferutil@4.1.0)
+      '@polkadot/rpc-core': 15.10.2(bufferutil@4.1.0)
+      '@polkadot/rpc-provider': 15.10.2(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      '@polkadot/types': 15.10.2
+      '@polkadot/types-augment': 15.10.2
+      '@polkadot/types-codec': 15.10.2
+      '@polkadot/types-create': 15.10.2
+      '@polkadot/types-known': 15.10.2
+      '@polkadot/util': 13.5.9
+      '@polkadot/util-crypto': 13.5.9(@polkadot/util@13.5.9)
+      eventemitter3: 5.0.4
       rxjs: 7.8.2
       tslib: 2.8.1
     transitivePeerDependencies:
@@ -5687,12 +5760,37 @@ snapshots:
       '@substrate/ss58-registry': 1.51.0
       tslib: 2.8.1
 
+  '@polkadot/rpc-augment@15.10.2(bufferutil@4.1.0)':
+    dependencies:
+      '@polkadot/rpc-core': 15.10.2(bufferutil@4.1.0)
+      '@polkadot/types': 15.10.2
+      '@polkadot/types-codec': 15.10.2
+      '@polkadot/util': 13.5.9
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
   '@polkadot/rpc-augment@15.10.2(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
     dependencies:
       '@polkadot/rpc-core': 15.10.2(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@polkadot/types': 15.10.2
       '@polkadot/types-codec': 15.10.2
       '@polkadot/util': 13.5.9
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
+  '@polkadot/rpc-core@15.10.2(bufferutil@4.1.0)':
+    dependencies:
+      '@polkadot/rpc-augment': 15.10.2(bufferutil@4.1.0)
+      '@polkadot/rpc-provider': 15.10.2(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      '@polkadot/types': 15.10.2
+      '@polkadot/util': 13.5.9
+      rxjs: 7.8.2
       tslib: 2.8.1
     transitivePeerDependencies:
       - bufferutil
@@ -6419,14 +6517,14 @@ snapshots:
     dependencies:
       '@substrate/connect-extension-protocol': 2.2.2
       '@substrate/connect-known-chains': 1.10.3
-      '@substrate/light-client-extension-helpers': 1.0.0(smoldot@2.0.26(bufferutil@4.1.0)(utf-8-validate@6.0.6))
+      '@substrate/light-client-extension-helpers': 1.0.0(smoldot@2.0.26(bufferutil@4.1.0))
       smoldot: 2.0.26(bufferutil@4.1.0)(utf-8-validate@6.0.6)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
     optional: true
 
-  '@substrate/light-client-extension-helpers@1.0.0(smoldot@2.0.26(bufferutil@4.1.0)(utf-8-validate@6.0.6))':
+  '@substrate/light-client-extension-helpers@1.0.0(smoldot@2.0.26(bufferutil@4.1.0))':
     dependencies:
       '@polkadot-api/json-rpc-provider': 0.0.1
       '@polkadot-api/json-rpc-provider-proxy': 0.1.0
@@ -8067,11 +8165,11 @@ snapshots:
 
   isexe@2.0.0: {}
 
-  isomorphic-ws@4.0.1(ws@7.5.11(bufferutil@4.1.0)(utf-8-validate@6.0.6)):
+  isomorphic-ws@4.0.1(ws@7.5.11(bufferutil@4.1.0)):
     dependencies:
       ws: 7.5.11(bufferutil@4.1.0)(utf-8-validate@6.0.6)
 
-  isows@1.0.7(ws@8.20.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)):
+  isows@1.0.7(ws@8.20.1(bufferutil@4.1.0)):
     dependencies:
       ws: 8.20.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)
 
@@ -8115,7 +8213,7 @@ snapshots:
       delay: 5.0.0
       es6-promisify: 5.0.0
       eyes: 0.1.8
-      isomorphic-ws: 4.0.1(ws@7.5.11(bufferutil@4.1.0)(utf-8-validate@6.0.6))
+      isomorphic-ws: 4.0.1(ws@7.5.11(bufferutil@4.1.0))
       json-stringify-safe: 5.0.1
       stream-json: 1.9.1
       uuid: 8.3.2
@@ -9393,7 +9491,7 @@ snapshots:
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
       abitype: 1.2.3(typescript@5.9.3)
-      isows: 1.0.7(ws@8.20.1(bufferutil@4.1.0)(utf-8-validate@6.0.6))
+      isows: 1.0.7(ws@8.20.1(bufferutil@4.1.0))
       ox: 0.14.29(typescript@5.9.3)
       ws: 8.20.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)
     optionalDependencies:

@@ -19,13 +19,15 @@ and anchor that CID.
 
 ```bash
 pnpm add @fileonchain/sdk
-# EVM chains additionally need:      pnpm add viem
+# EVM chains additionally need:       pnpm add viem
 # Substrate chains additionally need: pnpm add @polkadot/api
+# Solana chains additionally need:    pnpm add @solana/web3.js
 ```
 
-The core entry point (`@fileonchain/sdk`) is dependency-free. `viem` and
-`@polkadot/api` are optional peer dependencies used only by the `./evm` and
-`./substrate` subpaths.
+The core entry point (`@fileonchain/sdk`) is dependency-free. `viem`,
+`@polkadot/api`, and `@solana/web3.js` are optional peer dependencies used
+only by the `./evm`, `./substrate`, and `./solana` subpaths; `./aptos` is
+dependency-free (it drives the injected wallet provider).
 
 ## Networks and addresses
 
@@ -83,8 +85,36 @@ const receipt = await anchorCIDWithRemark(api, {
 receipt.txHash;
 ```
 
-Solana and Aptos are listed in the registry but have no deployed program /
-module yet (`programId` / `moduleAddress` are `null`).
+## Anchor a chunked file (any family)
+
+Every family client exports `anchorChunkedFile`, which anchors each chunk
+plus a file-level anchor and reports uniform progress. All four write the
+same versioned JSON payloads (`buildFileAnchorPayload` /
+`buildChunkAnchorPayload` from the core entry) — as Substrate remarks
+(chunk bytes included, batched with `utility.batchAll`), EVM registry
+`uri`s, Solana SPL Memo instructions, or Aptos module arguments — so one
+indexer can parse anchors from every chain.
+
+```ts
+import { anchorChunkedFile } from "@fileonchain/sdk/substrate";
+
+const receipt = await anchorChunkedFile(api, {
+  chainId: "substrate:autonomys-mainnet",
+  address: "5F...",
+  signer: injectedSigner,
+  fileCid: "bafybeig...",
+  chunks: [{ cid: "bafk...", index: 0, nextCid: undefined, data: bytes }],
+  onProgress: ({ stage, chunksAnchored, chunksTotal }) => { /* UI */ },
+});
+receipt.txHashes; // every transaction sent
+receipt.txHash;   // the file-level anchor
+```
+
+Chains with nothing deployed throw `ChainNotProvisionedError` (exported from
+the core entry, check with `isChainProvisioned(chain)`), so callers can fall
+back gracefully. Solana needs no deployment — anchors ride the native SPL
+Memo program. Aptos stays unprovisioned until `moduleAddress` lands in the
+registry.
 
 ## Regenerating ABIs
 

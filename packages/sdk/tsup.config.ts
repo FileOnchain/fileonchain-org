@@ -5,6 +5,8 @@ export default defineConfig({
     index: "src/index.ts",
     "evm/index": "src/evm/index.ts",
     "substrate/index": "src/substrate/index.ts",
+    "solana/index": "src/solana/index.ts",
+    "aptos/index": "src/aptos/index.ts",
   },
   format: ["esm", "cjs"],
   dts: true,
