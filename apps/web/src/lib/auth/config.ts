@@ -125,6 +125,12 @@ providers.push(
         });
         return user;
       });
+      const { logActivity } = await import("@/lib/server/activity");
+      await logActivity(created.id, "wallet_linked", {
+        family,
+        address: result.address,
+        via: "sign_in",
+      });
       return {
         id: created.id,
         name: created.name,
@@ -151,6 +157,15 @@ export const authConfig: NextAuthConfig = {
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   trustHost: true,
+  events: {
+    async signIn({ user, account }) {
+      if (!user.id) return;
+      const { logActivity } = await import("@/lib/server/activity");
+      await logActivity(user.id, "sign_in", {
+        method: account?.provider ?? "unknown",
+      });
+    },
+  },
   callbacks: {
     jwt({ token, user }) {
       // On sign-in, pin the DB user id to the token so sessions carry it.
