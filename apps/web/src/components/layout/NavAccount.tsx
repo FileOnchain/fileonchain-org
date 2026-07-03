@@ -3,7 +3,6 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { signOut, useSession } from "next-auth/react";
 import { FiLogOut, FiUser } from "react-icons/fi";
@@ -17,7 +16,6 @@ import { trackEvent } from "@/lib/analytics";
  */
 export const NavAccount = () => {
   const { data: session, status } = useSession();
-  const router = useRouter();
 
   if (status === "loading") {
     return (
@@ -93,7 +91,9 @@ export const NavAccount = () => {
             className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm text-foreground outline-none hover:bg-surface-elevated data-[highlighted]:bg-surface-elevated"
             onSelect={() => {
               trackEvent("auth_sign_out", {});
-              void signOut({ redirectTo: "/" }).then(() => router.refresh());
+              // signOut performs its own navigation to "/" — don't stack a
+              // router.refresh() on top (Next 15.0.x Router hook-count bug).
+              void signOut({ redirectTo: "/" });
             }}
           >
             <FiLogOut size={14} aria-hidden />

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import type { ChainFamily } from "@fileonchain/sdk";
 import { useWalletProof } from "@/hooks/useWalletProof";
@@ -28,7 +27,6 @@ export interface AccountWallet {
  * LinkWalletModal (profile linking), dashboard surfaces.
  */
 export const useAccountWallets = () => {
-  const router = useRouter();
   const { status } = useSession();
   const authed = status === "authenticated";
   const { collectProof } = useWalletProof();
@@ -103,7 +101,13 @@ export const useAccountWallets = () => {
     [refresh],
   );
 
-  /** Sign in (or sign up) with a wallet — same proof, exchanged for a session. */
+  /**
+   * Sign in (or sign up) with a wallet — same proof, exchanged for a
+   * session. Deliberately performs NO navigation/refresh: the caller owns
+   * exactly one follow-up action. Stacking router.refresh() with a push or
+   * a server redirect trips a Next 15.0.x Router bug ("Rendered more hooks
+   * than during the previous render").
+   */
   const signInWithWallet = useCallback(
     async (family: ChainFamily): Promise<void> => {
       const proof = await collectProof(family);
@@ -120,9 +124,8 @@ export const useAccountWallets = () => {
         throw new Error("Signature verification failed — please try again");
       }
       trackEvent("auth_sign_in", { method: `wallet_${family}` });
-      router.refresh();
     },
-    [collectProof, router],
+    [collectProof],
   );
 
   return {

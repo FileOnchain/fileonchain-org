@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import { CHAIN_FAMILY_LABELS, type ChainFamily } from "@fileonchain/sdk";
 import Button from "@/components/ui/Button";
 import { useAccountWallets } from "@/hooks/useAccountWallets";
@@ -16,7 +15,6 @@ interface WalletSignInButtonsProps {
  * useAccountWallets.signInWithWallet (connect → nonce → sign → session).
  */
 export const WalletSignInButtons = ({ next }: WalletSignInButtonsProps) => {
-  const router = useRouter();
   const { signInWithWallet } = useAccountWallets();
   const [pending, setPending] = React.useState<ChainFamily | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -26,10 +24,12 @@ export const WalletSignInButtons = ({ next }: WalletSignInButtonsProps) => {
     setError(null);
     try {
       await signInWithWallet(family);
-      router.push(next);
+      // Full-page navigation: the fresh session cookie reaches every server
+      // component, and it avoids racing the /login page's own server-side
+      // redirect (client push + refresh here trips Next 15.0.x's Router).
+      window.location.assign(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Wallet sign-in failed");
-    } finally {
       setPending(null);
     }
   };

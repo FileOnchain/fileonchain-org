@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { FiCheckCircle, FiKey, FiLogIn } from "react-icons/fi";
 import type { ChainFamily } from "@fileonchain/sdk";
 import { Button } from "@/components/ui/Button";
@@ -30,6 +31,7 @@ export const WalletAccountPanel = ({
   address,
   onSignedIn,
 }: WalletAccountPanelProps) => {
+  const router = useRouter();
   const { toast } = useToast();
   const {
     authed,
@@ -57,6 +59,9 @@ export const WalletAccountPanel = ({
         variant: "success",
       });
       onSignedIn?.();
+      // Single follow-up router action (no push alongside) — re-renders
+      // server components with the new session cookie.
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign-in failed");
     } finally {
