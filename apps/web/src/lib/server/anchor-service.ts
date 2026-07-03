@@ -7,7 +7,11 @@ import {
   totalCostFor,
 } from "@/lib/mock/costs";
 import { getByokProvider } from "@/lib/byok/providers";
-import { debitCredits, InsufficientCreditsError } from "@/lib/server/credits";
+import {
+  creditAccount,
+  debitCredits,
+  InsufficientCreditsError,
+} from "@/lib/server/credits";
 import { logActivity } from "@/lib/server/activity";
 import { runAnchorWorker } from "@/lib/server/anchor-worker";
 import { microToUsdc } from "@/lib/usdc";
@@ -202,7 +206,25 @@ export const anchorWithAccount = async (
     });
   }
 
-  const txHashes = await runAnchorWorker(job.id, payload.cid, payload.chainIds);
+  let txHashes: Awaited<ReturnType<typeof runAnchorWorker>>;
+  try {
+    txHashes = await runAnchorWorker(job.id, payload.cid, payload.chainIds);
+  } catch (error) {
+    // A configured on-chain send failed — fail the job and give the
+    // credits back rather than leaving a debit with nothing anchored.
+    await db
+      .update(uploadJobs)
+      .set({ status: "failed" })
+      .where(eq(uploadJobs.id, job.id));
+    if (cost > 0n) {
+      await creditAccount(ctx.userId, cost, "refund", {
+        type: "upload_job",
+        id: job.id,
+      });
+    }
+    console.error(`Anchor worker failed for job ${job.id}:`, error);
+    throw new AnchorRequestError("On-chain anchoring failed — try again", 502);
+  }
   const [finished] = await db
     .update(uploadJobs)
     .set({ status: "complete", txHashes, completedAt: new Date() })
