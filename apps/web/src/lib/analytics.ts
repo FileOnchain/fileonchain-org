@@ -24,6 +24,8 @@ export interface AnalyticsEvents {
   donation: { recipient_type: string };
   /** A wallet was connected. */
   wallet_connect: { family: string };
+  /** A wallet was linked to (or unlinked from) the user's identity. */
+  wallet_link: { family: string; action: "link" | "unlink" };
   /** A CID lookup was fired from the explorer. */
   cid_search: { source: string };
 }

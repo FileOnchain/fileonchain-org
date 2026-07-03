@@ -327,6 +327,39 @@ export const getExplorerStats = async (): Promise<ExplorerStats> => {
 };
 
 /**
+ * Per-uploader aggregates across the registered-file index. Feeds the
+ * leaderboard and public profiles so their numbers always agree with the
+ * explorer's view of the same files.
+ */
+export interface UploaderAggregate {
+  address: string;
+  files: number;
+  bytes: number;
+  /** files × chains — one anchor per chain per file in the mock model. */
+  anchors: number;
+  chains: number;
+}
+
+export const getUploaderAggregates = async (): Promise<UploaderAggregate[]> => {
+  await new Promise((r) => setTimeout(r, 80));
+  const byUploader = new Map<string, UploaderAggregate>();
+  for (const file of MOCK_FILES) {
+    const agg = byUploader.get(file.uploader) ?? {
+      address: file.uploader,
+      files: 0,
+      bytes: 0,
+      anchors: 0,
+      chains: CHAINS.length,
+    };
+    agg.files += 1;
+    agg.bytes += file.sizeBytes;
+    agg.anchors += CHAINS.length;
+    byUploader.set(file.uploader, agg);
+  }
+  return Array.from(byUploader.values());
+};
+
+/**
  * Files uploaded by the same submitter address (used on the CID detail
  * page to show "more from this uploader").
  */

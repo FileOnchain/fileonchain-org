@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { FiAlertCircle, FiCheck } from "react-icons/fi";
+import Link from "next/link";
+import { FiAlertCircle, FiArrowRight, FiCheck, FiUser } from "react-icons/fi";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -49,6 +50,20 @@ export const ChainConnectModal = ({ open, onOpenChange }: ChainConnectModalProps
   const aptos = useAptosWallet();
   const [walletError, setWalletError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
+
+  // Family of the wallet actually connected — distinct from `chainFamily`,
+  // which tracks the chain selected in the switcher above.
+  const connectedFamily = useWalletStates((s) => s.chainFamily);
+  const connectedAddress =
+    connectedFamily === "evm"
+      ? evm.address
+      : connectedFamily === "solana"
+        ? solana.address
+        : connectedFamily === "aptos"
+          ? aptos.address
+          : connectedFamily === "substrate"
+            ? selectedAccount?.address ?? null
+            : null;
 
   const close = () => onOpenChange(false);
 
@@ -282,6 +297,33 @@ export const ChainConnectModal = ({ open, onOpenChange }: ChainConnectModalProps
         <p className="mt-4 text-[11px] text-muted">
           {/* TODO: real RPC + signing — current implementation only stores the address. */}
         </p>
+      )}
+
+      {/* Public profile shortcut — appears once any wallet is connected. */}
+      {connectedAddress && (
+        <div className="mt-5 border-t border-border pt-4">
+          <Link
+            href={`/profile/${encodeURIComponent(connectedAddress)}`}
+            onClick={close}
+            className="group flex items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2.5 transition-colors duration-base ease-out-soft hover:border-primary/40 hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface-elevated text-primary">
+              <FiUser size={14} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium text-foreground">
+                View public profile
+              </span>
+              <span className="block truncate font-mono text-[11px] text-muted">
+                {truncateFileName(connectedAddress, ADDRESS_MAX)} · anchors, rank &amp; linked wallets
+              </span>
+            </span>
+            <FiArrowRight
+              size={14}
+              className="shrink-0 text-muted transition-transform duration-base group-hover:translate-x-0.5 group-hover:text-primary"
+            />
+          </Link>
+        </div>
       )}
     </Modal>
   );
