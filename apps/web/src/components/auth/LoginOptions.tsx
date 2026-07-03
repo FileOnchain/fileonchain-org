@@ -4,6 +4,7 @@ import * as React from "react";
 import { signIn } from "next-auth/react";
 import { FaGithub, FaGoogle } from "react-icons/fa6";
 import Button from "@/components/ui/Button";
+import WalletSignInButtons from "@/components/auth/WalletSignInButtons";
 import type { OAuthProviderInfo } from "@/lib/auth/config";
 import { trackEvent } from "@/lib/analytics";
 
@@ -53,6 +54,16 @@ export const LoginOptions = ({ oauthProviders, next }: LoginOptionsProps) => {
           below.
         </p>
       )}
+
+      <div className="my-2 flex items-center gap-3" aria-hidden>
+        <span className="h-px flex-1 bg-border" />
+        <span className="text-xs uppercase tracking-wide text-muted">
+          or sign in with a wallet
+        </span>
+        <span className="h-px flex-1 bg-border" />
+      </div>
+
+      <WalletSignInButtons next={next} />
     </div>
   );
 };

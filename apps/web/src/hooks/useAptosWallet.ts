@@ -6,12 +6,22 @@ import { getChain } from "@fileonchain/sdk";
 
 /* TODO: wire to Petra / Martian wallet standard via aptos-wallet-adapter */
 
+interface AptosSignMessageResponse {
+  fullMessage: string;
+  signature: string | Uint8Array;
+  nonce?: string;
+}
+
 interface AptosProvider {
   isPetra?: boolean;
   isMartian?: boolean;
-  connect: () => Promise<{ address: string }>;
+  connect: () => Promise<{ address: string; publicKey?: string }>;
   disconnect: () => Promise<void>;
-  account?: () => Promise<{ address: string } | null>;
+  account?: () => Promise<{ address: string; publicKey?: string } | null>;
+  signMessage?: (args: {
+    message: string;
+    nonce: string;
+  }) => Promise<AptosSignMessageResponse>;
   onAccountChange?: (handler: (addr: string | null) => void) => void;
   on?: (event: string, handler: (...args: unknown[]) => void) => void;
   removeListener?: (event: string, handler: (...args: unknown[]) => void) => void;
@@ -76,5 +86,44 @@ export const useAptosWallet = () => {
     return getChain(network === "testnet" ? "aptos:testnet" : "aptos:mainnet")?.rpcUrl ?? "";
   }, []);
 
-  return { address: aptosAddress, connect, disconnect, getClient, getNetworkRpcUrl };
+  /**
+   * Wallet-standard message signing. Aptos wallets sign their own envelope
+   * (APTOS\naddress: …\nmessage: …\nnonce: …) — the returned `fullMessage`
+   * is what the signature covers, so the server verifies against it.
+   */
+  const signMessage = useCallback(
+    async (message: string, nonce: string) => {
+      const provider = getProvider();
+      if (!provider?.signMessage) {
+        throw new Error("The connected Aptos wallet cannot sign messages");
+      }
+      const response = await provider.signMessage({ message, nonce });
+      const account = await provider.account?.();
+      if (!account?.publicKey) {
+        throw new Error("Could not read the Aptos account public key");
+      }
+      // Avoid Buffer — it isn't polyfilled in the client bundle.
+      const signature =
+        typeof response.signature === "string"
+          ? response.signature
+          : Array.from(response.signature)
+              .map((byte) => byte.toString(16).padStart(2, "0"))
+              .join("");
+      return {
+        signature,
+        fullMessage: response.fullMessage,
+        publicKey: account.publicKey,
+      };
+    },
+    [],
+  );
+
+  return {
+    address: aptosAddress,
+    connect,
+    disconnect,
+    getClient,
+    getNetworkRpcUrl,
+    signMessage,
+  };
 };

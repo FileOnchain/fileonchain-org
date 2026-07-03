@@ -6,6 +6,7 @@ import {
   web3Enable,
   web3FromSource,
 } from "@polkadot/extension-dapp";
+import { stringToHex } from "@polkadot/util";
 import { useEffect } from "react";
 import { useWalletStates } from "@/states/wallet";
 import { Account } from "@/types/types";
@@ -50,5 +51,23 @@ export const useWallet = () => {
     trackEvent("wallet_connect", { family: "substrate" });
   };
 
-  return { connectWallet };
+  /** signRaw over a plain-text message (wallet sign-in / linking). */
+  const signMessage = async (
+    account: Account,
+    message: string,
+  ): Promise<string> => {
+    const injector = await web3FromSource(account.meta.source);
+    const signRaw = injector.signer?.signRaw;
+    if (!signRaw) {
+      throw new Error("The selected extension does not support raw signing");
+    }
+    const { signature } = await signRaw({
+      address: account.address,
+      data: stringToHex(message),
+      type: "bytes",
+    });
+    return signature;
+  };
+
+  return { connectWallet, signMessage };
 };

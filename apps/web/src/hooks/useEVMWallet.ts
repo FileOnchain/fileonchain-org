@@ -75,5 +75,32 @@ export const useEVMWallet = () => {
     });
   }, []);
 
-  return { address: evmAddress, connect, disconnect, getPublicClient, getWalletClient };
+  /**
+   * personal_sign over a plain-text message (wallet sign-in / linking).
+   * `address` overrides the store value — needed right after connect(),
+   * before the state update lands.
+   */
+  const signMessage = useCallback(
+    async (
+      message: string,
+      address?: `0x${string}`,
+    ): Promise<`0x${string}`> => {
+      const account = address ?? evmAddress;
+      const walletClient = getWalletClient();
+      if (!walletClient || !account) {
+        throw new Error("Connect an EVM wallet before signing");
+      }
+      return walletClient.signMessage({ account, message });
+    },
+    [getWalletClient, evmAddress],
+  );
+
+  return {
+    address: evmAddress,
+    connect,
+    disconnect,
+    getPublicClient,
+    getWalletClient,
+    signMessage,
+  };
 };

@@ -11,6 +11,10 @@ interface SolanaProvider {
   publicKey?: { toBytes: () => Uint8Array; toBase58: () => string };
   connect: () => Promise<{ publicKey: { toBase58: () => string } }>;
   disconnect: () => Promise<void>;
+  signMessage?: (
+    message: Uint8Array,
+    encoding?: string,
+  ) => Promise<{ signature: Uint8Array }>;
   on?: (event: string, handler: (...args: unknown[]) => void) => void;
   removeListener?: (event: string, handler: (...args: unknown[]) => void) => void;
 }
@@ -99,5 +103,25 @@ export const useSolanaWallet = () => {
     }
   }, [solanaAddress]);
 
-  return { address: solanaAddress, connect, disconnect, getConnection, getPublicKey };
+  /** signMessage over a plain-text message; returns a base64 signature. */
+  const signMessage = useCallback(async (message: string): Promise<string> => {
+    const provider = getProvider();
+    if (!provider?.signMessage) {
+      throw new Error("The connected Solana wallet cannot sign messages");
+    }
+    const { signature } = await provider.signMessage(
+      new TextEncoder().encode(message),
+      "utf8",
+    );
+    return btoa(String.fromCharCode(...signature));
+  }, []);
+
+  return {
+    address: solanaAddress,
+    connect,
+    disconnect,
+    getConnection,
+    getPublicKey,
+    signMessage,
+  };
 };
