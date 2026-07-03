@@ -35,6 +35,15 @@ pnpm clean          # remove build outputs
 Or scope to one package: `pnpm --filter @fileonchain/sdk build`,
 `pnpm --filter @fileonchain/web dev`.
 
+Database (Neon Postgres via Drizzle, from `apps/web`):
+
+```bash
+pnpm --filter @fileonchain/web db:generate   # regenerate migrations after editing schema.ts
+pnpm --filter @fileonchain/web db:push       # push schema to $DATABASE_URL (dev)
+pnpm --filter @fileonchain/web db:migrate    # apply committed migrations
+pnpm --filter @fileonchain/web db:studio     # browse data
+```
+
 There is no unit-test runner for the webapp. **Verify changes with
 `pnpm build`** — it typechecks and lints everything and catches
 server/client boundary errors that `tsc` alone misses.
@@ -87,8 +96,12 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
 - **`@/*` path alias** → `apps/web/src/*`. Shared chain types/metadata import
   from `@fileonchain/sdk`; only web-specific code uses `@/...`.
 - **`src/app/`** — App Router. Routes: `/` (upload), `/explorer` (+ `/explorer/[cid]`),
-  `/cache`, `/donations`, `/dashboard`. API routes under `app/api/`
-  (`cid`, `search-file`, `upload-fallback`).
+  `/cache`, `/donations`, `/leaderboard`, `/profile/[address]`, `/login`, and
+  the auth-guarded `/dashboard` (+ `logs`, `credits`, `keys`, `byok`
+  subroutes). API routes under `app/api/`: the mock trio (`cid`,
+  `search-file`, `upload-fallback`) plus the account backend (`auth`,
+  `wallets`, `credits`, `keys`, `byok`, `uploads`) and the API-key-scoped
+  `v1/` namespace (`v1/anchor`, `v1/credits`).
 - **`src/components/`** — `ui/` primitives (Button, Modal, Card, …), `layout/`
   (Nav, Footer, PageShell), and feature folders (`explorer/`, `cache/`,
   `donations/`, `chain/`, `upload/`, `onboarding/`, `registry/`). Bare files in
@@ -113,6 +126,42 @@ the real call to make (`upload.ts` → `@fileonchain/sdk/evm` `anchorCID` /
 reads; `cid-indexer.ts` → an indexer; `cache.ts`, `donations.ts` → their
 contracts). When implementing real behavior, replace the mock body and keep
 the exported signature stable so callers don't change.
+
+### Account backend (auth, DB, credits, API keys, BYOK)
+
+The account system is **real** (NextAuth v5 + Neon Postgres + Drizzle) while
+chain-side operations behind it stay mock:
+
+- **DB** — schema in `src/lib/db/schema.ts` (Auth.js tables + `wallets`,
+  `auth_nonces`, `api_keys`, `credit_ledger`, `deposits`, `activity_logs`,
+  `byok_keys`, `upload_jobs`); client in `src/lib/db/index.ts` (Neon
+  **WebSocket** driver — credit debits need interactive transactions; created
+  lazily so builds pass without `DATABASE_URL`). Migrations live in
+  `apps/web/drizzle/` (`db:generate` after schema edits). Money is bigint
+  micro-USDC. Server-only env access goes through `src/lib/env.ts`.
+- **Auth** — `src/lib/auth/` (`config.ts`, `index.ts` exporting
+  `auth`/`requireUser`). JWT sessions. Google/GitHub providers register only
+  when their env creds are set; the `"wallet"` Credentials provider accepts a
+  nonce-bound sign-message proof verified per family in
+  `verify-wallet.ts` (EVM viem, Substrate signatureVerify, Solana/Aptos
+  ed25519). Client proof collection is shared via `hooks/useWalletProof.ts`.
+  Guards: `app/dashboard/layout.tsx` server layout redirect + `requireUser()`
+  in routes — **no Edge middleware** (Neon driver is Node-only).
+- **Services** — `src/lib/server/*`: `credits.ts` (ledger, advisory-lock
+  debits), `api-keys.ts` (hashed `fok_` keys), `anchor-service.ts` +
+  `anchor-worker.ts` (mock server-side anchoring; shared by `/api/uploads`
+  and `/api/v1/anchor`), `byok.ts` + `lib/byok/providers.ts` (provider
+  registry; keys sealed by `lib/crypto/secretbox.ts` with
+  `BYOK_ENCRYPTION_KEY`), `activity.ts` (`logActivity`), `queries.ts`
+  (dashboard reads).
+- **Mock seams to make real later**: deposit confirmation
+  (`api/credits/deposit/[id]/confirm` — replace with a USDC Transfer
+  watcher), `anchor-worker.ts` (real chain senders), `byok.ts` validation
+  (real Auto Drive call), and pay-as-you-go per-chunk sends in
+  `useFileUploader.anchor()`.
+- Env vars are documented in `apps/web/.env.example`; all are optional for
+  `pnpm build`, but runtime account features need `DATABASE_URL` +
+  `AUTH_SECRET` (and `BYOK_ENCRYPTION_KEY` for BYOK).
 
 ### SEO & analytics
 
