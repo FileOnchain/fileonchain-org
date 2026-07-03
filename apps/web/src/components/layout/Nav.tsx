@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 import ThemeSwitch from "@/components/ThemeSwitch";
 import ChainSwitcher from "@/components/chain/ChainSwitcher";
 import NavWallet from "@/components/layout/NavWallet";
+import NavAccount from "@/components/layout/NavAccount";
 
 interface NavLink {
   href: string;
@@ -96,6 +97,7 @@ const Nav = () => {
             <ChainSwitcher />
           </div>
           <NavWallet />
+          <NavAccount />
           <ThemeSwitch />
 
           <button

@@ -28,6 +28,20 @@ export interface AnalyticsEvents {
   wallet_link: { family: string; action: "link" | "unlink" };
   /** A CID lookup was fired from the explorer. */
   cid_search: { source: string };
+  /** A sign-in was initiated (OAuth provider id or wallet family). */
+  auth_sign_in: { method: string };
+  /** The user signed out. */
+  auth_sign_out: Record<string, never>;
+  /** An API key was created or revoked. */
+  api_key: { action: "create" | "revoke" };
+  /** A credit deposit was confirmed (mock for now). */
+  credit_deposit: { chain_id: string; amount_usdc: number };
+  /** An anchor was paid for via a payment method. */
+  anchor_paid: {
+    method: "payg" | "credits" | "byok";
+    chain_count: number;
+    chunk_count: number;
+  };
 }
 
 type GAEventParams = Record<string, string | number | boolean | undefined>;

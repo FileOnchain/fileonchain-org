@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { Instrument_Serif } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import ThemeProvider from "@/components/ThemeProvider";
+import AuthSessionProvider from "@/components/providers/AuthSessionProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import Nav from "@/components/layout/Nav";
 import Footer from "@/components/layout/Footer";
@@ -178,14 +179,16 @@ export default function RootLayout({
       </head>
       <body className="bg-background text-foreground font-sans min-h-screen flex flex-col antialiased">
         <ThemeProvider>
-          <ToastProvider>
-            <ScrollProgress />
-            <Nav />
-            <RouteFade>
-              <div className="flex-1">{children}</div>
-            </RouteFade>
-            <Footer />
-          </ToastProvider>
+          <AuthSessionProvider>
+            <ToastProvider>
+              <ScrollProgress />
+              <Nav />
+              <RouteFade>
+                <div className="flex-1">{children}</div>
+              </RouteFade>
+              <Footer />
+            </ToastProvider>
+          </AuthSessionProvider>
         </ThemeProvider>
       </body>
       {/* Google Analytics 4 — only mounts when NEXT_PUBLIC_GA_ID is configured,
