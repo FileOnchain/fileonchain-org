@@ -10,6 +10,14 @@ import {
   type WalletClient,
 } from "viem";
 import { fileRegistryAbi } from "../abis/fileRegistry";
+import {
+  buildChunkAnchorPayload,
+  buildFileAnchorPayload,
+  ChainNotProvisionedError,
+  type AnchorChunk,
+  type AnchorProgressHandler,
+  type ChunkedAnchorReceipt,
+} from "../anchor";
 import { getChain, ZERO_ADDRESS, type ChainConfig } from "../chains";
 import { isValidCID } from "../cid";
 import type { ChainId } from "../types";
@@ -33,7 +41,7 @@ export const resolveEvmChain = (chainId: ChainId): ChainConfig & { registryContr
     throw new Error(`Chain "${chainId}" is not an EVM chain; use the ${chain.family} client instead.`);
   }
   if (!chain.registryContract || chain.registryContract === ZERO_ADDRESS) {
-    throw new Error(`FileRegistry is not deployed on "${chainId}" yet.`);
+    throw new ChainNotProvisionedError(chainId, "FileRegistry is not deployed yet.");
   }
   return chain as ChainConfig & { registryContract: `0x${string}` };
 };
@@ -86,6 +94,95 @@ export const anchorCID = async (
     functionName: "anchorCID",
     args: [cidToBytes32(cid), contentHash, uri],
   });
+};
+
+export interface EvmChunkedAnchorParams {
+  /** An `evm:*` chain id with a deployed FileRegistry, e.g. "evm:8453". */
+  chainId: ChainId;
+  /** CIDv1 of the whole file. */
+  fileCid: string;
+  /** Chunks to anchor; `data` is ignored — EVM stores CIDs, not bytes. */
+  chunks: AnchorChunk[];
+  /** SHA-256 of the raw content on the file-level anchor; zero hash if unknown. */
+  contentHash?: Hex;
+  /** Optional IPFS / Arweave pointer on the file-level anchor. */
+  uri?: string;
+  /** Reused for the final receipt wait; created from the chain RPC otherwise. */
+  publicClient?: PublicClient;
+  onProgress?: AnchorProgressHandler;
+}
+
+/**
+ * Anchor every chunk CID, then the file CID, as sequential
+ * `FileRegistry.anchorCID` transactions. Each chunk's registry `uri` carries
+ * the versioned chunk payload (linkage to the file and the next chunk); the
+ * final file-level transaction is awaited to a receipt so the block number
+ * is real. One wallet confirmation per transaction.
+ */
+export const anchorChunkedFile = async (
+  walletClient: WalletClient,
+  {
+    chainId,
+    fileCid,
+    chunks,
+    contentHash = zeroHash,
+    uri = "",
+    publicClient,
+    onProgress,
+  }: EvmChunkedAnchorParams
+): Promise<ChunkedAnchorReceipt> => {
+  if (!isValidCID(fileCid)) throw new Error(`"${fileCid}" is not a valid CIDv1 base32 string.`);
+  const chain = resolveEvmChain(chainId);
+  const account = walletClient.account;
+  if (!account) throw new Error("The wallet client has no account to sign with.");
+
+  const viemChain = toViemChain(chain);
+  const total = chunks.length;
+  const txHashes: string[] = [];
+
+  const write = (cidHash: Hex, hash: Hex, payloadUri: string) =>
+    walletClient.writeContract({
+      chain: viemChain,
+      account,
+      address: chain.registryContract,
+      abi: fileRegistryAbi,
+      functionName: "anchorCID",
+      args: [cidHash, hash, payloadUri],
+    });
+
+  for (const chunk of chunks) {
+    onProgress?.({ stage: "signing", chunksAnchored: chunk.index, chunksTotal: total });
+    const payload = buildChunkAnchorPayload({ fileCid, chunk, total });
+    const txHash = await write(cidToBytes32(chunk.cid), zeroHash, payload);
+    txHashes.push(txHash);
+    onProgress?.({
+      stage: "submitting",
+      chunksAnchored: chunk.index + 1,
+      chunksTotal: total,
+      txHash,
+    });
+  }
+
+  onProgress?.({ stage: "signing", chunksAnchored: total, chunksTotal: total });
+  const fileUri = uri || buildFileAnchorPayload({ cid: fileCid });
+  const fileTxHash = await write(cidToBytes32(fileCid), contentHash, fileUri);
+  txHashes.push(fileTxHash);
+  onProgress?.({ stage: "confirming", chunksAnchored: total, chunksTotal: total, txHash: fileTxHash });
+
+  const client =
+    publicClient ?? createPublicClient({ chain: viemChain, transport: http() });
+  const receipt = await client.waitForTransactionReceipt({ hash: fileTxHash as Hex });
+
+  onProgress?.({ stage: "confirmed", chunksAnchored: total, chunksTotal: total, txHash: fileTxHash });
+
+  return {
+    chainId: chain.id,
+    txHashes,
+    txHash: fileTxHash,
+    blockNumber: Number(receipt.blockNumber),
+    blockHash: receipt.blockHash,
+    submitter: account.address,
+  };
 };
 
 export interface EvmCIDRecord {
