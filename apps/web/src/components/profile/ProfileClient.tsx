@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { FiArrowRight, FiAward, FiLink } from "react-icons/fi";
 import { CHAIN_FAMILY_LABELS } from "@fileonchain/sdk";
 import { PageShell } from "@/components/layout/PageShell";
@@ -15,6 +14,7 @@ import RuntimeChip from "@/components/profile/RuntimeChip";
 import LinkWalletModal from "@/components/profile/LinkWalletModal";
 import { useIdentityStates, hydrateIdentity } from "@/states/identity";
 import { useWalletStates } from "@/states/wallet";
+import { useAccountWallets } from "@/hooks/useAccountWallets";
 import type { LinkedWallet, PublicProfile } from "@/lib/mock/profiles";
 import type { RegisteredFile } from "@/lib/mock/cid-indexer";
 import { formatBytes, truncateAddress, truncateCID } from "@/lib/cid/format";
@@ -65,34 +65,23 @@ const ProfileClient = ({ profile }: ProfileClientProps) => {
         (w) => w.address.toLowerCase() === connectedAddress!.toLowerCase(),
       ));
 
-  // Server-verified links from the signed-in account (see /api/wallets).
-  const { status: sessionStatus } = useSession();
-  const [serverLinks, setServerLinks] = React.useState<LinkedWallet[]>([]);
+  // Server-verified links from the signed-in account (see /api/wallets),
+  // via the shared account↔wallet hook; refreshed when the link modal closes.
+  const { authed, linked: accountLinks, refresh } = useAccountWallets();
   React.useEffect(() => {
-    if (!isOwn || sessionStatus !== "authenticated") {
-      setServerLinks([]);
-      return;
-    }
-    let cancelled = false;
-    void fetch("/api/wallets")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (cancelled || !data) return;
-        setServerLinks(
-          (data.wallets as { family: LinkedWallet["family"]; address: string; verifiedAt: string }[]).map(
-            (w) => ({
-              family: w.family,
-              address: w.address,
-              linkedAt: Math.floor(new Date(w.verifiedAt).getTime() / 1000),
-            }),
-          ),
-        );
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [isOwn, sessionStatus, linkModalOpen]);
+    if (isOwn && authed && !linkModalOpen) void refresh();
+  }, [isOwn, authed, linkModalOpen, refresh]);
+  const serverLinks = React.useMemo<LinkedWallet[]>(
+    () =>
+      isOwn && authed
+        ? accountLinks.map((w) => ({
+            family: w.family,
+            address: w.address,
+            linkedAt: Math.floor(new Date(w.verifiedAt).getTime() / 1000),
+          }))
+        : [],
+    [isOwn, authed, accountLinks],
+  );
 
   // Registry links come with the profile; the owner's locally recorded links
   // override per family (so the modal reflects immediately), and server-

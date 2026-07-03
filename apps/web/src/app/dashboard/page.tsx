@@ -6,9 +6,11 @@ import { auth } from "@/lib/auth";
 import {
   getActiveApiKeyCount,
   getCreditBalance,
+  getLinkedWallets,
   getRecentUploadJobs,
   getUploadStats,
 } from "@/lib/server/queries";
+import RuntimeChip from "@/components/profile/RuntimeChip";
 import { formatAgo, formatSize } from "@/lib/format";
 import { formatMicroUsdc } from "@/lib/usdc";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
@@ -44,11 +46,12 @@ export default async function DashboardPage() {
   if (!session?.user) redirect("/login?next=/dashboard");
   const userId = session.user.id;
 
-  const [balance, stats, keyCount, jobs] = await Promise.all([
+  const [balance, stats, keyCount, jobs, linkedWallets] = await Promise.all([
     getCreditBalance(userId),
     getUploadStats(userId),
     getActiveApiKeyCount(userId),
     getRecentUploadJobs(userId),
+    getLinkedWallets(userId),
   ]);
 
   return (
@@ -63,6 +66,42 @@ export default async function DashboardPage() {
         <Stat label="Bytes stored" value={formatSize(stats.bytes)} hint="Across all chains" />
         <Stat label="API keys" value={keyCount} hint="Active keys" />
       </div>
+
+      <Card className="mb-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted">
+              Verified wallets
+            </p>
+            {linkedWallets.length === 0 ? (
+              <p className="mt-1 text-sm text-muted">
+                No wallets verified yet — connect a wallet (top right) and sign
+                the ownership challenge to link it to this account.
+              </p>
+            ) : (
+              <ul className="mt-2 flex flex-wrap gap-2">
+                {linkedWallets.map((wallet) => (
+                  <li
+                    key={wallet.family}
+                    className="flex items-center gap-2 rounded-md border border-border bg-surface px-2.5 py-1.5"
+                  >
+                    <RuntimeChip family={wallet.family} active />
+                    <span className="font-mono text-xs text-muted">
+                      {wallet.address.slice(0, 6)}…{wallet.address.slice(-4)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <Link
+            href="/profile"
+            className="shrink-0 text-sm text-primary hover:underline"
+          >
+            Manage on your profile →
+          </Link>
+        </div>
+      </Card>
 
       <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-muted">
         Recent uploads

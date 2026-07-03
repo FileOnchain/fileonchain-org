@@ -2,11 +2,9 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
 import { CHAIN_FAMILY_LABELS, type ChainFamily } from "@fileonchain/sdk";
 import Button from "@/components/ui/Button";
-import { useWalletProof } from "@/hooks/useWalletProof";
-import { trackEvent } from "@/lib/analytics";
+import { useAccountWallets } from "@/hooks/useAccountWallets";
 
 interface WalletSignInButtonsProps {
   /** Same-site path to land on after sign-in. */
@@ -14,13 +12,12 @@ interface WalletSignInButtonsProps {
 }
 
 /**
- * Wallet sign-in for all four runtime families: collect a nonce-bound
- * signature via useWalletProof, then exchange it for a session through the
- * "wallet" Credentials provider.
+ * Wallet sign-in for all four runtime families — thin buttons over
+ * useAccountWallets.signInWithWallet (connect → nonce → sign → session).
  */
 export const WalletSignInButtons = ({ next }: WalletSignInButtonsProps) => {
   const router = useRouter();
-  const { collectProof } = useWalletProof();
+  const { signInWithWallet } = useAccountWallets();
   const [pending, setPending] = React.useState<ChainFamily | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -28,22 +25,8 @@ export const WalletSignInButtons = ({ next }: WalletSignInButtonsProps) => {
     setPending(family);
     setError(null);
     try {
-      const proof = await collectProof(family);
-      const response = await signIn("wallet", {
-        redirect: false,
-        family,
-        address: proof.address,
-        signature: proof.signature,
-        nonce: proof.nonce,
-        publicKey: proof.publicKey ?? "",
-        fullMessage: proof.fullMessage ?? "",
-      });
-      if (!response || response.error) {
-        throw new Error("Signature verification failed — please try again");
-      }
-      trackEvent("auth_sign_in", { method: `wallet_${family}` });
+      await signInWithWallet(family);
       router.push(next);
-      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Wallet sign-in failed");
     } finally {

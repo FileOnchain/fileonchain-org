@@ -14,6 +14,7 @@ import { useEVMWallet } from "@/hooks/useEVMWallet";
 import { useSolanaWallet } from "@/hooks/useSolanaWallet";
 import { useAptosWallet } from "@/hooks/useAptosWallet";
 import { useWalletStates } from "@/states/wallet";
+import WalletAccountPanel from "@/components/chain/WalletAccountPanel";
 import { NetworkId, networks } from "@autonomys/auto-utils";
 import { truncateFileName } from "@/utils/truncateFileName";
 
@@ -67,12 +68,24 @@ export const ChainConnectModal = ({ open, onOpenChange }: ChainConnectModalProps
 
   const close = () => onOpenChange(false);
 
+  // Address of the wallet connected for the family shown on the current tab
+  // — drives the account panel (sign in with / verify ownership of it).
+  const tabAddress =
+    chainFamily === "evm"
+      ? evm.address
+      : chainFamily === "solana"
+        ? solana.address
+        : chainFamily === "aptos"
+          ? aptos.address
+          : selectedAccount?.address ?? null;
+
+  // Connect handlers keep the modal open: the next step — signing in with
+  // the wallet or verifying ownership — renders right below.
   const handleSubstrateConnect = async () => {
     if (!selectedAccount) return;
     setSubstrateError(null);
     try {
       await connectSubstrate(selectedAccount);
-      close();
     } catch (e) {
       setSubstrateError((e as Error).message);
     }
@@ -83,7 +96,6 @@ export const ChainConnectModal = ({ open, onOpenChange }: ChainConnectModalProps
     setBusy(true);
     try {
       await evm.connect();
-      close();
     } catch (e) {
       setWalletError((e as Error).message);
     } finally {
@@ -96,7 +108,6 @@ export const ChainConnectModal = ({ open, onOpenChange }: ChainConnectModalProps
     setBusy(true);
     try {
       await solana.connect();
-      close();
     } catch (e) {
       setWalletError((e as Error).message);
     } finally {
@@ -109,7 +120,6 @@ export const ChainConnectModal = ({ open, onOpenChange }: ChainConnectModalProps
     setBusy(true);
     try {
       await aptos.connect();
-      close();
     } catch (e) {
       setWalletError((e as Error).message);
     } finally {
@@ -292,6 +302,14 @@ export const ChainConnectModal = ({ open, onOpenChange }: ChainConnectModalProps
           )}
         </div>
       )}
+
+      {/* Account step — connecting and the account are one flow: sign in
+          with this wallet, or verify ownership onto the signed-in account. */}
+      <WalletAccountPanel
+        family={chainFamily}
+        address={tabAddress}
+        onSignedIn={close}
+      />
 
       {chainFamily !== "substrate" && (
         <p className="mt-4 text-[11px] text-muted">

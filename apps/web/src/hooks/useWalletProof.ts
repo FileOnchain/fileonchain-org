@@ -7,6 +7,7 @@ import { useSolanaWallet } from "@/hooks/useSolanaWallet";
 import { useAptosWallet } from "@/hooks/useAptosWallet";
 import { useWalletStates } from "@/states/wallet";
 import { buildWalletMessage } from "@/lib/auth/wallet-message";
+import type { Account } from "@/types/types";
 
 export interface WalletProof {
   family: ChainFamily;
@@ -44,6 +45,9 @@ export const useWalletProof = () => {
   const solana = useSolanaWallet();
   const aptos = useAptosWallet();
   const substrateAccount = useWalletStates((s) => s.selectedAccount);
+  const setSelectedAccount = useWalletStates((s) => s.setSelectedAccount);
+  const setAccounts = useWalletStates((s) => s.setAccounts);
+  const setChainFamily = useWalletStates((s) => s.setChainFamily);
 
   const collectProof = useCallback(
     async (family: ChainFamily): Promise<WalletProof> => {
@@ -89,6 +93,11 @@ export const useWalletProof = () => {
               accounts.find((a) => a.address === substrateAccount.address)) ??
             accounts[0];
           if (!account) throw new Error("No Substrate account available");
+          // Signing implies connection — reflect it in the wallet store so
+          // the session and the connected-wallet UI stay in step.
+          setAccounts(accounts as Account[]);
+          setSelectedAccount(account as Account);
+          setChainFamily("substrate");
           const address = account.address;
           const { nonce, issuedAt } = await requestNonce(family, address);
           const message = buildWalletMessage({ family, address, nonce, issuedAt });
@@ -108,7 +117,7 @@ export const useWalletProof = () => {
         }
       }
     },
-    [evm, solana, aptos, substrateAccount],
+    [evm, solana, aptos, substrateAccount, setAccounts, setSelectedAccount, setChainFamily],
   );
 
   return { collectProof };
