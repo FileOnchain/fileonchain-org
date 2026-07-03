@@ -6,6 +6,7 @@ import {
   getChainCostEstimates,
   totalCostFor,
 } from "@/lib/mock/costs";
+import { getByokProvider } from "@/lib/byok/providers";
 import { debitCredits, InsufficientCreditsError } from "@/lib/server/credits";
 import { logActivity } from "@/lib/server/activity";
 import { runAnchorWorker } from "@/lib/server/anchor-worker";
@@ -141,6 +142,15 @@ export const anchorWithAccount = async (
     if (!key) throw new AnchorRequestError("BYOK key not found", 404);
     if (key.status === "invalid") {
       throw new AnchorRequestError("BYOK key failed validation", 409);
+    }
+    const provider = getByokProvider(key.provider);
+    const unsupported = payload.chainIds.filter(
+      (chainId) => !provider?.chainIds.includes(chainId),
+    );
+    if (unsupported.length > 0) {
+      throw new AnchorRequestError(
+        `${provider?.name ?? key.provider} cannot anchor on: ${unsupported.join(", ")}`,
+      );
     }
     byokKeyId = key.id;
   }
