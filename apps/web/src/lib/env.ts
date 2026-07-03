@@ -17,10 +17,6 @@ const requireEnv = (name: string): string => {
 };
 
 export const env = {
-  /** Neon Postgres pooled connection string. */
-  get databaseUrl(): string {
-    return requireEnv("DATABASE_URL");
-  },
   /** 32-byte base64 key used to encrypt BYOK provider keys at rest. */
   get byokEncryptionKey(): string {
     return requireEnv("BYOK_ENCRYPTION_KEY");

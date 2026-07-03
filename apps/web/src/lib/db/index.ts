@@ -2,7 +2,6 @@ import "server-only";
 import { neonConfig, Pool } from "@neondatabase/serverless";
 import { drizzle, type NeonDatabase } from "drizzle-orm/neon-serverless";
 import ws from "ws";
-import { env } from "@/lib/env";
 import * as schema from "./schema";
 
 /**
@@ -10,9 +9,9 @@ import * as schema from "./schema";
  * path needs interactive transactions with row locking, which the stateless
  * HTTP driver cannot provide.
  *
- * The client is created lazily and exposed through a Proxy so importing this
- * module (e.g. while `next build` collects page data) never requires
- * DATABASE_URL — it is only read on the first actual query.
+ * The Pool never connects at construction, so importing this module during
+ * `next build` works without DATABASE_URL; the placeholder hostname makes a
+ * missing env obvious at the first real query (ENOTFOUND database-url-not-set).
  */
 
 type Database = NeonDatabase<typeof schema>;
@@ -22,20 +21,17 @@ declare global {
   var __fileonchainDb: Database | undefined;
 }
 
-const getDb = (): Database => {
-  if (!globalThis.__fileonchainDb) {
-    neonConfig.webSocketConstructor = ws;
-    const pool = new Pool({ connectionString: env.databaseUrl });
-    globalThis.__fileonchainDb = drizzle(pool, { schema });
-  }
-  return globalThis.__fileonchainDb;
+const createDb = (): Database => {
+  neonConfig.webSocketConstructor = ws;
+  const pool = new Pool({
+    connectionString:
+      process.env.DATABASE_URL ??
+      "postgresql://database-url-not-set.invalid/fileonchain",
+  });
+  return drizzle(pool, { schema });
 };
 
-export const db: Database = new Proxy({} as Database, {
-  get(_target, prop) {
-    const value = getDb()[prop as keyof Database];
-    return typeof value === "function" ? value.bind(getDb()) : value;
-  },
-});
+// Reuse across dev hot reloads so we don't leak pools.
+export const db: Database = (globalThis.__fileonchainDb ??= createDb());
 
 export * from "./schema";
