@@ -15,6 +15,10 @@ interface SolanaProvider {
     message: Uint8Array,
     encoding?: string,
   ) => Promise<{ signature: Uint8Array }>;
+  /** Phantom / Solflare transaction flow — used by the anchor sender. */
+  signAndSendTransaction?: (
+    transaction: unknown,
+  ) => Promise<{ signature: string }>;
   on?: (event: string, handler: (...args: unknown[]) => void) => void;
   removeListener?: (event: string, handler: (...args: unknown[]) => void) => void;
 }

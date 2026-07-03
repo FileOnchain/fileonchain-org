@@ -2,7 +2,9 @@ import { keccak256, stringToBytes } from "viem";
 import type { ChainFamily } from "@fileonchain/sdk";
 import type { ChainConfig } from "@fileonchain/sdk";
 
-/* TODO: real viem writeContract / polkadot signAndSend / solana sendTransaction */
+/* Real sends live in src/lib/anchor/* (per-family @fileonchain/sdk clients).
+ * This mock remains the fallback for chains with nothing deployed yet —
+ * useFileUploader falls back here on ChainNotProvisionedError. */
 
 export interface MockUploadInput {
   cid: string;

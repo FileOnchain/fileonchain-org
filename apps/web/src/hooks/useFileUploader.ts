@@ -12,10 +12,15 @@ import {
   useCallback,
   useState,
 } from "react";
-import { ZERO_ADDRESS } from "@fileonchain/sdk";
+import {
+  ChainNotProvisionedError,
+  ZERO_ADDRESS,
+  type AnchorChunk,
+} from "@fileonchain/sdk";
 import { ChunkData, generateCIDs } from "@/utils/generateCIDs";
 import { readFileContent } from "@/utils/readFileContent";
-import { mockAnchorCID, MockUploadResult } from "@/lib/mock/upload";
+import { anchorFileOnChain, type AnchorOutcome } from "@/lib/anchor";
+import { mockAnchorCID } from "@/lib/mock/upload";
 import { useChain } from "@/hooks/useChain";
 import { useEVMWallet } from "@/hooks/useEVMWallet";
 import { useSolanaWallet } from "@/hooks/useSolanaWallet";
@@ -177,14 +182,14 @@ export const useFileUploader = () => {
   );
 
   const buildPreview = useCallback(
-    (tx: { txHash: string; blockNumber: number; submitter: string; timestamp: number }): CIDPreviewData => ({
+    (tx: { txHash: string; blockNumber?: number; submitter: string; timestamp: number }): CIDPreviewData => ({
       cid: fileCid ?? "",
       chainId: activeChain.id,
       chainName: activeChain.name,
       chainShortName: activeChain.shortName,
       registryAddress: (activeChain.registryContract ?? ZERO_ADDRESS) as `0x${string}`,
       txHash: tx.txHash,
-      blockNumber: tx.blockNumber,
+      blockNumber: tx.blockNumber ?? 0,
       timestamp: tx.timestamp,
       submitter: tx.submitter,
       explorerUrl: activeChain.explorerUrl,
@@ -196,10 +201,66 @@ export const useFileUploader = () => {
   );
 
   /**
+   * Pay-as-you-go: send the real per-chunk transactions for the active
+   * family via `lib/anchor`. When the chain has nothing deployed to anchor
+   * against yet, fall back to the previous simulated flow — one
+   * authorization signature, ticking progress, then the mock anchor.
+   */
+  const anchorPayg = useCallback(async (): Promise<AnchorOutcome> => {
+    if (!file || !fileCid) throw new Error("No file prepared");
+    const chunks: AnchorChunk[] = cids.map((chunk, index) => ({
+      cid: chunk.cid.toString(),
+      index,
+      nextCid: chunk.nextCid?.toString(),
+      data: chunk.data,
+    }));
+
+    try {
+      setAnchorStatus("signing");
+      return await anchorFileOnChain({
+        chain: activeChain,
+        fileCid,
+        chunks,
+        onProgress: (progress) => {
+          setAnchorStatus(progress.stage === "signing" ? "signing" : "anchoring");
+          setAnchorProgress(progress.chunksAnchored);
+        },
+      });
+    } catch (error) {
+      if (!(error instanceof ChainNotProvisionedError)) throw error;
+    }
+
+    setAnchorStatus("signing");
+    await signAuthorization(
+      `FileOnChain: anchor ${fileCid} — ${cids.length} chunk(s) on ${activeChain.name}`,
+    );
+    setAnchorStatus("anchoring");
+    for (let i = 0; i < cids.length; i += 1) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.min(60, 1200 / cids.length)),
+      );
+      setAnchorProgress(i + 1);
+    }
+    const result = await mockAnchorCID({
+      cid: fileCid,
+      chain: activeChain,
+      fileSize: file.size,
+    });
+    return {
+      txHash: result.txHash,
+      txHashes: [result.txHash],
+      blockNumber: result.blockNumber,
+      timestamp: result.timestamp,
+      submitter: result.submitter,
+      simulated: true,
+    };
+  }, [file, fileCid, cids, activeChain, signAuthorization]);
+
+  /**
    * Anchor the prepared file with the selected payment method.
    *
-   * - "payg": one wallet signature authorizes the batch, then chunks are
-   *   sent (mock — see TODO) with visible progress.
+   * - "payg": real per-chunk transactions signed by the connected wallet
+   *   (simulated only on chains with nothing deployed yet — see anchorPayg).
    * - "credits" / "byok": POST /api/uploads and the backend anchors
    *   server-side; no wallet interaction.
    */
@@ -210,37 +271,17 @@ export const useFileUploader = () => {
 
     try {
       if (paymentMethod === "payg") {
-        setAnchorStatus("signing");
-        await signAuthorization(
-          `FileOnChain: anchor ${fileCid} — ${cids.length} chunk(s) on ${activeChain.name}`,
-        );
-
-        setAnchorStatus("anchoring");
-        /* TODO: send each chunk for real — Substrate: utility.batch of
-         * system.remarkWithEvent per chunk (utils/uploadChunks.ts); EVM:
-         * @fileonchain/sdk/evm anchorCID via viem writeContract; Solana/
-         * Aptos: program/module clients once deployed. Today each chunk
-         * "send" is simulated, then the file-level mock anchor runs. */
-        for (let i = 0; i < cids.length; i += 1) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, Math.min(60, 1200 / cids.length)),
-          );
-          setAnchorProgress(i + 1);
-        }
-        const result: MockUploadResult = await mockAnchorCID({
-          cid: fileCid,
-          chain: activeChain,
-          fileSize: file.size,
-        });
-        setTxHash(result.txHash);
+        const outcome = await anchorPayg();
+        setTxHash(outcome.txHash);
         setPreview(
           buildPreview({
-            txHash: result.txHash,
-            blockNumber: result.blockNumber,
-            submitter: result.submitter,
-            timestamp: result.timestamp,
+            txHash: outcome.txHash,
+            blockNumber: outcome.blockNumber,
+            submitter: outcome.submitter,
+            timestamp: outcome.timestamp,
           }),
         );
+        setAnchorProgress(cids.length);
       } else {
         setAnchorStatus("anchoring");
         const res = await fetch("/api/uploads", {
@@ -308,7 +349,7 @@ export const useFileUploader = () => {
     paymentMethod,
     byokKeyId,
     activeChain,
-    signAuthorization,
+    anchorPayg,
     buildPreview,
   ]);
 
