@@ -1,76 +1,22 @@
-import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { FiHeart, FiInbox, FiLock } from "react-icons/fi";
-import { PageShell } from "@/components/layout/PageShell";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { getChain, type ChainId } from "@fileonchain/sdk";
+import { auth } from "@/lib/auth";
+import {
+  getActiveApiKeyCount,
+  getCreditBalance,
+  getRecentUploadJobs,
+  getUploadStats,
+} from "@/lib/server/queries";
+import { formatAgo, formatSize } from "@/lib/format";
+import { formatMicroUsdc } from "@/lib/usdc";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { ChainBadge } from "@/components/ui/ChainBadge";
-import DonateButton from "@/components/donations/DonateButton";
-
-interface DashboardItem {
-  id: string;
-  filename: string;
-  cid: string;
-  chain: string;
-  chainShort: string;
-  chainId: string;
-  sizeBytes: number;
-  uploadedAt: number;
-  private?: boolean;
-}
-
-/* TODO: replace mock data with real reads from the user's uploaded CID list */
-
-const MOCK_ITEMS: DashboardItem[] = [
-  {
-    id: "u-1",
-    filename: "founding-vision.pdf",
-    cid: "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
-    chain: "Base",
-    chainShort: "BASE",
-    chainId: "evm:8453",
-    sizeBytes: 245_000,
-    uploadedAt: Math.floor(Date.now() / 1000) - 86_400 * 3,
-  },
-  {
-    id: "u-2",
-    filename: "private-roadmap.pdf",
-    cid: "bafybeibv3zaicqsdwfmq5dym6ipxzl5qxksirv3d3uyzjqhs2dtx3w3c3q",
-    chain: "Optimism",
-    chainShort: "OP",
-    chainId: "evm:10",
-    sizeBytes: 540_000,
-    uploadedAt: Math.floor(Date.now() / 1000) - 86_400 * 12,
-    private: true,
-  },
-  {
-    id: "u-3",
-    filename: "launch-assets.zip",
-    cid: "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
-    chain: "Ethereum",
-    chainShort: "ETH",
-    chainId: "evm:1",
-    sizeBytes: 18_400_000,
-    uploadedAt: Math.floor(Date.now() / 1000) - 86_400 * 30,
-  },
-];
-
-const formatSize = (bytes: number): string => {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
-};
-
-const formatAgo = (ts: number): string => {
-  const diff = Math.floor(Date.now() / 1000) - ts;
-  if (diff < 86_400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86_400)}d ago`;
-};
 
 /** Ledger-style stat — mono numeral + tracked label, matching the hero's stat row. */
 const Stat = ({ label, value, hint }: { label: string; value: string | number; hint?: string }) => (
@@ -86,106 +32,111 @@ const Stat = ({ label, value, hint }: { label: string; value: string | number; h
   </div>
 );
 
-export const metadata: Metadata = {
-  title: "Dashboard",
-  description: "Your anchored files, private cache, and donation history.",
-  // Per-user view — keep it out of the index.
-  robots: { index: false, follow: false },
-  alternates: { canonical: "/dashboard" },
+const STATUS_BADGES: Record<string, { label: string; variant: "success" | "warning" | "danger" | "default" }> = {
+  complete: { label: "Anchored", variant: "success" },
+  anchoring: { label: "Anchoring", variant: "warning" },
+  pending: { label: "Pending", variant: "warning" },
+  failed: { label: "Failed", variant: "danger" },
 };
 
-export default function DashboardPage() {
-  const total = MOCK_ITEMS.length;
-  const totalBytes = MOCK_ITEMS.reduce((sum, item) => sum + item.sizeBytes, 0);
-  const privateCount = MOCK_ITEMS.filter((item) => item.private).length;
+export default async function DashboardPage() {
+  const session = await auth();
+  if (!session?.user) redirect("/login?next=/dashboard");
+  const userId = session.user.id;
+
+  const [balance, stats, keyCount, jobs] = await Promise.all([
+    getCreditBalance(userId),
+    getUploadStats(userId),
+    getActiveApiKeyCount(userId),
+    getRecentUploadJobs(userId),
+  ]);
 
   return (
-    <PageShell size="wide" padding="lg" atmosphere>
-      <PageHeader
-        className="mb-8"
-        index="05"
-        kicker="Your ledger"
-        title="Your onchain files."
-        lede="All files you've anchored onchain. Switch chains, manage private cache, or donate back to keep the public layer alive."
-        actions={
-          <Link
-            href="/profile"
-            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md border border-border bg-surface-elevated px-4 text-sm font-medium text-foreground transition-all duration-base ease-out-soft hover:border-primary/50 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            Public profile →
-          </Link>
-        }
-      />
-
-      <div className="mb-8 grid grid-cols-1 gap-6 rounded-2xl border border-border bg-surface p-6 sm:grid-cols-3 sm:gap-8">
-        <Stat label="Total files" value={total} hint="Anchored from this wallet" />
-        <Stat label="Bytes stored" value={formatSize(totalBytes)} hint="Across all chains" />
-        <Stat label="Private entries" value={privateCount} hint="Encrypted cache" />
+    <>
+      <div className="mb-8 grid grid-cols-2 gap-6 rounded-2xl border border-border bg-surface p-6 sm:grid-cols-4 sm:gap-8">
+        <Stat
+          label="Credit balance"
+          value={formatMicroUsdc(balance)}
+          hint="Fund on the Credits tab"
+        />
+        <Stat label="Files anchored" value={stats.files} hint="Via account uploads" />
+        <Stat label="Bytes stored" value={formatSize(stats.bytes)} hint="Across all chains" />
+        <Stat label="API keys" value={keyCount} hint="Active keys" />
       </div>
 
-      {MOCK_ITEMS.length === 0 ? (
+      <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-muted">
+        Recent uploads
+      </h2>
+      {jobs.length === 0 ? (
         <EmptyState
           icon={<FiInbox size={20} />}
-          title="No files yet"
-          description="Drop a file on the upload page to get started."
+          title="No account uploads yet"
+          description="Anchor a file with credits (or an API key) and it will show up here. Pay-as-you-go uploads signed by your wallet appear on your public profile."
           action={
             <Link href="/">
-              <Button>Upload your first file</Button>
+              <Button>Upload a file</Button>
             </Link>
           }
         />
       ) : (
         <ul className="space-y-3">
-          {MOCK_ITEMS.map((item) => (
-            <li key={item.id}>
-              <Card>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 className="text-sm font-medium text-foreground truncate">
-                        <Link
-                          href={`/explorer/${item.cid}`}
-                          className="transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
-                        >
-                          {item.filename}
-                        </Link>
-                      </h3>
-                      {item.private && (
-                        <Badge variant="private" size="sm">
-                          🔒 Private
+          {jobs.map((job) => {
+            const status = STATUS_BADGES[job.status] ?? STATUS_BADGES.pending;
+            return (
+              <li key={job.id}>
+                <Card>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="mb-1 flex flex-wrap items-center gap-2">
+                        <h3 className="truncate text-sm font-medium text-foreground">
+                          <Link
+                            href={`/explorer/${job.cid}`}
+                            className="rounded-sm transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                          >
+                            {job.fileName}
+                          </Link>
+                        </h3>
+                        <Badge variant={status.variant} size="sm">
+                          {status.label}
                         </Badge>
-                      )}
+                        <Badge variant="default" size="sm">
+                          {job.paymentMethod === "byok" ? "BYOK" : "Credits"}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                        <span className="break-all font-mono">
+                          {job.cid.slice(0, 14)}…{job.cid.slice(-6)}
+                        </span>
+                        <CopyButton value={job.cid} ariaLabel="Copy CID" />
+                        <span>·</span>
+                        <span>{formatSize(job.fileSizeBytes)}</span>
+                        <span>·</span>
+                        <span>{job.chunkCount} chunks</span>
+                        <span>·</span>
+                        <span>{formatAgo(job.createdAt)}</span>
+                        <span>·</span>
+                        <span>{formatMicroUsdc(job.costMicroUsdc)}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap text-xs text-muted">
-                      <span className="font-mono break-all">
-                        {item.cid.slice(0, 14)}…{item.cid.slice(-6)}
-                      </span>
-                      <CopyButton value={item.cid} ariaLabel="Copy CID" />
-                      <span>·</span>
-                      <span>{formatSize(item.sizeBytes)}</span>
-                      <span>·</span>
-                      <span>{formatAgo(item.uploadedAt)}</span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {(job.chainIds as ChainId[]).map((chainId) => {
+                        const chain = getChain(chainId);
+                        return chain ? (
+                          <ChainBadge
+                            key={chainId}
+                            chainId={chain.id}
+                            chainName={chain.name}
+                            shortName={chain.shortName}
+                            size="sm"
+                          />
+                        ) : null;
+                      })}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <ChainBadge
-                      chainId={item.chainId as never}
-                      chainName={item.chain}
-                      shortName={item.chainShort}
-                      size="sm"
-                    />
-                    <DonateButton cid={item.cid} label="Donate" />
-                    <Link
-                      href={`/explorer/${item.cid}`}
-                      className="inline-flex items-center justify-center h-8 px-3 text-sm rounded-md font-medium text-muted hover:text-foreground hover:bg-surface transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    >
-                      Open
-                    </Link>
-                  </div>
-                </div>
-              </Card>
-            </li>
-          ))}
+                </Card>
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -219,6 +170,6 @@ export default function DashboardPage() {
           </Link>
         </Card>
       </div>
-    </PageShell>
+    </>
   );
 }
