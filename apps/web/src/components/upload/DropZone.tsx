@@ -7,11 +7,15 @@ import { FiUploadCloud, FiFileText, FiImage, FiMusic, FiVideo } from "react-icon
 import { cn } from "@/lib/cn";
 
 interface DropZoneProps {
-  onFile: (file: File) => void;
+  /** Called with every selected/dropped file — first is processed, the rest queue. */
+  onFiles: (files: File[]) => void;
   isLoading?: boolean;
   hint?: string;
   className?: string;
 }
+
+/* TODO: directory upload (webkitdirectory) + folder DAG assembly — for now
+ * multiple files queue individually. */
 
 /* File-type → icon mapping. Used for the small file type chips floating
  * around the dropzone so it's clear which formats we accept. */
@@ -29,7 +33,7 @@ const TYPE_ICONS = [
  * around the corners. On drag-over the whole surface slides into a
  * primary-tinted background and the icon nudges upward.
  */
-const DropZone = ({ onFile, isLoading = false, hint, className }: DropZoneProps) => {
+const DropZone = ({ onFiles, isLoading = false, hint, className }: DropZoneProps) => {
   const [dragActive, setDragActive] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const inputId = React.useId();
@@ -48,13 +52,13 @@ const DropZone = ({ onFile, isLoading = false, hint, className }: DropZoneProps)
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    const selected = e.dataTransfer.files?.[0];
-    if (selected) onFile(selected);
+    const selected = Array.from(e.dataTransfer.files ?? []);
+    if (selected.length > 0) onFiles(selected);
   };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0];
-    if (selected) onFile(selected);
+    const selected = Array.from(e.target.files ?? []);
+    if (selected.length > 0) onFiles(selected);
   };
 
   return (
@@ -90,6 +94,7 @@ const DropZone = ({ onFile, isLoading = false, hint, className }: DropZoneProps)
         ref={inputRef}
         id={inputId}
         type="file"
+        multiple
         onChange={handleChange}
         className="sr-only"
         aria-describedby={`${inputId}-help`}

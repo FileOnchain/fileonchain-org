@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { FiArrowRight, FiAward, FiLink } from "react-icons/fi";
 import { CHAIN_FAMILY_LABELS } from "@fileonchain/sdk";
 import { PageShell } from "@/components/layout/PageShell";
@@ -64,14 +65,45 @@ const ProfileClient = ({ profile }: ProfileClientProps) => {
         (w) => w.address.toLowerCase() === connectedAddress!.toLowerCase(),
       ));
 
+  // Server-verified links from the signed-in account (see /api/wallets).
+  const { status: sessionStatus } = useSession();
+  const [serverLinks, setServerLinks] = React.useState<LinkedWallet[]>([]);
+  React.useEffect(() => {
+    if (!isOwn || sessionStatus !== "authenticated") {
+      setServerLinks([]);
+      return;
+    }
+    let cancelled = false;
+    void fetch("/api/wallets")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        setServerLinks(
+          (data.wallets as { family: LinkedWallet["family"]; address: string; verifiedAt: string }[]).map(
+            (w) => ({
+              family: w.family,
+              address: w.address,
+              linkedAt: Math.floor(new Date(w.verifiedAt).getTime() / 1000),
+            }),
+          ),
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isOwn, sessionStatus, linkModalOpen]);
+
   // Registry links come with the profile; the owner's locally recorded links
-  // override per family so the page reflects the modal immediately.
+  // override per family (so the modal reflects immediately), and server-
+  // verified links from the account win over both.
   const displayedLinks: LinkedWallet[] = React.useMemo(() => {
     if (!isOwn || !identityHydrated) return profile.linkedWallets;
     const byFamily = new Map(profile.linkedWallets.map((w) => [w.family, w]));
     for (const w of localLinks) byFamily.set(w.family, w);
+    for (const w of serverLinks) byFamily.set(w.family, w);
     return Array.from(byFamily.values());
-  }, [isOwn, identityHydrated, profile.linkedWallets, localLinks]);
+  }, [isOwn, identityHydrated, profile.linkedWallets, localLinks, serverLinks]);
 
   React.useEffect(() => {
     let cancelled = false;

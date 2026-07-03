@@ -5,11 +5,7 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { CHAIN_FAMILY_LABELS, type ChainFamily } from "@fileonchain/sdk";
 import Button from "@/components/ui/Button";
-import { useEVMWallet } from "@/hooks/useEVMWallet";
-import { useSolanaWallet } from "@/hooks/useSolanaWallet";
-import { useAptosWallet } from "@/hooks/useAptosWallet";
-import { useWalletStates } from "@/states/wallet";
-import { buildWalletMessage } from "@/lib/auth/wallet-message";
+import { useWalletProof } from "@/hooks/useWalletProof";
 import { trackEvent } from "@/lib/analytics";
 
 interface WalletSignInButtonsProps {
@@ -17,106 +13,16 @@ interface WalletSignInButtonsProps {
   next: string;
 }
 
-interface WalletProof {
-  address: string;
-  signature: string;
-  nonce: string;
-  publicKey?: string;
-  fullMessage?: string;
-}
-
-const requestNonce = async (
-  family: ChainFamily,
-  address: string,
-): Promise<{ nonce: string; issuedAt: string }> => {
-  const res = await fetch("/api/auth/wallet/nonce", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ family, address }),
-  });
-  if (!res.ok) throw new Error("Could not issue a sign-in nonce");
-  return res.json();
-};
-
 /**
- * Wallet sign-in for all four runtime families: connect → fetch a single-use
- * nonce → sign the challenge → exchange the proof for a session via the
+ * Wallet sign-in for all four runtime families: collect a nonce-bound
+ * signature via useWalletProof, then exchange it for a session through the
  * "wallet" Credentials provider.
- *
- * The substrate flow talks to @polkadot/extension-dapp lazily on click (not
- * through useWallet) so merely rendering /login never triggers the extension
- * authorization pop-up.
  */
 export const WalletSignInButtons = ({ next }: WalletSignInButtonsProps) => {
   const router = useRouter();
+  const { collectProof } = useWalletProof();
   const [pending, setPending] = React.useState<ChainFamily | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-
-  const evm = useEVMWallet();
-  const solana = useSolanaWallet();
-  const aptos = useAptosWallet();
-  const substrateAccount = useWalletStates((s) => s.selectedAccount);
-
-  const collectProof = async (family: ChainFamily): Promise<WalletProof> => {
-    switch (family) {
-      case "evm": {
-        const address = evm.address ?? (await evm.connect());
-        const { nonce, issuedAt } = await requestNonce(family, address);
-        const message = buildWalletMessage({ family, address, nonce, issuedAt });
-        const signature = await evm.signMessage(message, address);
-        return { address, signature, nonce };
-      }
-      case "solana": {
-        const address = solana.address ?? (await solana.connect());
-        const { nonce, issuedAt } = await requestNonce(family, address);
-        const message = buildWalletMessage({ family, address, nonce, issuedAt });
-        const signature = await solana.signMessage(message);
-        return { address, signature, nonce };
-      }
-      case "aptos": {
-        const address = aptos.address ?? (await aptos.connect());
-        const { nonce, issuedAt } = await requestNonce(family, address);
-        const message = buildWalletMessage({ family, address, nonce, issuedAt });
-        const { signature, fullMessage, publicKey } = await aptos.signMessage(
-          message,
-          nonce,
-        );
-        return { address, signature, nonce, publicKey, fullMessage };
-      }
-      case "substrate": {
-        const { web3Enable, web3Accounts, web3FromSource } = await import(
-          "@polkadot/extension-dapp"
-        );
-        const { stringToHex } = await import("@polkadot/util");
-        const extensions = await web3Enable("FileOnChain");
-        if (extensions.length === 0) {
-          throw new Error(
-            "No Substrate extension detected. Install SubWallet or polkadot.js.",
-          );
-        }
-        const accounts = await web3Accounts();
-        const account =
-          (substrateAccount &&
-            accounts.find((a) => a.address === substrateAccount.address)) ??
-          accounts[0];
-        if (!account) throw new Error("No Substrate account available");
-        const address = account.address;
-        const { nonce, issuedAt } = await requestNonce(family, address);
-        const message = buildWalletMessage({ family, address, nonce, issuedAt });
-        const injector = await web3FromSource(account.meta.source);
-        const signRaw = injector.signer?.signRaw;
-        if (!signRaw) {
-          throw new Error("The selected extension does not support raw signing");
-        }
-        const { signature } = await signRaw({
-          address,
-          data: stringToHex(message),
-          type: "bytes",
-        });
-        return { address, signature, nonce };
-      }
-    }
-  };
 
   const handleSignIn = async (family: ChainFamily) => {
     setPending(family);

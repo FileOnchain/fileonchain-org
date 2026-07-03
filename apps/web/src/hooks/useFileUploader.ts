@@ -12,11 +12,17 @@ import {
   useCallback,
   useState,
 } from "react";
-import { ChunkData } from "@/utils/generateCIDs";
+import { ZERO_ADDRESS } from "@fileonchain/sdk";
+import { ChunkData, generateCIDs } from "@/utils/generateCIDs";
 import { readFileContent } from "@/utils/readFileContent";
 import { mockAnchorCID, MockUploadResult } from "@/lib/mock/upload";
 import { useChain } from "@/hooks/useChain";
-import { getMockCIDRecord } from "@/lib/mock/registry";
+import { useEVMWallet } from "@/hooks/useEVMWallet";
+import { useSolanaWallet } from "@/hooks/useSolanaWallet";
+import { useAptosWallet } from "@/hooks/useAptosWallet";
+import { useWallet } from "@/hooks/useWallet";
+import { useWalletStates } from "@/states/wallet";
+import type { CIDPreviewData } from "@/components/registry/CIDPreviewPanel";
 import { trackEvent } from "@/lib/analytics";
 
 const CHUNK_BUFFER_SIZE = 64 * 1024;
@@ -49,24 +55,22 @@ type SelectedCidData = {
   nextCid?: string;
 };
 
-export interface CIDPreview {
-  cid: string;
-  chainId: string;
-  chainName: string;
-  chainShortName: string;
-  registryAddress: `0x${string}`;
-  txHash: string;
-  blockNumber: number;
-  timestamp: number;
-  submitter: string;
-  status: "anchored" | "pending" | "missing";
-}
+export type UploadPaymentMethod = "payg" | "credits" | "byok";
+
+export type AnchorStatus = "idle" | "signing" | "anchoring" | "done" | "failed";
 
 export const useFileUploader = () => {
   const { activeChain } = useChain();
+  const evm = useEVMWallet();
+  const solana = useSolanaWallet();
+  const aptos = useAptosWallet();
+  const substrate = useWallet();
+  const substrateAccount = useWalletStates((s) => s.selectedAccount);
+
   const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [fileContent, setFileContent] = useState<string | null>(null);
+  const [fileCid, setFileCid] = useState<string | null>(null);
   const [cids, setCids] = useState<ChunkData[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [selectedCidData, setSelectedCidData] = useState<SelectedCidData | null>(null);
@@ -74,7 +78,12 @@ export const useFileUploader = () => {
   const [txHash, setTxHash] = useState<string | null>(null);
   const [fileFound, setFileFound] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [preview, setPreview] = useState<CIDPreview | null>(null);
+  const [preview, setPreview] = useState<CIDPreviewData | null>(null);
+
+  const [paymentMethod, setPaymentMethod] = useState<UploadPaymentMethod>("payg");
+  const [byokKeyId, setByokKeyId] = useState<string | null>(null);
+  const [anchorStatus, setAnchorStatus] = useState<AnchorStatus>("idle");
+  const [anchorProgress, setAnchorProgress] = useState(0);
 
   const handleSearch = useCallback(async (chunks: ChunkData[]) => {
     if (chunks.length === 0) return;
@@ -88,9 +97,9 @@ export const useFileUploader = () => {
   }, []);
 
   /**
-   * Run the full upload flow: ingest via IPLD, generate per-chunk CIDs,
-   * call the mock anchor to simulate on-chain confirmation, populate the
-   * preview panel.
+   * Prepare a file: ingest via IPLD for the canonical file CID and slice
+   * into real 64KB SHA-256 chunks. Anchoring is a separate explicit step —
+   * see `anchor()` — so the user can pick a payment method first.
    */
   const processFile = useCallback(
     async (selectedFile: File) => {
@@ -99,80 +108,209 @@ export const useFileUploader = () => {
       setError(null);
       setPreview(null);
       setCids([]);
+      setFileCid(null);
+      setTxHash(null);
+      setAnchorStatus("idle");
+      setAnchorProgress(0);
       setIsUploading(true);
 
       try {
         const blockstore = new MemoryBlockstore();
         const fileBufferIterable = fileToBufferIterable(selectedFile);
 
-        const fileCID = await processFileToIPLDFormat(
+        const ipldCid = await processFileToIPLDFormat(
           blockstore,
           fileBufferIterable,
           BigInt(selectedFile.size),
           selectedFile.name,
         );
 
-        const cidString = cidToString(fileCID);
+        const cidString = cidToString(ipldCid);
         // Ensure round-trip parse works
         stringToCid(cidString);
+        setFileCid(cidString);
 
-        // Mock on-chain anchor (Phase 10 — wires to real RPC later).
-        const result: MockUploadResult = await mockAnchorCID({
-          cid: cidString,
-          chain: activeChain,
-          fileSize: selectedFile.size,
-        });
+        // Real 64KB chunking — one entry (and, in production, one
+        // transaction) per chunk, with nextCid chaining.
+        const chunks = await generateCIDs(selectedFile, CHUNK_BUFFER_SIZE);
+        setCids(chunks);
 
-        setTxHash(result.txHash);
-
-        // Resolve a preview record from the mock registry.
-        const mockRecord = getMockCIDRecord(cidString, activeChain.id);
-        if (mockRecord) {
-          setPreview({
-            cid: cidString,
-            chainId: activeChain.id,
-            chainName: activeChain.name,
-            chainShortName: activeChain.shortName,
-            registryAddress: mockRecord.registryAddress,
-            txHash: result.txHash,
-            blockNumber: result.blockNumber,
-            timestamp: result.timestamp,
-            submitter: result.submitter,
-            status: "anchored",
-          });
-        }
-
-        // Phase 10 wires generateCIDs to populate the chunk list; for now we
-        // emit a single pseudo-chunk representing the fileCID.
-        setCids([
-          {
-            cid: fileCID,
-            data: new Uint8Array(),
-          },
-        ]);
-
-        await handleSearch([{ cid: fileCID, data: new Uint8Array() }]);
-
-        trackEvent("file_upload", {
-          chain_id: activeChain.id,
-          chain_family: activeChain.family,
-          file_size: selectedFile.size,
-          status: "success",
-        });
+        await handleSearch(chunks);
       } catch (e) {
         setError((e as Error).message);
-        trackEvent("file_upload", {
-          chain_id: activeChain.id,
-          chain_family: activeChain.family,
-          file_size: selectedFile.size,
-          status: "error",
-        });
       } finally {
         setIsUploading(false);
       }
     },
-    [activeChain, handleSearch],
+    [handleSearch],
   );
+
+  /** One wallet signature authorizing the batch, per the active family. */
+  const signAuthorization = useCallback(
+    async (message: string): Promise<string> => {
+      switch (activeChain.family) {
+        case "evm": {
+          const address = evm.address ?? (await evm.connect());
+          return evm.signMessage(message, address);
+        }
+        case "solana": {
+          if (!solana.address) await solana.connect();
+          return solana.signMessage(message);
+        }
+        case "aptos": {
+          if (!aptos.address) await aptos.connect();
+          const { signature } = await aptos.signMessage(
+            message,
+            `${Math.floor(Math.random() * 1_000_000_000)}`,
+          );
+          return signature;
+        }
+        case "substrate": {
+          if (!substrateAccount) {
+            throw new Error("Connect a Substrate wallet first");
+          }
+          return substrate.signMessage(substrateAccount, message);
+        }
+      }
+    },
+    [activeChain.family, evm, solana, aptos, substrate, substrateAccount],
+  );
+
+  const buildPreview = useCallback(
+    (tx: { txHash: string; blockNumber: number; submitter: string; timestamp: number }): CIDPreviewData => ({
+      cid: fileCid ?? "",
+      chainId: activeChain.id,
+      chainName: activeChain.name,
+      chainShortName: activeChain.shortName,
+      registryAddress: (activeChain.registryContract ?? ZERO_ADDRESS) as `0x${string}`,
+      txHash: tx.txHash,
+      blockNumber: tx.blockNumber,
+      timestamp: tx.timestamp,
+      submitter: tx.submitter,
+      explorerUrl: activeChain.explorerUrl,
+      explorerTxPath: activeChain.explorerTxPath,
+      explorerAddressPath: activeChain.explorerAddressPath,
+      status: "anchored",
+    }),
+    [activeChain, fileCid],
+  );
+
+  /**
+   * Anchor the prepared file with the selected payment method.
+   *
+   * - "payg": one wallet signature authorizes the batch, then chunks are
+   *   sent (mock — see TODO) with visible progress.
+   * - "credits" / "byok": POST /api/uploads and the backend anchors
+   *   server-side; no wallet interaction.
+   */
+  const anchor = useCallback(async () => {
+    if (!file || !fileCid || cids.length === 0) return;
+    setError(null);
+    setAnchorProgress(0);
+
+    try {
+      if (paymentMethod === "payg") {
+        setAnchorStatus("signing");
+        await signAuthorization(
+          `FileOnChain: anchor ${fileCid} — ${cids.length} chunk(s) on ${activeChain.name}`,
+        );
+
+        setAnchorStatus("anchoring");
+        /* TODO: send each chunk for real — Substrate: utility.batch of
+         * system.remarkWithEvent per chunk (utils/uploadChunks.ts); EVM:
+         * @fileonchain/sdk/evm anchorCID via viem writeContract; Solana/
+         * Aptos: program/module clients once deployed. Today each chunk
+         * "send" is simulated, then the file-level mock anchor runs. */
+        for (let i = 0; i < cids.length; i += 1) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.min(60, 1200 / cids.length)),
+          );
+          setAnchorProgress(i + 1);
+        }
+        const result: MockUploadResult = await mockAnchorCID({
+          cid: fileCid,
+          chain: activeChain,
+          fileSize: file.size,
+        });
+        setTxHash(result.txHash);
+        setPreview(
+          buildPreview({
+            txHash: result.txHash,
+            blockNumber: result.blockNumber,
+            submitter: result.submitter,
+            timestamp: result.timestamp,
+          }),
+        );
+      } else {
+        setAnchorStatus("anchoring");
+        const res = await fetch("/api/uploads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            cid: fileCid,
+            fileName: file.name,
+            fileSizeBytes: file.size,
+            chunkCount: cids.length,
+            chainIds: [activeChain.id],
+            paymentMethod: paymentMethod === "byok" ? "byok" : "credits",
+            byokKeyId: paymentMethod === "byok" ? byokKeyId : undefined,
+          }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          if (res.status === 401) {
+            throw new Error("Sign in to anchor with account credits");
+          }
+          throw new Error(data?.error ?? "Anchoring failed");
+        }
+        const { job } = await res.json();
+        const firstTx = job.txHashes?.[0];
+        if (firstTx) {
+          setTxHash(firstTx.txHash);
+          setPreview(
+            buildPreview({
+              txHash: firstTx.txHash,
+              blockNumber: firstTx.blockNumber,
+              submitter: "FileOnChain backend",
+              timestamp: Math.floor(Date.now() / 1000),
+            }),
+          );
+        }
+        setAnchorProgress(cids.length);
+      }
+
+      setAnchorStatus("done");
+      trackEvent("anchor_paid", {
+        method: paymentMethod,
+        chain_count: 1,
+        chunk_count: cids.length,
+      });
+      trackEvent("file_upload", {
+        chain_id: activeChain.id,
+        chain_family: activeChain.family,
+        file_size: file.size,
+        status: "success",
+      });
+    } catch (e) {
+      setAnchorStatus("failed");
+      setError((e as Error).message);
+      trackEvent("file_upload", {
+        chain_id: activeChain.id,
+        chain_family: activeChain.family,
+        file_size: file.size,
+        status: "error",
+      });
+    }
+  }, [
+    file,
+    fileCid,
+    cids,
+    paymentMethod,
+    byokKeyId,
+    activeChain,
+    signAuthorization,
+    buildPreview,
+  ]);
 
   const handleFileChange = useCallback(
     async (e: ChangeEvent<HTMLInputElement>) => {
@@ -220,6 +358,7 @@ export const useFileUploader = () => {
     file,
     dragActive,
     fileContent,
+    fileCid,
     cids,
     isOpen,
     selectedCidData,
@@ -228,6 +367,13 @@ export const useFileUploader = () => {
     fileFound,
     isUploading,
     preview,
+    paymentMethod,
+    byokKeyId,
+    anchorStatus,
+    anchorProgress,
+    setPaymentMethod,
+    setByokKeyId,
+    anchor,
     handleFileChange,
     handleDrag,
     handleDrop,
