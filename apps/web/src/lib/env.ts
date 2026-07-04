@@ -42,4 +42,10 @@ export const env = {
   get anchorSubstrateSeed(): string | undefined {
     return process.env.ANCHOR_SUBSTRATE_SEED;
   },
+  get anchorSolanaSecretKey(): string | undefined {
+    return process.env.ANCHOR_SOLANA_SECRET_KEY;
+  },
+  get anchorAptosPrivateKey(): string | undefined {
+    return process.env.ANCHOR_APTOS_PRIVATE_KEY;
+  },
 };
