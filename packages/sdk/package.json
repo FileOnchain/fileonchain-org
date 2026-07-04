@@ -18,7 +18,15 @@
     "./evm": "./src/evm/index.ts",
     "./substrate": "./src/substrate/index.ts",
     "./solana": "./src/solana/index.ts",
-    "./aptos": "./src/aptos/index.ts"
+    "./aptos": "./src/aptos/index.ts",
+    "./cosmos": "./src/cosmos/index.ts",
+    "./sui": "./src/sui/index.ts",
+    "./starknet": "./src/starknet/index.ts",
+    "./near": "./src/near/index.ts",
+    "./tron": "./src/tron/index.ts",
+    "./cardano": "./src/cardano/index.ts",
+    "./ton": "./src/ton/index.ts",
+    "./hedera": "./src/hedera/index.ts"
   },
   "publishConfig": {
     "access": "public",
@@ -47,6 +55,46 @@
         "types": "./dist/aptos/index.d.ts",
         "import": "./dist/aptos/index.js",
         "require": "./dist/aptos/index.cjs"
+      },
+      "./cosmos": {
+        "types": "./dist/cosmos/index.d.ts",
+        "import": "./dist/cosmos/index.js",
+        "require": "./dist/cosmos/index.cjs"
+      },
+      "./sui": {
+        "types": "./dist/sui/index.d.ts",
+        "import": "./dist/sui/index.js",
+        "require": "./dist/sui/index.cjs"
+      },
+      "./starknet": {
+        "types": "./dist/starknet/index.d.ts",
+        "import": "./dist/starknet/index.js",
+        "require": "./dist/starknet/index.cjs"
+      },
+      "./near": {
+        "types": "./dist/near/index.d.ts",
+        "import": "./dist/near/index.js",
+        "require": "./dist/near/index.cjs"
+      },
+      "./tron": {
+        "types": "./dist/tron/index.d.ts",
+        "import": "./dist/tron/index.js",
+        "require": "./dist/tron/index.cjs"
+      },
+      "./cardano": {
+        "types": "./dist/cardano/index.d.ts",
+        "import": "./dist/cardano/index.js",
+        "require": "./dist/cardano/index.cjs"
+      },
+      "./ton": {
+        "types": "./dist/ton/index.d.ts",
+        "import": "./dist/ton/index.js",
+        "require": "./dist/ton/index.cjs"
+      },
+      "./hedera": {
+        "types": "./dist/hedera/index.d.ts",
+        "import": "./dist/hedera/index.js",
+        "require": "./dist/hedera/index.cjs"
       }
     }
   },

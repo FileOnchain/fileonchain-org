@@ -8,6 +8,14 @@ const SHORT_CODES: Record<ChainFamily, string> = {
   substrate: "SUB",
   solana: "SOL",
   aptos: "APT",
+  cosmos: "ATOM",
+  sui: "SUI",
+  starknet: "STRK",
+  near: "NEAR",
+  tron: "TRX",
+  cardano: "ADA",
+  ton: "TON",
+  hedera: "HBAR",
 };
 
 interface RuntimeChipProps {

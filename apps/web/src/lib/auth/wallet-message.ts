@@ -15,11 +15,24 @@ export interface WalletChallenge {
   issuedAt: string;
 }
 
+/**
+ * Families whose wallets can sign in / link today — a browser proof flow
+ * exists client-side AND the server can verify it soundly. TON (needs a
+ * TON Connect manifest + proof of wallet stateInit) and Hedera (needs a
+ * HashConnect pairing flow) anchor fine but stay out of auth until that
+ * infrastructure lands.
+ */
 export const WALLET_FAMILIES: readonly ChainFamily[] = [
   "evm",
   "substrate",
   "solana",
   "aptos",
+  "cosmos",
+  "sui",
+  "starknet",
+  "near",
+  "tron",
+  "cardano",
 ];
 
 export const isWalletFamily = (value: unknown): value is ChainFamily =>
@@ -43,10 +56,20 @@ export const buildWalletMessage = ({
     `Issued At: ${issuedAt}`,
   ].join("\n");
 
-/**
- * Canonical address form used for storage and lookups. EVM and Aptos hex
- * addresses are case-insensitive → lowercase; base58 (solana) and SS58
- * (substrate) are case-sensitive → kept as-is.
- */
+/** Families whose addresses are case-insensitive hex (or bech32, which is
+ * lowercase by construction) — canonicalized to lowercase for storage and
+ * lookups. Base58 families (solana, substrate, tron, ton) and Hedera's
+ * numeric ids are case-sensitive or already canonical → kept as-is. */
+const LOWERCASE_FAMILIES: readonly ChainFamily[] = [
+  "evm",
+  "aptos",
+  "sui",
+  "starknet",
+  "near",
+  "cosmos",
+  "cardano",
+];
+
+/** Canonical address form used for storage and lookups. */
 export const normalizeAddress = (family: ChainFamily, address: string): string =>
-  family === "evm" || family === "aptos" ? address.toLowerCase() : address;
+  LOWERCASE_FAMILIES.includes(family) ? address.toLowerCase() : address;

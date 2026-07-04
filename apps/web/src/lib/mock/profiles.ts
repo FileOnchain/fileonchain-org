@@ -79,6 +79,21 @@ export const mockLinkedAddress = (primary: string, family: ChainFamily): string 
       return `5${charsFrom(seed, BASE58, 47)}`;
     case "solana":
       return charsFrom(seed, BASE58, 44);
+    case "cosmos":
+      return `cosmos1${charsFrom(seed, BASE58.toLowerCase(), 38)}`;
+    case "sui":
+    case "starknet":
+      return `0x${charsFrom(seed, HEX, 64)}`;
+    case "near":
+      return `${charsFrom(seed, HEX, 12)}.near`;
+    case "tron":
+      return `T${charsFrom(seed, BASE58, 33)}`;
+    case "cardano":
+      return `addr1${charsFrom(seed, BASE58.toLowerCase(), 53)}`;
+    case "ton":
+      return `EQ${charsFrom(seed, BASE58, 46)}`;
+    case "hedera":
+      return `0.0.${(hashString(seed) % 9_000_000) + 1_000_000}`;
   }
 };
 

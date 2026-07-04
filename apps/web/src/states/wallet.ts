@@ -16,6 +16,22 @@ interface WalletState {
   solanaAddress: string | null;
   /** Aptos address once connected. */
   aptosAddress: string | null;
+  /** Cosmos address once connected. */
+  cosmosAddress: string | null;
+  /** Sui address once connected. */
+  suiAddress: string | null;
+  /** Starknet address once connected. */
+  starknetAddress: string | null;
+  /** Near address once connected. */
+  nearAddress: string | null;
+  /** Tron address once connected. */
+  tronAddress: string | null;
+  /** Cardano address once connected. */
+  cardanoAddress: string | null;
+  /** Ton address once connected. */
+  tonAddress: string | null;
+  /** Hedera address once connected. */
+  hederaAddress: string | null;
 }
 
 interface WalletStateAndHelpers extends WalletState {
@@ -27,6 +43,14 @@ interface WalletStateAndHelpers extends WalletState {
   setEvmAddress: (address: `0x${string}` | null) => void;
   setSolanaAddress: (address: string | null) => void;
   setAptosAddress: (address: string | null) => void;
+  setCosmosAddress: (address: string | null) => void;
+  setSuiAddress: (address: string | null) => void;
+  setStarknetAddress: (address: string | null) => void;
+  setNearAddress: (address: string | null) => void;
+  setTronAddress: (address: string | null) => void;
+  setCardanoAddress: (address: string | null) => void;
+  setTonAddress: (address: string | null) => void;
+  setHederaAddress: (address: string | null) => void;
   clear: () => void;
 }
 
@@ -39,6 +63,14 @@ const initialState: WalletState = {
   evmAddress: null,
   solanaAddress: null,
   aptosAddress: null,
+  cosmosAddress: null,
+  suiAddress: null,
+  starknetAddress: null,
+  nearAddress: null,
+  tronAddress: null,
+  cardanoAddress: null,
+  tonAddress: null,
+  hederaAddress: null,
 };
 
 export const useWalletStates = create<WalletStateAndHelpers>((set) => ({
@@ -51,5 +83,13 @@ export const useWalletStates = create<WalletStateAndHelpers>((set) => ({
   setEvmAddress: (evmAddress) => set(() => ({ evmAddress })),
   setSolanaAddress: (solanaAddress) => set(() => ({ solanaAddress })),
   setAptosAddress: (aptosAddress) => set(() => ({ aptosAddress })),
+  setCosmosAddress: (cosmosAddress) => set(() => ({ cosmosAddress })),
+  setSuiAddress: (suiAddress) => set(() => ({ suiAddress })),
+  setStarknetAddress: (starknetAddress) => set(() => ({ starknetAddress })),
+  setNearAddress: (nearAddress) => set(() => ({ nearAddress })),
+  setTronAddress: (tronAddress) => set(() => ({ tronAddress })),
+  setCardanoAddress: (cardanoAddress) => set(() => ({ cardanoAddress })),
+  setTonAddress: (tonAddress) => set(() => ({ tonAddress })),
+  setHederaAddress: (hederaAddress) => set(() => ({ hederaAddress })),
   clear: () => set(() => ({ ...initialState })),
 }));
