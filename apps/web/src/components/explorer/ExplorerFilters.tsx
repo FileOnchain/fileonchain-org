@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import type { ChainFamily } from "@fileonchain/sdk";
+import { CHAIN_FAMILIES, CHAIN_FAMILY_LABELS, type ChainFamily } from "@fileonchain/sdk";
 import type { FileCategory } from "@/lib/mock/cid-indexer";
 import { cn } from "@/lib/cn";
 
@@ -15,10 +15,10 @@ interface ExplorerFiltersProps {
 
 const RUNTIME_OPTIONS: Array<{ id: ChainFamily | "all"; label: string }> = [
   { id: "all", label: "All runtimes" },
-  { id: "evm", label: "EVM-compatible" },
-  { id: "substrate", label: "Substrate-based" },
-  { id: "solana", label: "Solana" },
-  { id: "aptos", label: "Aptos" },
+  ...CHAIN_FAMILIES.map((family) => ({
+    id: family,
+    label: CHAIN_FAMILY_LABELS[family],
+  })),
 ];
 
 const CATEGORY_OPTIONS: Array<{ id: FileCategory | "all"; label: string }> = [

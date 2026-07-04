@@ -15,9 +15,18 @@ ed.hashes.sha512 = sha512;
 export interface WalletVerificationInput {
   family: ChainFamily;
   address: string;
+  /**
+   * Family-shaped signature: hex (evm, substrate, aptos, tron), base64
+   * (solana, cosmos, near, sui — sui's embeds the public key), a JSON felt
+   * array (starknet), or COSE_Sign1 CBOR hex (cardano).
+   */
   signature: string;
   nonce: string;
-  /** Required for aptos (hex ed25519 key); unused elsewhere. */
+  /**
+   * The signer's key where signatures don't recover it: aptos (hex
+   * ed25519), cosmos (base64 secp256k1), near ("ed25519:…"), cardano
+   * (COSE_Key CBOR hex). Unused elsewhere.
+   */
   publicKey?: string;
   /**
    * Aptos wallets (Petra/Martian) sign their own envelope around our message
@@ -141,5 +150,42 @@ const verifyForFamily = async (
       const signature = hexToBytes(stripHex(input.signature));
       return ed.verify(signature, utf8(input.fullMessage), publicKey);
     }
+
+    case "cosmos": {
+      const { verifyCosmos } = await import("./verifiers/cosmos");
+      return verifyCosmos(input, message);
+    }
+
+    case "sui": {
+      const { verifySui } = await import("./verifiers/sui");
+      return verifySui(input, message);
+    }
+
+    case "starknet": {
+      const { verifyStarknet } = await import("./verifiers/starknet");
+      return verifyStarknet(input, message);
+    }
+
+    case "near": {
+      const { verifyNear } = await import("./verifiers/near");
+      return verifyNear(input, message);
+    }
+
+    case "tron": {
+      const { verifyTron } = await import("./verifiers/tron");
+      return verifyTron(input, message);
+    }
+
+    case "cardano": {
+      const { verifyCardano } = await import("./verifiers/cardano");
+      return verifyCardano(input, message);
+    }
+
+    case "ton":
+    case "hedera":
+      // Anchoring works on these families; sign-in doesn't yet — TON needs
+      // a TON Connect proof flow, Hedera a HashConnect pairing. Keep them
+      // out of WALLET_FAMILIES (wallet-message.ts) until that lands.
+      throw new Error(`Wallet sign-in is not yet supported for ${input.family}`);
   }
 };

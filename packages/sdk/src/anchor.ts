@@ -176,7 +176,10 @@ export class ChainNotProvisionedError extends Error {
 /**
  * Whether real anchoring transactions can be sent on this chain today.
  * Solana is always provisioned — anchors ride the SPL Memo program, which
- * needs no deployment of ours.
+ * needs no deployment of ours. Memo/metadata/comment families (Cosmos,
+ * TRON, Cardano, TON) provision by flipping `memoAnchoring` on the chain
+ * entry after QA; module/contract families flip when their deployed
+ * address lands in the registry.
  */
 export const isChainProvisioned = (chain: ChainConfig): boolean => {
   switch (chain.family) {
@@ -187,7 +190,18 @@ export const isChainProvisioned = (chain: ChainConfig): boolean => {
     case "solana":
       return true;
     case "aptos":
+    case "sui":
+    case "near":
       return !!chain.moduleAddress;
+    case "starknet":
+      return !!chain.registryContract && chain.registryContract !== ZERO_ADDRESS;
+    case "cosmos":
+    case "tron":
+    case "cardano":
+    case "ton":
+      return chain.memoAnchoring === true || !!chain.moduleAddress;
+    case "hedera":
+      return !!chain.hcsTopicId;
   }
 };
 

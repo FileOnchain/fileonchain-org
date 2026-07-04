@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect } from "react";
 import { useWalletStates } from "@/states/wallet";
+import { trackEvent } from "@/lib/analytics";
 
 /* TODO: wire to wallet-adapter for Phantom / Solflare standard flow */
 
@@ -74,6 +75,7 @@ export const useSolanaWallet = () => {
     const address = publicKey.toBase58();
     setSolanaAddress(address);
     setChainFamily("solana");
+    trackEvent("wallet_connect", { family: "solana" });
     return address;
   }, [setSolanaAddress, setChainFamily]);
 

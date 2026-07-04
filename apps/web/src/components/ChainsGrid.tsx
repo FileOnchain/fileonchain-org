@@ -5,9 +5,11 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import { FiCheck } from "react-icons/fi";
 import {
+  CHAIN_FAMILIES,
   CHAIN_FAMILY_LABELS,
   CHAIN_FAMILY_TAGLINES,
   type ChainConfig,
+  type ChainFamily,
 } from "@fileonchain/sdk";
 import { useChain } from "@/hooks/useChain";
 import { useVisibleChains } from "@/hooks/useVisibleChains";
@@ -23,8 +25,8 @@ import ScrollReveal from "@/components/ScrollReveal";
  * / upload flow in sync.
  */
 
-const RUNTIMES = ["evm", "substrate", "solana", "aptos"] as const;
-type Runtime = (typeof RUNTIMES)[number];
+const RUNTIMES = CHAIN_FAMILIES;
+type Runtime = ChainFamily;
 
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 

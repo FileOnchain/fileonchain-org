@@ -1,0 +1,5 @@
+# near-sdk 5.28+ needs a recent stable; pin so builds are reproducible and
+# rustup fetches the right toolchain automatically.
+[toolchain]
+channel = "1.93"
+targets = ["wasm32-unknown-unknown"]

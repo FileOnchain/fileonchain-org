@@ -5,8 +5,9 @@ going through the [fileonchain.org](https://fileonchain.org) frontend.
 
 The SDK is the single source of truth for:
 
-- **Supported networks** — `CHAINS`, one `ChainConfig` per network across four
-  chain families (EVM, Substrate, Solana, Aptos), including RPC endpoints,
+- **Supported networks** — `CHAINS`, one `ChainConfig` per network across
+  twelve chain families (EVM, Substrate, Solana, Aptos, Cosmos, Sui,
+  Starknet, NEAR, TRON, Cardano, TON, Hedera), including RPC endpoints,
   explorer URLs, and the deployed contract addresses.
 - **Contract ABIs** — `fileRegistryAbi`, `cachePaymentsAbi`,
   `donationEscrowAbi`, generated from the Foundry build output.
@@ -26,8 +27,12 @@ pnpm add @fileonchain/sdk
 
 The core entry point (`@fileonchain/sdk`) is dependency-free. `viem`,
 `@polkadot/api`, and `@solana/web3.js` are optional peer dependencies used
-only by the `./evm`, `./substrate`, and `./solana` subpaths; `./aptos` is
-dependency-free (it drives the injected wallet provider).
+only by the `./evm`, `./substrate`, and `./solana` subpaths. Every other
+family subpath (`./aptos`, `./cosmos`, `./sui`, `./starknet`, `./near`,
+`./tron`, `./cardano`, `./ton`, `./hedera`) is dependency-free: the SDK
+builds payloads, batches, and progress, and a minimal structural signer
+interface owns transport — adapt a wallet provider (browser) or the chain's
+own SDK (server) to it.
 
 ## Networks and addresses
 
@@ -122,6 +127,6 @@ The files under `src/abis/` are generated from the Foundry workspace. After
 changing a contract:
 
 ```bash
-cd contracts && forge build
+cd contracts/evm && forge build
 node scripts/extract-abis.mjs   # from packages/sdk
 ```

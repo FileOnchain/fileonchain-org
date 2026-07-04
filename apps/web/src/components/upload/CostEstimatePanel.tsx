@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { FiCheck, FiInfo } from "react-icons/fi";
+import { FiAlertTriangle, FiCheck, FiInfo } from "react-icons/fi";
 import {
   formatCostUsd,
   getChainCostEstimates,
@@ -10,6 +10,7 @@ import {
   type ChainCostEstimate,
 } from "@/lib/mock/costs";
 import { useChain } from "@/hooks/useChain";
+import { useVisibleChains } from "@/hooks/useVisibleChains";
 import { cn } from "@/lib/cn";
 
 interface CostEstimatePanelProps {
@@ -41,7 +42,15 @@ const TIER_LABELS: Record<ChainCostEstimate["tier"], string> = {
 
 const CostEstimatePanel = ({ chunkCount }: CostEstimatePanelProps) => {
   const { activeChain } = useChain();
-  const estimates = React.useMemo(() => getChainCostEstimates(), []);
+  const visibleChains = useVisibleChains();
+  // Same testnet-visibility gate as every picker; keep the active chain
+  // even if it's a testnet the preference would hide.
+  const estimates = React.useMemo(() => {
+    const visible = new Set(visibleChains.map((chain) => chain.id));
+    return getChainCostEstimates().filter(
+      (est) => visible.has(est.chainId) || est.chainId === activeChain.id,
+    );
+  }, [visibleChains, activeChain.id]);
   // Chains the user has selected for redundant anchoring. The active chain
   // is on by default; the user can toggle others.
   const [selected, setSelected] = React.useState<Set<string>>(
@@ -105,6 +114,26 @@ const CostEstimatePanel = ({ chunkCount }: CostEstimatePanelProps) => {
         One chain is enough to retrieve. Each chain you check below pays its own
         gas and a small platform fee — costs scale linearly with the number of chains.
       </p>
+
+      {/* Chunk anchoring on L1s adds up fast — call it out before signing. */}
+      {estimates.some((est) => selected.has(est.chainId) && est.tier === "expensive") && (
+        <p
+          role="alert"
+          className="mt-2 flex items-start gap-1.5 rounded-md border border-danger/30 bg-danger/5 px-2.5 py-1.5 text-[11px] text-danger"
+        >
+          <FiAlertTriangle size={11} className="mt-0.5 shrink-0" />
+          <span>
+            {estimates
+              .filter((est) => selected.has(est.chainId) && est.tier === "expensive")
+              .map(
+                (est) =>
+                  `${est.chainName} fees are high — about ${formatCostUsd(totalCostFor(est, chunkCount).usd)} for this file`,
+              )
+              .join("; ")}
+            . An L2 anchors the same CIDs for a fraction of that.
+          </span>
+        </p>
+      )}
 
       <div className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
         {estimates.map((est) => {

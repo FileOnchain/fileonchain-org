@@ -4,6 +4,7 @@ import * as React from "react";
 import { CHAIN_FAMILY_LABELS, type ChainFamily } from "@fileonchain/sdk";
 import Button from "@/components/ui/Button";
 import { useAccountWallets } from "@/hooks/useAccountWallets";
+import { WALLET_FAMILIES } from "@/lib/auth/wallet-message";
 
 interface WalletSignInButtonsProps {
   /** Same-site path to land on after sign-in. */
@@ -11,8 +12,9 @@ interface WalletSignInButtonsProps {
 }
 
 /**
- * Wallet sign-in for all four runtime families — thin buttons over
- * useAccountWallets.signInWithWallet (connect → nonce → sign → session).
+ * Wallet sign-in for every auth-capable runtime family (WALLET_FAMILIES) —
+ * thin buttons over useAccountWallets.signInWithWallet
+ * (connect → nonce → sign → session).
  */
 export const WalletSignInButtons = ({ next }: WalletSignInButtonsProps) => {
   const { signInWithWallet } = useAccountWallets();
@@ -36,7 +38,7 @@ export const WalletSignInButtons = ({ next }: WalletSignInButtonsProps) => {
 
   return (
     <div className="flex flex-col gap-2">
-      {(["evm", "substrate", "solana", "aptos"] as const).map((family) => (
+      {WALLET_FAMILIES.map((family) => (
         <Button
           key={family}
           variant="secondary"

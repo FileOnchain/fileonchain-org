@@ -48,4 +48,47 @@ export const env = {
   get anchorAptosPrivateKey(): string | undefined {
     return process.env.ANCHOR_APTOS_PRIVATE_KEY;
   },
+  get anchorCosmosMnemonic(): string | undefined {
+    return process.env.ANCHOR_COSMOS_MNEMONIC;
+  },
+  get anchorSuiPrivateKey(): string | undefined {
+    return process.env.ANCHOR_SUI_PRIVATE_KEY;
+  },
+  /** Starknet accounts are contracts — the worker needs the deployed
+   * account address alongside its signing key. */
+  get anchorStarknetPrivateKey(): string | undefined {
+    return process.env.ANCHOR_STARKNET_PRIVATE_KEY;
+  },
+  get anchorStarknetAccount(): string | undefined {
+    return process.env.ANCHOR_STARKNET_ACCOUNT;
+  },
+  get anchorNearPrivateKey(): string | undefined {
+    return process.env.ANCHOR_NEAR_PRIVATE_KEY;
+  },
+  get anchorNearAccountId(): string | undefined {
+    return process.env.ANCHOR_NEAR_ACCOUNT_ID;
+  },
+  get anchorTronPrivateKey(): string | undefined {
+    return process.env.ANCHOR_TRON_PRIVATE_KEY;
+  },
+  get anchorCardanoSigningKey(): string | undefined {
+    return process.env.ANCHOR_CARDANO_SIGNING_KEY;
+  },
+  /** Cardano tx building needs a chain data provider; Blockfrost keys are
+   * per-network, so this must match the chains being anchored. */
+  get anchorCardanoBlockfrostKey(): string | undefined {
+    return process.env.ANCHOR_CARDANO_BLOCKFROST_KEY;
+  },
+  get anchorTonMnemonic(): string | undefined {
+    return process.env.ANCHOR_TON_MNEMONIC;
+  },
+  get anchorTonApiKey(): string | undefined {
+    return process.env.ANCHOR_TON_API_KEY;
+  },
+  get anchorHederaOperatorId(): string | undefined {
+    return process.env.ANCHOR_HEDERA_OPERATOR_ID;
+  },
+  get anchorHederaPrivateKey(): string | undefined {
+    return process.env.ANCHOR_HEDERA_PRIVATE_KEY;
+  },
 };

@@ -60,13 +60,14 @@ pnpm install
 pnpm dev        # runs the webapp on http://localhost:3000
 ```
 
-### Contracts (Foundry)
+### Contracts
 
-The SDK ships ABIs generated from `contracts/out/`. To deploy or test the
-contracts:
+The SDK ships ABIs generated from `contracts/evm/out/`. Contracts are
+organized per runtime under `contracts/<runtime>/` (see `contracts/README.md`).
+To deploy or test the EVM contracts:
 
 ```bash
-cd contracts
+cd contracts/evm
 forge install                 # installs forge-std
 forge build
 forge test

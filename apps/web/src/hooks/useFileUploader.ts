@@ -25,7 +25,14 @@ import { useChain } from "@/hooks/useChain";
 import { useEVMWallet } from "@/hooks/useEVMWallet";
 import { useSolanaWallet } from "@/hooks/useSolanaWallet";
 import { useAptosWallet } from "@/hooks/useAptosWallet";
+import { useCosmosWallet } from "@/hooks/useCosmosWallet";
+import { useSuiWallet } from "@/hooks/useSuiWallet";
+import { useStarknetWallet } from "@/hooks/useStarknetWallet";
+import { useNearWallet } from "@/hooks/useNearWallet";
+import { useTronWallet } from "@/hooks/useTronWallet";
+import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { useWallet } from "@/hooks/useWallet";
+import { buildStarknetTypedData, NEAR_SIGN_RECIPIENT } from "@/lib/auth/wallet-message";
 import { useWalletStates } from "@/states/wallet";
 import type { CIDPreviewData } from "@/components/registry/CIDPreviewPanel";
 import { trackEvent } from "@/lib/analytics";
@@ -69,6 +76,12 @@ export const useFileUploader = () => {
   const evm = useEVMWallet();
   const solana = useSolanaWallet();
   const aptos = useAptosWallet();
+  const cosmos = useCosmosWallet();
+  const sui = useSuiWallet();
+  const starknet = useStarknetWallet();
+  const near = useNearWallet();
+  const tron = useTronWallet();
+  const cardano = useCardanoWallet();
   const substrate = useWallet();
   const substrateAccount = useWalletStates((s) => s.selectedAccount);
 
@@ -176,9 +189,57 @@ export const useFileUploader = () => {
           }
           return substrate.signMessage(substrateAccount, message);
         }
+        case "cosmos": {
+          if (!cosmos.address) await cosmos.connect();
+          const { signature } = await cosmos.signMessage(message);
+          return signature;
+        }
+        case "sui": {
+          if (!sui.address) await sui.connect();
+          const { signature } = await sui.signPersonalMessage(message);
+          return signature;
+        }
+        case "starknet": {
+          if (!starknet.address) await starknet.connect();
+          const felts = await starknet.signTypedData(buildStarknetTypedData(message));
+          return JSON.stringify(felts);
+        }
+        case "near": {
+          if (!near.address) await near.connect();
+          const nonce = crypto.getRandomValues(new Uint8Array(32));
+          const { signature } = await near.signMessage(message, nonce, NEAR_SIGN_RECIPIENT);
+          return signature;
+        }
+        case "tron": {
+          if (!tron.address) await tron.connect();
+          return tron.signMessage(message);
+        }
+        case "cardano": {
+          if (!cardano.address) await cardano.connect();
+          const { signature } = await cardano.signData(message);
+          return signature;
+        }
+        case "ton":
+        case "hedera":
+          // No message-signing surface on these wallets yet — the simulated
+          // anchor proceeds without an authorization signature.
+          return "";
       }
     },
-    [activeChain.family, evm, solana, aptos, substrate, substrateAccount],
+    [
+      activeChain.family,
+      evm,
+      solana,
+      aptos,
+      cosmos,
+      sui,
+      starknet,
+      near,
+      tron,
+      cardano,
+      substrate,
+      substrateAccount,
+    ],
   );
 
   const buildPreview = useCallback(
@@ -217,7 +278,7 @@ export const useFileUploader = () => {
 
     try {
       setAnchorStatus("signing");
-      return await anchorFileOnChain({
+      const outcome = await anchorFileOnChain({
         chain: activeChain,
         fileCid,
         chunks,
@@ -226,8 +287,19 @@ export const useFileUploader = () => {
           setAnchorProgress(progress.chunksAnchored);
         },
       });
+      trackEvent("chain_anchor_success", {
+        family: activeChain.family,
+        chain_id: activeChain.id,
+        payment_method: "payg",
+        chunk_count: chunks.length,
+      });
+      return outcome;
     } catch (error) {
       if (!(error instanceof ChainNotProvisionedError)) throw error;
+      trackEvent("chain_anchor_fallback_mock", {
+        family: activeChain.family,
+        chain_id: activeChain.id,
+      });
     }
 
     setAnchorStatus("signing");
@@ -318,6 +390,12 @@ export const useFileUploader = () => {
           );
         }
         setAnchorProgress(cids.length);
+        trackEvent("chain_anchor_success", {
+          family: activeChain.family,
+          chain_id: activeChain.id,
+          payment_method: paymentMethod === "byok" ? "byok" : "credits",
+          chunk_count: cids.length,
+        });
       }
 
       setAnchorStatus("done");

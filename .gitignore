@@ -34,8 +34,12 @@ build/
 *.tsbuildinfo
 next-env.d.ts
 
-# Foundry
-/contracts/lib/
-/contracts/out/
-/contracts/cache/
-/contracts/broadcast/
+# Contracts — Foundry (EVM) and per-runtime build outputs
+/contracts/evm/lib/
+/contracts/evm/out/
+/contracts/evm/cache/
+/contracts/evm/broadcast/
+/contracts/aptos/build/
+/contracts/sui/build/
+/contracts/starknet/target/
+/contracts/near/target/

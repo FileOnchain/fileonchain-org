@@ -1,0 +1,16 @@
+[package]
+name = "fileonchain"
+version = "1.0.0"
+authors = []
+
+[addresses]
+# Bind at compile time: aptos move compile --named-addresses fileonchain=<account>
+fileonchain = "_"
+
+[dev-addresses]
+fileonchain = "0xC0FFEE"
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "mainnet"
+subdir = "aptos-move/framework/aptos-framework"

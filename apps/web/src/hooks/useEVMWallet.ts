@@ -5,6 +5,7 @@ import { createPublicClient, createWalletClient, custom, http, type WalletClient
 import { mainnet } from "viem/chains";
 import { useWalletStates } from "@/states/wallet";
 import { getChain } from "@fileonchain/sdk";
+import { trackEvent } from "@/lib/analytics";
 
 /* TODO: wire to viem WalletClient — currently only stubs the connection */
 
@@ -49,6 +50,7 @@ export const useEVMWallet = () => {
     }
     setEvmAddress(accounts[0] as `0x${string}`);
     setChainFamily("evm");
+    trackEvent("wallet_connect", { family: "evm" });
     return accounts[0] as `0x${string}`;
   }, [setEvmAddress, setChainFamily]);
 

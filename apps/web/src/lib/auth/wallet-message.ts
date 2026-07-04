@@ -15,11 +15,24 @@ export interface WalletChallenge {
   issuedAt: string;
 }
 
+/**
+ * Families whose wallets can sign in / link today — a browser proof flow
+ * exists client-side AND the server can verify it soundly. TON (needs a
+ * TON Connect manifest + proof of wallet stateInit) and Hedera (needs a
+ * HashConnect pairing flow) anchor fine but stay out of auth until that
+ * infrastructure lands.
+ */
 export const WALLET_FAMILIES: readonly ChainFamily[] = [
   "evm",
   "substrate",
   "solana",
   "aptos",
+  "cosmos",
+  "sui",
+  "starknet",
+  "near",
+  "tron",
+  "cardano",
 ];
 
 export const isWalletFamily = (value: unknown): value is ChainFamily =>
@@ -44,9 +57,47 @@ export const buildWalletMessage = ({
   ].join("\n");
 
 /**
- * Canonical address form used for storage and lookups. EVM and Aptos hex
- * addresses are case-insensitive → lowercase; base58 (solana) and SS58
- * (substrate) are case-sensitive → kept as-is.
+ * NEP-413 (NEAR signMessage) fields both sides must agree on. The wallet
+ * standard wants a 32-byte nonce, so the issued nonce string is stretched
+ * through SHA-256 — the client hands the derived bytes to the wallet and
+ * the server re-derives them before verifying.
  */
+export const NEAR_SIGN_RECIPIENT = "fileonchain.org";
+
+/**
+ * SNIP-12 typed data for Starknet sign-in. Signed by Argent/Braavos and
+ * verified on-chain via the account's `is_valid_signature` (accounts are
+ * contracts — there is no off-chain ecrecover). Revision 1 so `contents`
+ * can be an arbitrary-length string; the domain carries no chainId — replay
+ * across networks is already dead because nonces are single-use.
+ */
+export const buildStarknetTypedData = (message: string) => ({
+  types: {
+    StarknetDomain: [
+      { name: "name", type: "shortstring" },
+      { name: "version", type: "shortstring" },
+    ],
+    Message: [{ name: "contents", type: "string" }],
+  },
+  primaryType: "Message",
+  domain: { name: "fileonchain.org", version: "1", revision: "1" },
+  message: { contents: message },
+});
+
+/** Families whose addresses are case-insensitive hex (or bech32, which is
+ * lowercase by construction) — canonicalized to lowercase for storage and
+ * lookups. Base58 families (solana, substrate, tron, ton) and Hedera's
+ * numeric ids are case-sensitive or already canonical → kept as-is. */
+const LOWERCASE_FAMILIES: readonly ChainFamily[] = [
+  "evm",
+  "aptos",
+  "sui",
+  "starknet",
+  "near",
+  "cosmos",
+  "cardano",
+];
+
+/** Canonical address form used for storage and lookups. */
 export const normalizeAddress = (family: ChainFamily, address: string): string =>
-  family === "evm" || family === "aptos" ? address.toLowerCase() : address;
+  LOWERCASE_FAMILIES.includes(family) ? address.toLowerCase() : address;
