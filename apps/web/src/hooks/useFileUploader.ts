@@ -278,7 +278,7 @@ export const useFileUploader = () => {
 
     try {
       setAnchorStatus("signing");
-      return await anchorFileOnChain({
+      const outcome = await anchorFileOnChain({
         chain: activeChain,
         fileCid,
         chunks,
@@ -287,8 +287,19 @@ export const useFileUploader = () => {
           setAnchorProgress(progress.chunksAnchored);
         },
       });
+      trackEvent("chain_anchor_success", {
+        family: activeChain.family,
+        chain_id: activeChain.id,
+        payment_method: "payg",
+        chunk_count: chunks.length,
+      });
+      return outcome;
     } catch (error) {
       if (!(error instanceof ChainNotProvisionedError)) throw error;
+      trackEvent("chain_anchor_fallback_mock", {
+        family: activeChain.family,
+        chain_id: activeChain.id,
+      });
     }
 
     setAnchorStatus("signing");
@@ -379,6 +390,12 @@ export const useFileUploader = () => {
           );
         }
         setAnchorProgress(cids.length);
+        trackEvent("chain_anchor_success", {
+          family: activeChain.family,
+          chain_id: activeChain.id,
+          payment_method: paymentMethod === "byok" ? "byok" : "credits",
+          chunk_count: cids.length,
+        });
       }
 
       setAnchorStatus("done");

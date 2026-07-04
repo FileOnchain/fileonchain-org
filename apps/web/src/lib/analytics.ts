@@ -43,6 +43,15 @@ export interface AnalyticsEvents {
     chain_count: number;
     chunk_count: number;
   };
+  /** A real (non-simulated) anchor landed on-chain. */
+  chain_anchor_success: {
+    family: string;
+    chain_id: string;
+    payment_method: "payg" | "credits" | "byok";
+    chunk_count: number;
+  };
+  /** An anchor fell back to the simulated flow (chain not provisioned). */
+  chain_anchor_fallback_mock: { family: string; chain_id: string };
   /** An account preference was changed (field name only, never the value). */
   preference_change: { field: string };
   /** An organization was created or managed. */

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { FiCheck, FiInfo } from "react-icons/fi";
+import { FiAlertTriangle, FiCheck, FiInfo } from "react-icons/fi";
 import {
   formatCostUsd,
   getChainCostEstimates,
@@ -105,6 +105,26 @@ const CostEstimatePanel = ({ chunkCount }: CostEstimatePanelProps) => {
         One chain is enough to retrieve. Each chain you check below pays its own
         gas and a small platform fee — costs scale linearly with the number of chains.
       </p>
+
+      {/* Chunk anchoring on L1s adds up fast — call it out before signing. */}
+      {estimates.some((est) => selected.has(est.chainId) && est.tier === "expensive") && (
+        <p
+          role="alert"
+          className="mt-2 flex items-start gap-1.5 rounded-md border border-danger/30 bg-danger/5 px-2.5 py-1.5 text-[11px] text-danger"
+        >
+          <FiAlertTriangle size={11} className="mt-0.5 shrink-0" />
+          <span>
+            {estimates
+              .filter((est) => selected.has(est.chainId) && est.tier === "expensive")
+              .map(
+                (est) =>
+                  `${est.chainName} fees are high — about ${formatCostUsd(totalCostFor(est, chunkCount).usd)} for this file`,
+              )
+              .join("; ")}
+            . An L2 anchors the same CIDs for a fraction of that.
+          </span>
+        </p>
+      )}
 
       <div className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
         {estimates.map((est) => {
