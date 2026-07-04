@@ -129,6 +129,102 @@ export const CHAINS: readonly ChainConfig[] = [
     palletContract: null,
     testnet: false,
   },
+  // EVM testnets
+  {
+    id: "evm:11155111",
+    family: "evm",
+    name: "Ethereum Sepolia",
+    shortName: "SEP",
+    rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
+    explorerUrl: "https://sepolia.etherscan.io",
+    explorerTxPath: "/tx/",
+    explorerAddressPath: "/address/",
+    nativeCurrency: { symbol: "ETH", decimals: 18 },
+    icon: "/chains/eth.svg",
+    registryContract: ZERO_ADDRESS,
+    cacheContract: ZERO_ADDRESS,
+    donationContract: ZERO_ADDRESS,
+    programId: null,
+    moduleAddress: null,
+    palletContract: null,
+    testnet: true,
+  },
+  {
+    id: "evm:84532",
+    family: "evm",
+    name: "Base Sepolia",
+    shortName: "BASE",
+    rpcUrl: "https://sepolia.base.org",
+    explorerUrl: "https://sepolia.basescan.org",
+    explorerTxPath: "/tx/",
+    explorerAddressPath: "/address/",
+    nativeCurrency: { symbol: "ETH", decimals: 18 },
+    icon: "/chains/base.svg",
+    registryContract: ZERO_ADDRESS,
+    cacheContract: ZERO_ADDRESS,
+    donationContract: ZERO_ADDRESS,
+    programId: null,
+    moduleAddress: null,
+    palletContract: null,
+    testnet: true,
+  },
+  {
+    id: "evm:11155420",
+    family: "evm",
+    name: "OP Sepolia",
+    shortName: "OP",
+    rpcUrl: "https://sepolia.optimism.io",
+    explorerUrl: "https://sepolia-optimism.etherscan.io",
+    explorerTxPath: "/tx/",
+    explorerAddressPath: "/address/",
+    nativeCurrency: { symbol: "ETH", decimals: 18 },
+    icon: "/chains/op.svg",
+    registryContract: ZERO_ADDRESS,
+    cacheContract: ZERO_ADDRESS,
+    donationContract: ZERO_ADDRESS,
+    programId: null,
+    moduleAddress: null,
+    palletContract: null,
+    testnet: true,
+  },
+  {
+    id: "evm:421614",
+    family: "evm",
+    name: "Arbitrum Sepolia",
+    shortName: "ARB",
+    rpcUrl: "https://sepolia-rollup.arbitrum.io/rpc",
+    explorerUrl: "https://sepolia.arbiscan.io",
+    explorerTxPath: "/tx/",
+    explorerAddressPath: "/address/",
+    nativeCurrency: { symbol: "ETH", decimals: 18 },
+    icon: "/chains/arb.svg",
+    registryContract: ZERO_ADDRESS,
+    cacheContract: ZERO_ADDRESS,
+    donationContract: ZERO_ADDRESS,
+    programId: null,
+    moduleAddress: null,
+    palletContract: null,
+    testnet: true,
+  },
+  {
+    id: "evm:80002",
+    family: "evm",
+    name: "Polygon Amoy",
+    shortName: "POLY",
+    rpcUrl: "https://rpc-amoy.polygon.technology",
+    explorerUrl: "https://amoy.polygonscan.com",
+    explorerTxPath: "/tx/",
+    explorerAddressPath: "/address/",
+    nativeCurrency: { symbol: "POL", decimals: 18 },
+    icon: "/chains/polygon.svg",
+    registryContract: ZERO_ADDRESS,
+    cacheContract: ZERO_ADDRESS,
+    donationContract: ZERO_ADDRESS,
+    programId: null,
+    moduleAddress: null,
+    palletContract: null,
+    testnet: true,
+  },
   // Substrate
   {
     id: "substrate:autonomys-mainnet",
@@ -186,6 +282,25 @@ export const CHAINS: readonly ChainConfig[] = [
     moduleAddress: null,
     palletContract: "system.remarkWithEvent",
     testnet: false,
+  },
+  {
+    id: "substrate:paseo-asset-hub",
+    family: "substrate",
+    name: "Paseo Asset Hub",
+    shortName: "PAS",
+    rpcUrl: "wss://asset-hub-paseo-rpc.dwellir.com",
+    explorerUrl: "https://assethub-paseo.subscan.io",
+    explorerTxPath: "/extrinsic/",
+    explorerAddressPath: "/account/",
+    nativeCurrency: { symbol: "PAS", decimals: 10 },
+    icon: "/chains/polkadot.svg",
+    registryContract: null,
+    cacheContract: null,
+    donationContract: null,
+    programId: null,
+    moduleAddress: null,
+    palletContract: "system.remarkWithEvent",
+    testnet: true,
   },
   // Solana
   {
@@ -276,6 +391,22 @@ export const getChain = (id: ChainId | string): ChainConfig | undefined =>
 
 export const getChainsByFamily = (family: ChainFamily): ChainConfig[] =>
   CHAINS.filter((c) => c.family === family);
+
+/** Production networks only — marketing surfaces count these. */
+export const MAINNET_CHAINS: readonly ChainConfig[] = CHAINS.filter(
+  (c) => !c.testnet,
+);
+
+export const TESTNET_CHAINS: readonly ChainConfig[] = CHAINS.filter(
+  (c) => c.testnet,
+);
+
+/**
+ * Chains a picker should offer given the user's testnet-visibility
+ * preference. Keeps the "hide testnets" rule in one place.
+ */
+export const getVisibleChains = (showTestnets: boolean): readonly ChainConfig[] =>
+  showTestnets ? CHAINS : MAINNET_CHAINS;
 
 /**
  * Pick the registry address for a chain, falling back to the zero address.
