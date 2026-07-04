@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { useWalletStates } from "@/states/wallet";
+import { trackEvent } from "@/lib/analytics";
 
 /* TODO: wire to @mysten/dapp-kit for the full wallet-standard flow */
 
@@ -103,6 +104,7 @@ export const useSuiWallet = () => {
     connectedAccount = account;
     setSuiAddress(account.address);
     setChainFamily("sui");
+    trackEvent("wallet_connect", { family: "sui" });
     return account.address;
   }, [setSuiAddress, setChainFamily]);
 

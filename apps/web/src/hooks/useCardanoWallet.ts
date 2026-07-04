@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { useWalletStates } from "@/states/wallet";
+import { trackEvent } from "@/lib/analytics";
 
 /* TODO: wire to a wallet-standard adapter once one settles for Cardano */
 
@@ -115,6 +116,7 @@ export const useCardanoWallet = () => {
 
     setCardanoAddress(address);
     setChainFamily("cardano");
+    trackEvent("wallet_connect", { family: "cardano" });
     return address;
   }, [setCardanoAddress, setChainFamily]);
 

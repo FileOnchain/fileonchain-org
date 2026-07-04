@@ -10,6 +10,7 @@ import {
   type ChainCostEstimate,
 } from "@/lib/mock/costs";
 import { useChain } from "@/hooks/useChain";
+import { useVisibleChains } from "@/hooks/useVisibleChains";
 import { cn } from "@/lib/cn";
 
 interface CostEstimatePanelProps {
@@ -41,7 +42,15 @@ const TIER_LABELS: Record<ChainCostEstimate["tier"], string> = {
 
 const CostEstimatePanel = ({ chunkCount }: CostEstimatePanelProps) => {
   const { activeChain } = useChain();
-  const estimates = React.useMemo(() => getChainCostEstimates(), []);
+  const visibleChains = useVisibleChains();
+  // Same testnet-visibility gate as every picker; keep the active chain
+  // even if it's a testnet the preference would hide.
+  const estimates = React.useMemo(() => {
+    const visible = new Set(visibleChains.map((chain) => chain.id));
+    return getChainCostEstimates().filter(
+      (est) => visible.has(est.chainId) || est.chainId === activeChain.id,
+    );
+  }, [visibleChains, activeChain.id]);
   // Chains the user has selected for redundant anchoring. The active chain
   // is on by default; the user can toggle others.
   const [selected, setSelected] = React.useState<Set<string>>(

@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { useWalletStates } from "@/states/wallet";
+import { trackEvent } from "@/lib/analytics";
 
 /* TODO: wire to cosmos-kit for the full Keplr / Leap wallet-standard flow */
 
@@ -61,6 +62,7 @@ export const useCosmosWallet = () => {
       const { bech32Address } = await provider.getKey(cosmosChainId);
       setCosmosAddress(bech32Address);
       setChainFamily("cosmos");
+      trackEvent("wallet_connect", { family: "cosmos" });
       return bech32Address;
     },
     [setCosmosAddress, setChainFamily],

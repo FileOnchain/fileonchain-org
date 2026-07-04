@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { useWalletStates } from "@/states/wallet";
+import { trackEvent } from "@/lib/analytics";
 
 /* TODO: wire to get-starknet / starknetkit for the wallet-standard flow */
 
@@ -64,6 +65,7 @@ export const useStarknetWallet = () => {
     }
     setStarknetAddress(address);
     setChainFamily("starknet");
+    trackEvent("wallet_connect", { family: "starknet" });
     return address;
   }, [setStarknetAddress, setChainFamily]);
 

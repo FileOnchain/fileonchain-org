@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { useWalletStates } from "@/states/wallet";
 import { getChain } from "@fileonchain/sdk";
+import { trackEvent } from "@/lib/analytics";
 
 /* TODO: wire to Petra / Martian wallet standard via aptos-wallet-adapter */
 
@@ -67,6 +68,7 @@ export const useAptosWallet = () => {
     const { address } = await provider.connect();
     setAptosAddress(address);
     setChainFamily("aptos");
+    trackEvent("wallet_connect", { family: "aptos" });
     return address;
   }, [setAptosAddress, setChainFamily]);
 

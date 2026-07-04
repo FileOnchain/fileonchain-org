@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { useWalletStates } from "@/states/wallet";
+import { trackEvent } from "@/lib/analytics";
 
 /* TODO: wire to @tronweb3/tronwallet-adapters for multi-wallet support */
 
@@ -79,6 +80,7 @@ export const useTronWallet = () => {
     }
     setTronAddress(address);
     setChainFamily("tron");
+    trackEvent("wallet_connect", { family: "tron" });
     return address;
   }, [setTronAddress, setChainFamily]);
 

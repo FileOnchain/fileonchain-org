@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { useWalletStates } from "@/states/wallet";
+import { trackEvent } from "@/lib/analytics";
 
 /* TODO: wire to @near-wallet-selector for the full modal / wallet list flow */
 
@@ -72,6 +73,7 @@ export const useNearWallet = () => {
     }
     setNearAddress(accountId);
     setChainFamily("near");
+    trackEvent("wallet_connect", { family: "near" });
     return accountId;
   }, [setNearAddress, setChainFamily]);
 

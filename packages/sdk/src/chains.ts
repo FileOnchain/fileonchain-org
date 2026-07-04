@@ -1142,7 +1142,8 @@ export const CHAIN_FAMILY_TAGLINES: Record<ChainFamily, string> = {
   tron: "TVM contracts with TRON addressing. Use TronLink.",
   cardano: "Anchors ride transaction metadata. Use a CIP-30 wallet like Lace.",
   ton: "Anchors ride transfer comments. Use a TON Connect wallet.",
-  hedera: "Anchors are Consensus Service messages on a topic. Use HashPack.",
+  hedera:
+    "Anchors are Consensus Service messages — a small fixed topic fee instead of gas. Use HashPack.",
 };
 
 /** Every chain family, in display order — UI surfaces that enumerate

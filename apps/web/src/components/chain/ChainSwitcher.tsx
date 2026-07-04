@@ -7,7 +7,7 @@ import { ChainBadge } from "@/components/ui/ChainBadge";
 import { Badge } from "@/components/ui/Badge";
 import { useChain } from "@/hooks/useChain";
 import { useVisibleChains } from "@/hooks/useVisibleChains";
-import { CHAIN_FAMILY_LABELS, type ChainConfig } from "@fileonchain/sdk";
+import { CHAIN_FAMILIES, CHAIN_FAMILY_LABELS, type ChainConfig } from "@fileonchain/sdk";
 import { cn } from "@/lib/cn";
 
 interface ChainSwitcherProps {
@@ -16,27 +16,23 @@ interface ChainSwitcherProps {
 
 /**
  * ChainSwitcher — Radix DropdownMenu that lists every supported chain
- * grouped by runtime (EVM-compatible, Substrate-based, Solana, Aptos).
- * Picking a chain writes it to the active-chain store, which then drives
- * the wallet modal and any cost estimate surfaces.
+ * grouped by runtime (registry order from CHAIN_FAMILIES). Picking a chain
+ * writes it to the active-chain store, which then drives the wallet modal
+ * and any cost estimate surfaces.
  */
 export const ChainSwitcher = ({ variant = "full" }: ChainSwitcherProps) => {
   const { activeChain, setActiveChainId } = useChain();
   const visibleChains = useVisibleChains();
 
-  const groups = React.useMemo(() => {
-    const runtimes: Array<"evm" | "substrate" | "solana" | "aptos"> = [
-      "evm",
-      "substrate",
-      "solana",
-      "aptos",
-    ];
-    return runtimes.map((runtime) => ({
-      runtime,
-      label: CHAIN_FAMILY_LABELS[runtime],
-      chains: visibleChains.filter((c) => c.family === runtime),
-    }));
-  }, [visibleChains]);
+  const groups = React.useMemo(
+    () =>
+      CHAIN_FAMILIES.map((runtime) => ({
+        runtime,
+        label: CHAIN_FAMILY_LABELS[runtime],
+        chains: visibleChains.filter((c) => c.family === runtime),
+      })).filter((group) => group.chains.length > 0),
+    [visibleChains],
+  );
 
   return (
     <DropdownMenu.Root>

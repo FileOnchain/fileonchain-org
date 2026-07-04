@@ -5,7 +5,10 @@ import {
   type ChainId,
 } from "@fileonchain/sdk";
 
-/* TODO: wire to The Graph / Goldsky / Subscan / Solana RPC / Aptos indexer */
+/* TODO: wire to The Graph / Goldsky / Subscan / per-chain RPCs and mirror
+ * nodes. The family-specific tx→payload extractors already exist in
+ * lib/indexer/payload-extractors.ts — this mock only stands in for the
+ * fetch layer that feeds them. */
 
 export type AnchorStatus = "anchored" | "pending" | "missing";
 export type FileCategory = "document" | "image" | "video" | "audio" | "data" | "code" | "archive" | "other";

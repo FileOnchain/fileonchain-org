@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { useWalletStates } from "@/states/wallet";
+import { trackEvent } from "@/lib/analytics";
 
 /* TODO: wire to full TON Connect (bridge + manifest) for mobile / remote wallets */
 
@@ -48,6 +49,7 @@ export const useTonWallet = () => {
     const [address] = await provider.send("ton_requestAccounts");
     setTonAddress(address);
     setChainFamily("ton");
+    trackEvent("wallet_connect", { family: "ton" });
     return address;
   }, [setTonAddress, setChainFamily]);
 
