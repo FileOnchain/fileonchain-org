@@ -5,8 +5,18 @@ import type { ChainFamily } from "@fileonchain/sdk";
 import { useEVMWallet } from "@/hooks/useEVMWallet";
 import { useSolanaWallet } from "@/hooks/useSolanaWallet";
 import { useAptosWallet } from "@/hooks/useAptosWallet";
+import { useCosmosWallet } from "@/hooks/useCosmosWallet";
+import { useSuiWallet } from "@/hooks/useSuiWallet";
+import { useStarknetWallet } from "@/hooks/useStarknetWallet";
+import { useNearWallet } from "@/hooks/useNearWallet";
+import { useTronWallet } from "@/hooks/useTronWallet";
+import { useCardanoWallet } from "@/hooks/useCardanoWallet";
 import { useWalletStates } from "@/states/wallet";
-import { buildWalletMessage } from "@/lib/auth/wallet-message";
+import {
+  buildStarknetTypedData,
+  buildWalletMessage,
+  NEAR_SIGN_RECIPIENT,
+} from "@/lib/auth/wallet-message";
 import type { Account } from "@/types/types";
 
 export interface WalletProof {
@@ -44,6 +54,12 @@ export const useWalletProof = () => {
   const evm = useEVMWallet();
   const solana = useSolanaWallet();
   const aptos = useAptosWallet();
+  const cosmos = useCosmosWallet();
+  const sui = useSuiWallet();
+  const starknet = useStarknetWallet();
+  const near = useNearWallet();
+  const tron = useTronWallet();
+  const cardano = useCardanoWallet();
   const substrateAccount = useWalletStates((s) => s.selectedAccount);
   const setSelectedAccount = useWalletStates((s) => s.setSelectedAccount);
   const setAccounts = useWalletStates((s) => s.setAccounts);
@@ -115,9 +131,80 @@ export const useWalletProof = () => {
           });
           return { family, address, signature, nonce };
         }
+        case "cosmos": {
+          const address = cosmos.address ?? (await cosmos.connect());
+          const { nonce, issuedAt } = await requestNonce(family, address);
+          const message = buildWalletMessage({ family, address, nonce, issuedAt });
+          const { signature, publicKey } = await cosmos.signMessage(message);
+          return { family, address, signature, nonce, publicKey };
+        }
+        case "sui": {
+          const address = sui.address ?? (await sui.connect());
+          const { nonce, issuedAt } = await requestNonce(family, address);
+          const message = buildWalletMessage({ family, address, nonce, issuedAt });
+          // The wallet-standard signature embeds the public key.
+          const { signature } = await sui.signPersonalMessage(message);
+          return { family, address, signature, nonce };
+        }
+        case "starknet": {
+          const address = starknet.address ?? (await starknet.connect());
+          const { nonce, issuedAt } = await requestNonce(family, address);
+          const message = buildWalletMessage({ family, address, nonce, issuedAt });
+          // Accounts return an array of felts; travel as JSON, verified
+          // on-chain via is_valid_signature.
+          const felts = await starknet.signTypedData(buildStarknetTypedData(message));
+          return { family, address, signature: JSON.stringify(felts), nonce };
+        }
+        case "near": {
+          const address = near.address ?? (await near.connect());
+          const { nonce, issuedAt } = await requestNonce(family, address);
+          const message = buildWalletMessage({ family, address, nonce, issuedAt });
+          // NEP-413 wants a 32-byte nonce — both sides stretch the issued
+          // nonce through SHA-256 (see verifiers/near.ts).
+          const { sha256 } = await import("@noble/hashes/sha2.js");
+          const nonce32 = sha256(new TextEncoder().encode(nonce));
+          const { signature, publicKey } = await near.signMessage(
+            message,
+            nonce32,
+            NEAR_SIGN_RECIPIENT,
+          );
+          return { family, address, signature, nonce, publicKey };
+        }
+        case "tron": {
+          const address = tron.address ?? (await tron.connect());
+          const { nonce, issuedAt } = await requestNonce(family, address);
+          const message = buildWalletMessage({ family, address, nonce, issuedAt });
+          const signature = await tron.signMessage(message);
+          return { family, address, signature, nonce };
+        }
+        case "cardano": {
+          const address = cardano.address ?? (await cardano.connect());
+          const { nonce, issuedAt } = await requestNonce(family, address);
+          const message = buildWalletMessage({ family, address, nonce, issuedAt });
+          const { signature, key } = await cardano.signData(message);
+          return { family, address, signature, nonce, publicKey: key };
+        }
+        case "ton":
+        case "hedera":
+          // Kept out of WALLET_FAMILIES — see lib/auth/wallet-message.ts.
+          throw new Error(`Wallet sign-in is not yet supported for ${family}`);
       }
     },
-    [evm, solana, aptos, substrateAccount, setAccounts, setSelectedAccount, setChainFamily],
+    [
+      evm,
+      solana,
+      aptos,
+      cosmos,
+      sui,
+      starknet,
+      near,
+      tron,
+      cardano,
+      substrateAccount,
+      setAccounts,
+      setSelectedAccount,
+      setChainFamily,
+    ],
   );
 
   return { collectProof };

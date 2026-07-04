@@ -1,8 +1,16 @@
 import type { ChunkedAnchorReceipt } from "@fileonchain/sdk";
 import { sendAptosAnchor } from "./aptos";
+import { sendCardanoAnchor } from "./cardano";
+import { sendCosmosAnchor } from "./cosmos";
 import { sendEvmAnchor } from "./evm";
+import { sendHederaAnchor } from "./hedera";
+import { sendNearAnchor } from "./near";
 import { sendSolanaAnchor } from "./solana";
+import { sendStarknetAnchor } from "./starknet";
 import { sendSubstrateAnchor } from "./substrate";
+import { sendSuiAnchor } from "./sui";
+import { sendTonAnchor } from "./ton";
+import { sendTronAnchor } from "./tron";
 import type { AnchorOutcome, AnchorRequest } from "./types";
 
 export type { AnchorOutcome, AnchorRequest } from "./types";
@@ -48,6 +56,30 @@ export const anchorFileOnChain = async (
       break;
     case "aptos":
       receipt = await sendAptosAnchor(request);
+      break;
+    case "cosmos":
+      receipt = await sendCosmosAnchor(request);
+      break;
+    case "sui":
+      receipt = await sendSuiAnchor(request);
+      break;
+    case "starknet":
+      receipt = await sendStarknetAnchor(request);
+      break;
+    case "near":
+      receipt = await sendNearAnchor(request);
+      break;
+    case "tron":
+      receipt = await sendTronAnchor(request);
+      break;
+    case "cardano":
+      receipt = await sendCardanoAnchor(request);
+      break;
+    case "ton":
+      receipt = await sendTonAnchor(request);
+      break;
+    case "hedera":
+      receipt = await sendHederaAnchor(request);
       break;
   }
 

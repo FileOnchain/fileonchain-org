@@ -10,11 +10,13 @@ import RuntimeChip from "@/components/profile/RuntimeChip";
 import { useIdentityStates } from "@/states/identity";
 import { useWalletStates } from "@/states/wallet";
 import { useAccountWallets } from "@/hooks/useAccountWallets";
+import { WALLET_FAMILIES } from "@/lib/auth/wallet-message";
 import { mockLinkedAddress } from "@/lib/mock/profiles";
 import { truncateAddress } from "@/lib/cid/format";
 import { trackEvent } from "@/lib/analytics";
 
-const FAMILIES: ChainFamily[] = ["evm", "substrate", "solana", "aptos"];
+/** Linkable = auth-capable: proof collection + server verification exist. */
+const FAMILIES: readonly ChainFamily[] = WALLET_FAMILIES;
 
 interface LinkWalletModalProps {
   open: boolean;
@@ -54,23 +56,17 @@ export const LinkWalletModal = ({
   const linkWallet = useIdentityStates((s) => s.linkWallet);
   const unlinkWallet = useIdentityStates((s) => s.unlinkWallet);
 
-  const evmAddress = useWalletStates((s) => s.evmAddress);
-  const solanaAddress = useWalletStates((s) => s.solanaAddress);
-  const aptosAddress = useWalletStates((s) => s.aptosAddress);
-  const substrateAccount = useWalletStates((s) => s.selectedAccount);
+  const walletStates = useWalletStates();
+  const substrateAccount = walletStates.selectedAccount;
 
   const [pending, setPending] = React.useState<ChainFamily | null>(null);
 
   /** Prefer a genuinely connected wallet for the family; fall back to a mock. */
   const candidateAddress = (family: ChainFamily): string => {
     const connected =
-      family === "evm"
-        ? evmAddress
-        : family === "solana"
-          ? solanaAddress
-          : family === "aptos"
-            ? aptosAddress
-            : substrateAccount?.address ?? null;
+      family === "substrate"
+        ? substrateAccount?.address ?? null
+        : (walletStates[`${family}Address` as const] as string | null);
     return connected ?? mockLinkedAddress(primaryAddress, family);
   };
 

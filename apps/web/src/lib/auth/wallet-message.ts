@@ -56,6 +56,34 @@ export const buildWalletMessage = ({
     `Issued At: ${issuedAt}`,
   ].join("\n");
 
+/**
+ * NEP-413 (NEAR signMessage) fields both sides must agree on. The wallet
+ * standard wants a 32-byte nonce, so the issued nonce string is stretched
+ * through SHA-256 — the client hands the derived bytes to the wallet and
+ * the server re-derives them before verifying.
+ */
+export const NEAR_SIGN_RECIPIENT = "fileonchain.org";
+
+/**
+ * SNIP-12 typed data for Starknet sign-in. Signed by Argent/Braavos and
+ * verified on-chain via the account's `is_valid_signature` (accounts are
+ * contracts — there is no off-chain ecrecover). Revision 1 so `contents`
+ * can be an arbitrary-length string; the domain carries no chainId — replay
+ * across networks is already dead because nonces are single-use.
+ */
+export const buildStarknetTypedData = (message: string) => ({
+  types: {
+    StarknetDomain: [
+      { name: "name", type: "shortstring" },
+      { name: "version", type: "shortstring" },
+    ],
+    Message: [{ name: "contents", type: "string" }],
+  },
+  primaryType: "Message",
+  domain: { name: "fileonchain.org", version: "1", revision: "1" },
+  message: { contents: message },
+});
+
 /** Families whose addresses are case-insensitive hex (or bech32, which is
  * lowercase by construction) — canonicalized to lowercase for storage and
  * lookups. Base58 families (solana, substrate, tron, ton) and Hedera's
