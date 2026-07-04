@@ -9,18 +9,20 @@ import {
   type PublicClient,
   type WalletClient,
 } from "viem";
-import { fileRegistryAbi } from "./abis/fileRegistry";
 import {
   buildChunkAnchorPayload,
   buildFileAnchorPayload,
   ChainNotProvisionedError,
+  isValidCID,
+  resolveFamilyChain,
+  ZERO_ADDRESS,
   type AnchorChunk,
   type AnchorProgressHandler,
+  type ChainConfig,
+  type ChainId,
   type ChunkedAnchorReceipt,
 } from "@fileonchain/utils";
-import { getChain, ZERO_ADDRESS, type ChainConfig } from "@fileonchain/utils";
-import { isValidCID } from "@fileonchain/utils";
-import type { ChainId } from "@fileonchain/utils";
+import { fileRegistryAbi } from "./abis/fileRegistry";
 
 /**
  * EVM client for the FileRegistry contract. Anchoring a folder is identical
@@ -34,17 +36,16 @@ export const cidToBytes32 = (cid: string): Hex => keccak256(stringToBytes(cid.tr
  * Resolve an `evm:*` chain that has a deployed FileRegistry, or throw with a
  * message that says exactly what's missing.
  */
-export const resolveEvmChain = (chainId: ChainId): ChainConfig & { registryContract: `0x${string}` } => {
-  const chain = getChain(chainId);
-  if (!chain) throw new Error(`Unknown chain "${chainId}".`);
-  if (chain.family !== "evm") {
-    throw new Error(`Chain "${chainId}" is not an EVM chain; use the ${chain.family} client instead.`);
-  }
-  if (!chain.registryContract || chain.registryContract === ZERO_ADDRESS) {
-    throw new ChainNotProvisionedError(chainId, "FileRegistry is not deployed yet.");
-  }
-  return chain as ChainConfig & { registryContract: `0x${string}` };
-};
+export const resolveEvmChain = (chainId: ChainId): ChainConfig & { registryContract: `0x${string}` } =>
+  resolveFamilyChain(chainId, {
+    family: "evm",
+    familyLabel: "an EVM chain",
+    assertProvisioned: (chain) => {
+      if (!chain.registryContract || chain.registryContract === ZERO_ADDRESS) {
+        throw new ChainNotProvisionedError(chainId, "FileRegistry is not deployed yet.");
+      }
+    },
+  }) as ChainConfig & { registryContract: `0x${string}` };
 
 /** Map a ChainConfig onto viem's `Chain` shape for client construction. */
 export const toViemChain = (chain: ChainConfig): Chain => {

@@ -1,22 +1,26 @@
 import {
-  buildChunkAnchorPayload,
+  assertPayloadFits,
+  buildChunkedAnchorPayloads,
   buildFileAnchorPayload,
   ChainNotProvisionedError,
+  resolveFamilyChain,
+  runSequentialChunkedAnchor,
   type AnchorChunk,
   type AnchorProgressHandler,
   type BuildFileAnchorParams,
+  type ChainConfig,
+  type ChainId,
   type ChunkedAnchorReceipt,
 } from "@fileonchain/utils";
-import { getChain, type ChainConfig } from "@fileonchain/utils";
-import type { ChainId } from "@fileonchain/utils";
 
 /**
  * Cosmos client. Anchors ride the transaction memo field — one versioned
- * JSON payload from `../anchor` per transaction, so `parseAnchorPayload`
- * reads them straight off confirmed txs. No module deployment is needed;
- * chains provision by flipping `memoAnchoring` in the registry. Built
- * against a minimal signer surface so the SDK stays dependency-free — the
- * caller adapts Keplr/Leap (browser) or @cosmjs (server) to it.
+ * JSON payload from `@fileonchain/utils` per transaction, so
+ * `parseAnchorPayload` reads them straight off confirmed txs. No module
+ * deployment is needed; chains provision by flipping `memoAnchoring` in the
+ * registry. Built against a minimal signer surface so the SDK stays
+ * dependency-free — the caller adapts Keplr/Leap (browser) or @cosmjs
+ * (server) to it.
  */
 
 /**
@@ -38,26 +42,19 @@ export interface CosmosAnchorSigner {
 }
 
 /** Resolve a provisioned `cosmos:*` chain, or throw naming what's missing. */
-export const resolveCosmosChain = (chainId: ChainId): ChainConfig => {
-  const chain = getChain(chainId);
-  if (!chain) throw new Error(`Unknown chain "${chainId}".`);
-  if (chain.family !== "cosmos") {
-    throw new Error(`Chain "${chainId}" is not a Cosmos chain; use the ${chain.family} client instead.`);
-  }
-  if (!chain.memoAnchoring && !chain.moduleAddress) {
-    throw new ChainNotProvisionedError(chainId, "memo anchoring is not enabled for this chain yet.");
-  }
-  return chain;
-};
+export const resolveCosmosChain = (chainId: ChainId): ChainConfig =>
+  resolveFamilyChain(chainId, {
+    family: "cosmos",
+    familyLabel: "a Cosmos chain",
+    assertProvisioned: (chain) => {
+      if (!chain.memoAnchoring && !chain.moduleAddress) {
+        throw new ChainNotProvisionedError(chainId, "memo anchoring is not enabled for this chain yet.");
+      }
+    },
+  });
 
-const assertMemoFits = (memo: string, maxBytes: number): void => {
-  const bytes = new TextEncoder().encode(memo).length;
-  if (bytes > maxBytes) {
-    throw new Error(
-      `Anchor payload is ${bytes} bytes but the chain accepts memos up to ${maxBytes} bytes.`,
-    );
-  }
-};
+const assertMemoFits = (memo: string, maxBytes: number): void =>
+  assertPayloadFits(memo, maxBytes, `the chain accepts memos up to ${maxBytes} bytes`);
 
 export interface CosmosAnchorParams extends BuildFileAnchorParams {
   /** A `cosmos:*` chain id, e.g. "cosmos:cosmoshub-4". */
@@ -112,39 +109,19 @@ export const anchorChunkedFile = async (
   }: CosmosChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
   const chain = resolveCosmosChain(chainId);
-  const total = chunks.length;
 
-  const memos = chunks.map((chunk) =>
-    buildChunkAnchorPayload({ fileCid, chunk, total })
-  );
-  memos.push(buildFileAnchorPayload({ cid: fileCid, sha256, uri }));
+  const memos = buildChunkedAnchorPayloads({ fileCid, chunks, sha256, uri });
   for (const memo of memos) assertMemoFits(memo, maxMemoBytes);
 
-  const txHashes: string[] = [];
-  let lastHeight: number | undefined;
-  let chunksAnchored = 0;
-
-  for (const memo of memos) {
-    onProgress?.({ stage: "signing", chunksAnchored, chunksTotal: total });
-    const { txHash, height } = await signer.sendMemoTransaction(memo);
-    txHashes.push(txHash);
-    lastHeight = height ?? lastHeight;
-    chunksAnchored = Math.min(chunksAnchored + 1, total);
-    onProgress?.({ stage: "confirming", chunksAnchored, chunksTotal: total, txHash });
-  }
-
-  onProgress?.({
-    stage: "confirmed",
-    chunksAnchored: total,
-    chunksTotal: total,
-    txHash: txHashes[txHashes.length - 1],
-  });
-
-  return {
+  return runSequentialChunkedAnchor({
     chainId: chain.id,
-    txHashes,
-    txHash: txHashes[txHashes.length - 1],
-    blockNumber: lastHeight,
+    payloads: memos,
+    chunksTotal: chunks.length,
     submitter: signer.address,
-  };
+    send: async (memo) => {
+      const { txHash, height } = await signer.sendMemoTransaction(memo);
+      return { txHash, blockNumber: height };
+    },
+    onProgress,
+  });
 };

@@ -1,18 +1,21 @@
 import {
-  buildChunkAnchorPayload,
+  assertPayloadFits,
+  buildChunkedAnchorPayloads,
   buildFileAnchorPayload,
   ChainNotProvisionedError,
+  resolveFamilyChain,
+  runSequentialChunkedAnchor,
   type AnchorChunk,
   type AnchorProgressHandler,
   type BuildFileAnchorParams,
+  type ChainConfig,
+  type ChainId,
   type ChunkedAnchorReceipt,
 } from "@fileonchain/utils";
-import { getChain, type ChainConfig } from "@fileonchain/utils";
-import type { ChainId } from "@fileonchain/utils";
 
 /**
  * TON client. Anchors ride the text comment of a minimal self-transfer —
- * one versioned JSON payload from `../anchor` per transaction, so
+ * one versioned JSON payload from `@fileonchain/utils` per transaction, so
  * `parseAnchorPayload` reads them straight off confirmed txs. Comment
  * cells, bounce flags, and BOC encoding are wallet/SDK specifics that stay
  * in the signer implementation (TON Connect or @ton/core), keeping the SDK
@@ -38,26 +41,19 @@ export interface TonAnchorSigner {
 }
 
 /** Resolve a provisioned `ton:*` chain, or throw naming what's missing. */
-export const resolveTonChain = (chainId: ChainId): ChainConfig => {
-  const chain = getChain(chainId);
-  if (!chain) throw new Error(`Unknown chain "${chainId}".`);
-  if (chain.family !== "ton") {
-    throw new Error(`Chain "${chainId}" is not a TON chain; use the ${chain.family} client instead.`);
-  }
-  if (!chain.memoAnchoring && !chain.moduleAddress) {
-    throw new ChainNotProvisionedError(chainId, "comment anchoring is not enabled for this chain yet.");
-  }
-  return chain;
-};
+export const resolveTonChain = (chainId: ChainId): ChainConfig =>
+  resolveFamilyChain(chainId, {
+    family: "ton",
+    familyLabel: "a TON chain",
+    assertProvisioned: (chain) => {
+      if (!chain.memoAnchoring && !chain.moduleAddress) {
+        throw new ChainNotProvisionedError(chainId, "comment anchoring is not enabled for this chain yet.");
+      }
+    },
+  });
 
-const assertCommentFits = (comment: string, maxBytes: number): void => {
-  const bytes = new TextEncoder().encode(comment).length;
-  if (bytes > maxBytes) {
-    throw new Error(
-      `Anchor payload is ${bytes} bytes but the chain accepts comments up to ${maxBytes} bytes.`,
-    );
-  }
-};
+const assertCommentFits = (comment: string, maxBytes: number): void =>
+  assertPayloadFits(comment, maxBytes, `the chain accepts comments up to ${maxBytes} bytes`);
 
 export interface TonAnchorParams extends BuildFileAnchorParams {
   /** A `ton:*` chain id, e.g. "ton:mainnet". */
@@ -113,36 +109,16 @@ export const anchorChunkedFile = async (
   }: TonChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
   const chain = resolveTonChain(chainId);
-  const total = chunks.length;
 
-  const comments = chunks.map((chunk) =>
-    buildChunkAnchorPayload({ fileCid, chunk, total })
-  );
-  comments.push(buildFileAnchorPayload({ cid: fileCid, sha256, uri }));
+  const comments = buildChunkedAnchorPayloads({ fileCid, chunks, sha256, uri });
   for (const comment of comments) assertCommentFits(comment, maxCommentBytes);
 
-  const txHashes: string[] = [];
-  let chunksAnchored = 0;
-
-  for (const comment of comments) {
-    onProgress?.({ stage: "signing", chunksAnchored, chunksTotal: total });
-    const { txHash } = await signer.sendCommentTransaction(comment);
-    txHashes.push(txHash);
-    chunksAnchored = Math.min(chunksAnchored + 1, total);
-    onProgress?.({ stage: "confirming", chunksAnchored, chunksTotal: total, txHash });
-  }
-
-  onProgress?.({
-    stage: "confirmed",
-    chunksAnchored: total,
-    chunksTotal: total,
-    txHash: txHashes[txHashes.length - 1],
-  });
-
-  return {
+  return runSequentialChunkedAnchor({
     chainId: chain.id,
-    txHashes,
-    txHash: txHashes[txHashes.length - 1],
+    payloads: comments,
+    chunksTotal: chunks.length,
     submitter: signer.address,
-  };
+    send: (comment) => signer.sendCommentTransaction(comment),
+    onProgress,
+  });
 };

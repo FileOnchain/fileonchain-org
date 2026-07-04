@@ -5,19 +5,21 @@ import {
   type Connection,
 } from "@solana/web3.js";
 import {
-  buildChunkAnchorPayload,
+  batchByBytes,
+  buildChunkedAnchorPayloads,
   buildFileAnchorPayload,
+  resolveFamilyChain,
   type AnchorChunk,
   type AnchorProgressHandler,
   type BuildFileAnchorParams,
+  type ChainConfig,
+  type ChainId,
   type ChunkedAnchorReceipt,
 } from "@fileonchain/utils";
-import { getChain, type ChainConfig } from "@fileonchain/utils";
-import type { ChainId } from "@fileonchain/utils";
 
 /**
  * Solana client. Anchors are SPL Memo instructions carrying the versioned
- * JSON payloads from `../anchor` — the memo program is a native deployment
+ * JSON payloads from `@fileonchain/utils` — the memo program is a native deployment
  * on every cluster, so no FileOnChain program is required. Several memos are
  * packed per transaction under the 1232-byte packet limit.
  */
@@ -37,14 +39,9 @@ export interface SolanaAnchorSigner {
 }
 
 /** Resolve a `solana:*` chain, or throw naming what's wrong. */
-export const resolveSolanaChain = (chainId: ChainId): ChainConfig => {
-  const chain = getChain(chainId);
-  if (!chain) throw new Error(`Unknown chain "${chainId}".`);
-  if (chain.family !== "solana") {
-    throw new Error(`Chain "${chainId}" is not a Solana chain; use the ${chain.family} client instead.`);
-  }
-  return chain;
-};
+export const resolveSolanaChain = (chainId: ChainId): ChainConfig =>
+  // Always provisioned — anchors ride the native SPL Memo program.
+  resolveFamilyChain(chainId, { family: "solana", familyLabel: "a Solana chain" });
 
 const memoInstruction = (payload: string): TransactionInstruction =>
   new TransactionInstruction({
@@ -133,24 +130,8 @@ export const anchorChunkedFile = async (
   const chain = resolveSolanaChain(chainId);
   const total = chunks.length;
 
-  const payloads = chunks.map((chunk) =>
-    buildChunkAnchorPayload({ fileCid, chunk, total })
-  );
-  payloads.push(buildFileAnchorPayload({ cid: fileCid, sha256, uri }));
-
-  const batches: string[][] = [];
-  let current: string[] = [];
-  let currentBytes = 0;
-  for (const payload of payloads) {
-    if (current.length > 0 && currentBytes + payload.length > maxMemoBytesPerTx) {
-      batches.push(current);
-      current = [];
-      currentBytes = 0;
-    }
-    current.push(payload);
-    currentBytes += payload.length;
-  }
-  if (current.length > 0) batches.push(current);
+  const payloads = buildChunkedAnchorPayloads({ fileCid, chunks, sha256, uri });
+  const batches = batchByBytes(payloads, maxMemoBytesPerTx, (payload) => payload.length);
 
   const txHashes: string[] = [];
   let lastSlot: number | undefined;

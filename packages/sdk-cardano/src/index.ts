@@ -1,25 +1,27 @@
 import {
-  buildChunkAnchorPayload,
+  buildChunkedAnchorPayloads,
   buildFileAnchorPayload,
   ChainNotProvisionedError,
+  resolveFamilyChain,
+  runSequentialChunkedAnchor,
   type AnchorChunk,
   type AnchorProgressHandler,
   type BuildFileAnchorParams,
+  type ChainConfig,
+  type ChainId,
   type ChunkedAnchorReceipt,
 } from "@fileonchain/utils";
-import { getChain, type ChainConfig } from "@fileonchain/utils";
-import type { ChainId } from "@fileonchain/utils";
 
 /**
  * Cardano client. Anchors ride transaction metadata — no Plutus needed.
  * Payloads go under the CIP-20 message label 674 as `{ msg: [ …strings… ] }`;
  * Cardano metadata strings are capped at 64 bytes, so each versioned JSON
- * payload from `../anchor` is split into an ordered string array that
- * explorers and `parseAnchorPayload` (after joining) read back verbatim.
- * One payload per transaction; chains provision by flipping `memoAnchoring`
- * in the registry. Built against a minimal signer surface so the SDK stays
- * dependency-free — the caller adapts a CIP-30 wallet + tx builder (browser)
- * or a server-side builder to it.
+ * payload from `@fileonchain/utils` is split into an ordered string array
+ * that explorers and `parseAnchorPayload` (after joining) read back
+ * verbatim. One payload per transaction; chains provision by flipping
+ * `memoAnchoring` in the registry. Built against a minimal signer surface so
+ * the SDK stays dependency-free — the caller adapts a CIP-30 wallet + tx
+ * builder (browser) or a server-side builder to it.
  */
 
 /** CIP-20 "message" label, so anchors render readably in every explorer. */
@@ -56,17 +58,16 @@ export interface CardanoAnchorSigner {
 }
 
 /** Resolve a provisioned `cardano:*` chain, or throw naming what's missing. */
-export const resolveCardanoChain = (chainId: ChainId): ChainConfig => {
-  const chain = getChain(chainId);
-  if (!chain) throw new Error(`Unknown chain "${chainId}".`);
-  if (chain.family !== "cardano") {
-    throw new Error(`Chain "${chainId}" is not a Cardano chain; use the ${chain.family} client instead.`);
-  }
-  if (!chain.memoAnchoring && !chain.moduleAddress) {
-    throw new ChainNotProvisionedError(chainId, "metadata anchoring is not enabled for this chain yet.");
-  }
-  return chain;
-};
+export const resolveCardanoChain = (chainId: ChainId): ChainConfig =>
+  resolveFamilyChain(chainId, {
+    family: "cardano",
+    familyLabel: "a Cardano chain",
+    assertProvisioned: (chain) => {
+      if (!chain.memoAnchoring && !chain.moduleAddress) {
+        throw new ChainNotProvisionedError(chainId, "metadata anchoring is not enabled for this chain yet.");
+      }
+    },
+  });
 
 export interface CardanoAnchorParams extends BuildFileAnchorParams {
   /** A `cardano:*` chain id, e.g. "cardano:mainnet". */
@@ -109,36 +110,14 @@ export const anchorChunkedFile = async (
   { chainId, fileCid, chunks, sha256, uri, onProgress }: CardanoChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
   const chain = resolveCardanoChain(chainId);
-  const total = chunks.length;
 
-  const payloads = chunks.map((chunk) =>
-    buildChunkAnchorPayload({ fileCid, chunk, total })
-  );
-  payloads.push(buildFileAnchorPayload({ cid: fileCid, sha256, uri }));
-
-  const txHashes: string[] = [];
-  let chunksAnchored = 0;
-
-  for (const payload of payloads) {
-    onProgress?.({ stage: "signing", chunksAnchored, chunksTotal: total });
-    const { txHash } = await signer.submitMetadataTransaction(splitForMetadata(payload));
-    txHashes.push(txHash);
-    chunksAnchored = Math.min(chunksAnchored + 1, total);
-    onProgress?.({ stage: "confirming", chunksAnchored, chunksTotal: total, txHash });
-  }
-
-  onProgress?.({
-    stage: "confirmed",
-    chunksAnchored: total,
-    chunksTotal: total,
-    txHash: txHashes[txHashes.length - 1],
-  });
-
-  // No blockNumber — CIP-30 wallets return only the hash.
-  return {
+  // No blockNumber in the receipt — CIP-30 wallets return only the hash.
+  return runSequentialChunkedAnchor({
     chainId: chain.id,
-    txHashes,
-    txHash: txHashes[txHashes.length - 1],
+    payloads: buildChunkedAnchorPayloads({ fileCid, chunks, sha256, uri }),
+    chunksTotal: chunks.length,
     submitter: signer.address,
-  };
+    send: (payload) => signer.submitMetadataTransaction(splitForMetadata(payload)),
+    onProgress,
+  });
 };

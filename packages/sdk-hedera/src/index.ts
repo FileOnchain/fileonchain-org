@@ -1,23 +1,26 @@
 import {
-  buildChunkAnchorPayload,
+  assertPayloadFits,
+  buildChunkedAnchorPayloads,
   buildFileAnchorPayload,
   ChainNotProvisionedError,
+  resolveFamilyChain,
+  runSequentialChunkedAnchor,
   type AnchorChunk,
   type AnchorProgressHandler,
   type BuildFileAnchorParams,
+  type ChainConfig,
+  type ChainId,
   type ChunkedAnchorReceipt,
 } from "@fileonchain/utils";
-import { getChain, type ChainConfig } from "@fileonchain/utils";
-import type { ChainId } from "@fileonchain/utils";
 
 /**
  * Hedera client. Anchors are Consensus Service (HCS) messages on the topic
  * named by `hcsTopicId` on the chain entry — one versioned JSON payload from
- * `../anchor` per message, so `parseAnchorPayload` reads them straight off
- * the topic stream. There is no gas; topic messages carry a small fixed fee,
- * and mirror nodes stream them back for indexing. Built against a minimal
- * signer surface so the SDK stays dependency-free — the caller adapts
- * @hashgraph/sdk (server) or HashConnect (browser) to it.
+ * `@fileonchain/utils` per message, so `parseAnchorPayload` reads them
+ * straight off the topic stream. There is no gas; topic messages carry a
+ * small fixed fee, and mirror nodes stream them back for indexing. Built
+ * against a minimal signer surface so the SDK stays dependency-free — the
+ * caller adapts @hashgraph/sdk (server) or HashConnect (browser) to it.
  */
 
 /**
@@ -39,26 +42,19 @@ export interface HederaAnchorSigner {
 }
 
 /** Resolve a provisioned `hedera:*` chain, or throw naming what's missing. */
-export const resolveHederaChain = (chainId: ChainId): ChainConfig & { hcsTopicId: string } => {
-  const chain = getChain(chainId);
-  if (!chain) throw new Error(`Unknown chain "${chainId}".`);
-  if (chain.family !== "hedera") {
-    throw new Error(`Chain "${chainId}" is not a Hedera chain; use the ${chain.family} client instead.`);
-  }
-  if (!chain.hcsTopicId) {
-    throw new ChainNotProvisionedError(chainId, "no HCS topic is configured for this chain yet.");
-  }
-  return chain as ChainConfig & { hcsTopicId: string };
-};
+export const resolveHederaChain = (chainId: ChainId): ChainConfig & { hcsTopicId: string } =>
+  resolveFamilyChain(chainId, {
+    family: "hedera",
+    familyLabel: "a Hedera chain",
+    assertProvisioned: (chain) => {
+      if (!chain.hcsTopicId) {
+        throw new ChainNotProvisionedError(chainId, "no HCS topic is configured for this chain yet.");
+      }
+    },
+  }) as ChainConfig & { hcsTopicId: string };
 
-const assertMessageFits = (message: string): void => {
-  const bytes = new TextEncoder().encode(message).length;
-  if (bytes > MAX_HCS_MESSAGE_BYTES) {
-    throw new Error(
-      `Anchor payload is ${bytes} bytes but single HCS messages cap at ${MAX_HCS_MESSAGE_BYTES} bytes.`,
-    );
-  }
-};
+const assertMessageFits = (message: string): void =>
+  assertPayloadFits(message, MAX_HCS_MESSAGE_BYTES, `single HCS messages cap at ${MAX_HCS_MESSAGE_BYTES} bytes`);
 
 export interface HederaAnchorParams extends BuildFileAnchorParams {
   /** A `hedera:*` chain id, e.g. "hedera:mainnet". */
@@ -102,39 +98,20 @@ export const anchorChunkedFile = async (
   { chainId, fileCid, chunks, sha256, uri, onProgress }: HederaChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
   const chain = resolveHederaChain(chainId);
-  const total = chunks.length;
 
-  const messages = chunks.map((chunk) =>
-    buildChunkAnchorPayload({ fileCid, chunk, total })
-  );
-  messages.push(buildFileAnchorPayload({ cid: fileCid, sha256, uri }));
+  const messages = buildChunkedAnchorPayloads({ fileCid, chunks, sha256, uri });
   for (const message of messages) assertMessageFits(message);
 
-  const txHashes: string[] = [];
-  let lastSequence: number | undefined;
-  let chunksAnchored = 0;
-
-  for (const message of messages) {
-    onProgress?.({ stage: "signing", chunksAnchored, chunksTotal: total });
-    const { txHash, sequenceNumber } = await signer.submitTopicMessage(chain.hcsTopicId, message);
-    txHashes.push(txHash);
-    lastSequence = sequenceNumber ?? lastSequence;
-    chunksAnchored = Math.min(chunksAnchored + 1, total);
-    onProgress?.({ stage: "confirming", chunksAnchored, chunksTotal: total, txHash });
-  }
-
-  onProgress?.({
-    stage: "confirmed",
-    chunksAnchored: total,
-    chunksTotal: total,
-    txHash: txHashes[txHashes.length - 1],
-  });
-
-  return {
+  // The receipt's blockNumber carries the last consensus sequence number.
+  return runSequentialChunkedAnchor({
     chainId: chain.id,
-    txHashes,
-    txHash: txHashes[txHashes.length - 1],
-    blockNumber: lastSequence,
+    payloads: messages,
+    chunksTotal: chunks.length,
     submitter: signer.accountId,
-  };
+    send: async (message) => {
+      const { txHash, sequenceNumber } = await signer.submitTopicMessage(chain.hcsTopicId, message);
+      return { txHash, blockNumber: sequenceNumber };
+    },
+    onProgress,
+  });
 };

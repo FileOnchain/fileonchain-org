@@ -1,21 +1,23 @@
 import type { ApiPromise } from "@polkadot/api";
 import type { AddressOrPair, Signer, SubmittableExtrinsic } from "@polkadot/api/types";
 import {
-  buildChunkAnchorPayload,
+  batchByBytes,
+  buildChunkedAnchorPayloads,
   buildFileAnchorPayload,
   parseAnchorPayload,
+  resolveFamilyChain,
   type AnchorChunk,
   type AnchorProgressHandler,
   type BuildFileAnchorParams,
+  type ChainConfig,
+  type ChainId,
   type ChunkedAnchorReceipt,
   type FileAnchorPayload,
 } from "@fileonchain/utils";
-import { getChain, type ChainConfig } from "@fileonchain/utils";
-import type { ChainId } from "@fileonchain/utils";
 
 /**
  * Substrate client. Anchors are `system.remarkWithEvent` extrinsics carrying
- * the versioned JSON payloads from `../anchor`, so any indexer can find and
+ * the versioned JSON payloads from `@fileonchain/utils`, so any indexer can find and
  * parse them without bespoke chain state. Anchoring a folder is identical to
  * anchoring a file — pass the CID of the folder's DAG root.
  */
@@ -39,17 +41,18 @@ export const parseAnchorRemark = (remark: string): FileAnchorPayload | null => {
  * Resolve a `substrate:*` chain that anchors via remarks, or throw with a
  * message that says exactly what's missing.
  */
-export const resolveSubstrateChain = (chainId: ChainId): ChainConfig => {
-  const chain = getChain(chainId);
-  if (!chain) throw new Error(`Unknown chain "${chainId}".`);
-  if (chain.family !== "substrate") {
-    throw new Error(`Chain "${chainId}" is not a Substrate chain; use the ${chain.family} client instead.`);
-  }
-  if (chain.palletContract !== "system.remarkWithEvent") {
-    throw new Error(`Chain "${chainId}" does not support remark anchoring.`);
-  }
-  return chain;
-};
+export const resolveSubstrateChain = (chainId: ChainId): ChainConfig =>
+  resolveFamilyChain(chainId, {
+    family: "substrate",
+    familyLabel: "a Substrate chain",
+    // Deliberately a plain Error, not ChainNotProvisionedError: remark
+    // anchoring is a chain capability, not a pending deployment of ours.
+    assertProvisioned: (chain) => {
+      if (chain.palletContract !== "system.remarkWithEvent") {
+        throw new Error(`Chain "${chainId}" does not support remark anchoring.`);
+      }
+    },
+  });
 
 export interface SubstrateAnchorParams extends BuildFileAnchorParams {
   /** A `substrate:*` chain id, e.g. "substrate:autonomys-mainnet". */
@@ -176,28 +179,14 @@ export const anchorChunkedFile = async (
   const embedData = includeData ?? chain.embedsChunkData ?? false;
   const total = chunks.length;
 
-  // Chunk remarks first, file-level anchor last — indexers see the file
-  // anchor only once every chunk it references is already on-chain.
-  const remarks = chunks.map((chunk) =>
-    buildChunkAnchorPayload({ fileCid, chunk, total, includeData: embedData })
-  );
-  remarks.push(buildFileAnchorPayload({ cid: fileCid, sha256, uri }));
-
-  // Greedy size-budgeted batches; `chunksPer[i]` counts chunk (not file)
-  // remarks in batch i so progress can be reported per accepted batch.
-  const batches: string[][] = [];
-  let current: string[] = [];
-  let currentBytes = 0;
-  for (const remark of remarks) {
-    if (current.length > 0 && currentBytes + remark.length > maxBatchBytes) {
-      batches.push(current);
-      current = [];
-      currentBytes = 0;
-    }
-    current.push(remark);
-    currentBytes += remark.length;
-  }
-  if (current.length > 0) batches.push(current);
+  const remarks = buildChunkedAnchorPayloads({
+    fileCid,
+    chunks,
+    sha256,
+    uri,
+    includeData: embedData,
+  });
+  const batches = batchByBytes(remarks, maxBatchBytes, (remark) => remark.length);
 
   const submitter =
     typeof address === "string" ? address : (address as { address: string }).address;

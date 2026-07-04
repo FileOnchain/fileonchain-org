@@ -2,17 +2,18 @@ import {
   buildChunkAnchorPayload,
   buildFileAnchorPayload,
   ChainNotProvisionedError,
+  resolveFamilyChain,
   type AnchorChunk,
   type AnchorProgressHandler,
   type BuildFileAnchorParams,
+  type ChainConfig,
+  type ChainId,
   type ChunkedAnchorReceipt,
 } from "@fileonchain/utils";
-import { getChain, type ChainConfig } from "@fileonchain/utils";
-import type { ChainId } from "@fileonchain/utils";
 
 /**
  * Aptos client. Anchors call `<moduleAddress>::file_registry::anchor_cid`
- * with the versioned JSON payloads from `../anchor`. Built against the
+ * with the versioned JSON payloads from `@fileonchain/utils`. Built against the
  * wallet-standard provider surface (Petra, Martian), so it needs no Aptos
  * SDK dependency; it stays behind `ChainNotProvisionedError` until a module
  * address lands in the chain registry.
@@ -43,17 +44,16 @@ export interface AptosAnchorSigner {
  */
 export const resolveAptosChain = (
   chainId: ChainId
-): ChainConfig & { moduleAddress: string } => {
-  const chain = getChain(chainId);
-  if (!chain) throw new Error(`Unknown chain "${chainId}".`);
-  if (chain.family !== "aptos") {
-    throw new Error(`Chain "${chainId}" is not an Aptos chain; use the ${chain.family} client instead.`);
-  }
-  if (!chain.moduleAddress) {
-    throw new ChainNotProvisionedError(chainId, "the anchoring Move module is not deployed yet.");
-  }
-  return chain as ChainConfig & { moduleAddress: string };
-};
+): ChainConfig & { moduleAddress: string } =>
+  resolveFamilyChain(chainId, {
+    family: "aptos",
+    familyLabel: "an Aptos chain",
+    assertProvisioned: (chain) => {
+      if (!chain.moduleAddress) {
+        throw new ChainNotProvisionedError(chainId, "the anchoring Move module is not deployed yet.");
+      }
+    },
+  }) as ChainConfig & { moduleAddress: string };
 
 const anchorPayload = (moduleAddress: string, cid: string, payload: string): AptosEntryFunctionPayload => ({
   type: "entry_function_payload",

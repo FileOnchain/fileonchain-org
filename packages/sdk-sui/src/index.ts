@@ -1,19 +1,21 @@
 import {
+  batchByCount,
   buildChunkAnchorPayload,
   buildFileAnchorPayload,
   ChainNotProvisionedError,
+  resolveFamilyChain,
   type AnchorChunk,
   type AnchorProgressHandler,
   type BuildFileAnchorParams,
+  type ChainConfig,
+  type ChainId,
   type ChunkedAnchorReceipt,
 } from "@fileonchain/utils";
-import { getChain, type ChainConfig } from "@fileonchain/utils";
-import type { ChainId } from "@fileonchain/utils";
 
 /**
  * Sui client. Anchors call `<moduleAddress>::file_registry::anchor_cid(cid,
  * payload)` (contracts/sui) with the versioned JSON payloads from
- * `../anchor`. Sui programmable transaction blocks let many move calls share
+ * `@fileonchain/utils`. Sui programmable transaction blocks let many move calls share
  * one transaction and one wallet approval, so the client batches all chunk
  * anchors plus the file anchor into as few PTBs as possible. Built against a
  * minimal signer surface so the SDK stays dependency-free — the caller
@@ -49,17 +51,16 @@ export interface SuiAnchorSigner {
  */
 export const resolveSuiChain = (
   chainId: ChainId
-): ChainConfig & { moduleAddress: string } => {
-  const chain = getChain(chainId);
-  if (!chain) throw new Error(`Unknown chain "${chainId}".`);
-  if (chain.family !== "sui") {
-    throw new Error(`Chain "${chainId}" is not a Sui chain; use the ${chain.family} client instead.`);
-  }
-  if (!chain.moduleAddress) {
-    throw new ChainNotProvisionedError(chainId, "the anchoring Move module is not deployed yet.");
-  }
-  return chain as ChainConfig & { moduleAddress: string };
-};
+): ChainConfig & { moduleAddress: string } =>
+  resolveFamilyChain(chainId, {
+    family: "sui",
+    familyLabel: "a Sui chain",
+    assertProvisioned: (chain) => {
+      if (!chain.moduleAddress) {
+        throw new ChainNotProvisionedError(chainId, "the anchoring Move module is not deployed yet.");
+      }
+    },
+  }) as ChainConfig & { moduleAddress: string };
 
 /**
  * Sui caps PTB commands at 1024; 128 keeps transactions comfortably under
@@ -130,10 +131,7 @@ export const anchorChunkedFile = async (
   // File anchor last, so indexers see it only after every chunk.
   calls.push({ cid: fileCid, payload: buildFileAnchorPayload({ cid: fileCid, sha256, uri }) });
 
-  const batches: SuiAnchorCall[][] = [];
-  for (let i = 0; i < calls.length; i += maxCallsPerTx) {
-    batches.push(calls.slice(i, i + maxCallsPerTx));
-  }
+  const batches = batchByCount(calls, maxCallsPerTx);
 
   const digests: string[] = [];
   let lastCheckpoint: number | undefined;

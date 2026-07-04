@@ -1,14 +1,17 @@
 import {
+  batchByCount,
   buildChunkAnchorPayload,
   buildFileAnchorPayload,
   ChainNotProvisionedError,
+  resolveFamilyChain,
+  ZERO_ADDRESS,
   type AnchorChunk,
   type AnchorProgressHandler,
   type BuildFileAnchorParams,
+  type ChainConfig,
+  type ChainId,
   type ChunkedAnchorReceipt,
 } from "@fileonchain/utils";
-import { getChain, ZERO_ADDRESS, type ChainConfig } from "@fileonchain/utils";
-import type { ChainId } from "@fileonchain/utils";
 
 /**
  * Starknet client. Anchors call `anchor_cid(cid: ByteArray, payload: ByteArray)`
@@ -50,17 +53,16 @@ export interface StarknetAnchorSigner {
  */
 export const resolveStarknetChain = (
   chainId: ChainId
-): ChainConfig & { registryContract: `0x${string}` } => {
-  const chain = getChain(chainId);
-  if (!chain) throw new Error(`Unknown chain "${chainId}".`);
-  if (chain.family !== "starknet") {
-    throw new Error(`Chain "${chainId}" is not a Starknet chain; use the ${chain.family} client instead.`);
-  }
-  if (!chain.registryContract || chain.registryContract === ZERO_ADDRESS) {
-    throw new ChainNotProvisionedError(chainId, "the Cairo registry contract is not deployed yet.");
-  }
-  return chain as ChainConfig & { registryContract: `0x${string}` };
-};
+): ChainConfig & { registryContract: `0x${string}` } =>
+  resolveFamilyChain(chainId, {
+    family: "starknet",
+    familyLabel: "a Starknet chain",
+    assertProvisioned: (chain) => {
+      if (!chain.registryContract || chain.registryContract === ZERO_ADDRESS) {
+        throw new ChainNotProvisionedError(chainId, "the Cairo registry contract is not deployed yet.");
+      }
+    },
+  }) as ChainConfig & { registryContract: `0x${string}` };
 
 /**
  * Calls per multicall transaction — conservative enough to stay under the
@@ -131,10 +133,7 @@ export const anchorChunkedFile = async (
   }));
   calls.push({ cid: fileCid, payload: buildFileAnchorPayload({ cid: fileCid, sha256, uri }) });
 
-  const batches: StarknetAnchorCall[][] = [];
-  for (let i = 0; i < calls.length; i += maxCallsPerTx) {
-    batches.push(calls.slice(i, i + maxCallsPerTx));
-  }
+  const batches = batchByCount(calls, maxCallsPerTx);
 
   const txHashes: string[] = [];
   let lastBlockNumber: number | undefined;

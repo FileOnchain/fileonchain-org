@@ -2,13 +2,14 @@ import {
   buildChunkAnchorPayload,
   buildFileAnchorPayload,
   ChainNotProvisionedError,
+  resolveFamilyChain,
   type AnchorChunk,
   type AnchorProgressHandler,
   type BuildFileAnchorParams,
+  type ChainConfig,
+  type ChainId,
   type ChunkedAnchorReceipt,
 } from "@fileonchain/utils";
-import { getChain, type ChainConfig } from "@fileonchain/utils";
-import type { ChainId } from "@fileonchain/utils";
 
 /**
  * NEAR client. Anchors call `anchor_cid(cid, payload)` on the WASM registry
@@ -39,17 +40,16 @@ export interface NearAnchorSigner {
  */
 export const resolveNearChain = (
   chainId: ChainId
-): ChainConfig & { moduleAddress: string } => {
-  const chain = getChain(chainId);
-  if (!chain) throw new Error(`Unknown chain "${chainId}".`);
-  if (chain.family !== "near") {
-    throw new Error(`Chain "${chainId}" is not a NEAR chain; use the ${chain.family} client instead.`);
-  }
-  if (!chain.moduleAddress) {
-    throw new ChainNotProvisionedError(chainId, "the registry contract account is not deployed yet.");
-  }
-  return chain as ChainConfig & { moduleAddress: string };
-};
+): ChainConfig & { moduleAddress: string } =>
+  resolveFamilyChain(chainId, {
+    family: "near",
+    familyLabel: "a NEAR chain",
+    assertProvisioned: (chain) => {
+      if (!chain.moduleAddress) {
+        throw new ChainNotProvisionedError(chainId, "the registry contract account is not deployed yet.");
+      }
+    },
+  }) as ChainConfig & { moduleAddress: string };
 
 export interface NearAnchorParams extends BuildFileAnchorParams {
   /** A `near:*` chain id, e.g. "near:mainnet". */

@@ -1,19 +1,22 @@
 import {
-  buildChunkAnchorPayload,
+  assertPayloadFits,
+  buildChunkedAnchorPayloads,
   buildFileAnchorPayload,
   ChainNotProvisionedError,
+  resolveFamilyChain,
+  runSequentialChunkedAnchor,
   type AnchorChunk,
   type AnchorProgressHandler,
   type BuildFileAnchorParams,
+  type ChainConfig,
+  type ChainId,
   type ChunkedAnchorReceipt,
 } from "@fileonchain/utils";
-import { getChain, type ChainConfig } from "@fileonchain/utils";
-import type { ChainId } from "@fileonchain/utils";
 
 /**
  * TRON client. TRON is its own family (base58 T-addresses, resource model)
  * — not EVM. MVP anchors ride a transaction's data/memo field — one
- * versioned JSON payload from `../anchor` per transaction, so
+ * versioned JSON payload from `@fileonchain/utils` per transaction, so
  * `parseAnchorPayload` reads them straight off confirmed txs; chains
  * provision by flipping `memoAnchoring` in the registry. A TVM deployment
  * of the Solidity FileRegistry can later land in `moduleAddress`. Built
@@ -40,26 +43,19 @@ export interface TronAnchorSigner {
 }
 
 /** Resolve a provisioned `tron:*` chain, or throw naming what's missing. */
-export const resolveTronChain = (chainId: ChainId): ChainConfig => {
-  const chain = getChain(chainId);
-  if (!chain) throw new Error(`Unknown chain "${chainId}".`);
-  if (chain.family !== "tron") {
-    throw new Error(`Chain "${chainId}" is not a TRON chain; use the ${chain.family} client instead.`);
-  }
-  if (!chain.memoAnchoring && !chain.moduleAddress) {
-    throw new ChainNotProvisionedError(chainId, "memo anchoring is not enabled for this chain yet.");
-  }
-  return chain;
-};
+export const resolveTronChain = (chainId: ChainId): ChainConfig =>
+  resolveFamilyChain(chainId, {
+    family: "tron",
+    familyLabel: "a TRON chain",
+    assertProvisioned: (chain) => {
+      if (!chain.memoAnchoring && !chain.moduleAddress) {
+        throw new ChainNotProvisionedError(chainId, "memo anchoring is not enabled for this chain yet.");
+      }
+    },
+  });
 
-const assertMemoFits = (memo: string, maxBytes: number): void => {
-  const bytes = new TextEncoder().encode(memo).length;
-  if (bytes > maxBytes) {
-    throw new Error(
-      `Anchor payload is ${bytes} bytes but the chain accepts memos up to ${maxBytes} bytes.`,
-    );
-  }
-};
+const assertMemoFits = (memo: string, maxBytes: number): void =>
+  assertPayloadFits(memo, maxBytes, `the chain accepts memos up to ${maxBytes} bytes`);
 
 export interface TronAnchorParams extends BuildFileAnchorParams {
   /** A `tron:*` chain id, e.g. "tron:mainnet". */
@@ -114,39 +110,16 @@ export const anchorChunkedFile = async (
   }: TronChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
   const chain = resolveTronChain(chainId);
-  const total = chunks.length;
 
-  const memos = chunks.map((chunk) =>
-    buildChunkAnchorPayload({ fileCid, chunk, total })
-  );
-  memos.push(buildFileAnchorPayload({ cid: fileCid, sha256, uri }));
+  const memos = buildChunkedAnchorPayloads({ fileCid, chunks, sha256, uri });
   for (const memo of memos) assertMemoFits(memo, maxMemoBytes);
 
-  const txHashes: string[] = [];
-  let lastBlockNumber: number | undefined;
-  let chunksAnchored = 0;
-
-  for (const memo of memos) {
-    onProgress?.({ stage: "signing", chunksAnchored, chunksTotal: total });
-    const { txHash, blockNumber } = await signer.sendMemoTransaction(memo);
-    txHashes.push(txHash);
-    lastBlockNumber = blockNumber ?? lastBlockNumber;
-    chunksAnchored = Math.min(chunksAnchored + 1, total);
-    onProgress?.({ stage: "confirming", chunksAnchored, chunksTotal: total, txHash });
-  }
-
-  onProgress?.({
-    stage: "confirmed",
-    chunksAnchored: total,
-    chunksTotal: total,
-    txHash: txHashes[txHashes.length - 1],
-  });
-
-  return {
+  return runSequentialChunkedAnchor({
     chainId: chain.id,
-    txHashes,
-    txHash: txHashes[txHashes.length - 1],
-    blockNumber: lastBlockNumber,
+    payloads: memos,
+    chunksTotal: chunks.length,
     submitter: signer.address,
-  };
+    send: (memo) => signer.sendMemoTransaction(memo),
+    onProgress,
+  });
 };
