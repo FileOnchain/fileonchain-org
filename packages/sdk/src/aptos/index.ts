@@ -4,6 +4,7 @@ import {
   ChainNotProvisionedError,
   type AnchorChunk,
   type AnchorProgressHandler,
+  type BuildFileAnchorParams,
   type ChunkedAnchorReceipt,
 } from "../anchor";
 import { getChain, type ChainConfig } from "../chains";
@@ -60,6 +61,24 @@ const anchorPayload = (moduleAddress: string, cid: string, payload: string): Apt
   type_arguments: [],
   arguments: [cid, payload],
 });
+
+export interface AptosAnchorParams extends BuildFileAnchorParams {
+  /** An `aptos:*` chain id, e.g. "aptos:mainnet". */
+  chainId: ChainId;
+}
+
+/** Anchor a single CID as one module call. */
+export const anchorCID = async (
+  signer: AptosAnchorSigner,
+  { chainId, ...payload }: AptosAnchorParams
+): Promise<{ hash: string; payload: string }> => {
+  const chain = resolveAptosChain(chainId);
+  const serialized = buildFileAnchorPayload(payload);
+  const { hash } = await signer.signAndSubmitTransaction(
+    anchorPayload(chain.moduleAddress, payload.cid, serialized)
+  );
+  return { hash, payload: serialized };
+};
 
 export interface AptosChunkedAnchorParams {
   /** An `aptos:*` chain id, e.g. "aptos:mainnet". */
