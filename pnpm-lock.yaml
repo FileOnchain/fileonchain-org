@@ -207,6 +207,49 @@ importers:
         version: 5.9.3
 
   packages/sdk:
+    dependencies:
+      '@fileonchain/api':
+        specifier: workspace:^
+        version: link:../api
+      '@fileonchain/sdk-aptos':
+        specifier: workspace:^
+        version: link:../sdk-aptos
+      '@fileonchain/sdk-cardano':
+        specifier: workspace:^
+        version: link:../sdk-cardano
+      '@fileonchain/sdk-cosmos':
+        specifier: workspace:^
+        version: link:../sdk-cosmos
+      '@fileonchain/sdk-evm':
+        specifier: workspace:^
+        version: link:../sdk-evm
+      '@fileonchain/sdk-hedera':
+        specifier: workspace:^
+        version: link:../sdk-hedera
+      '@fileonchain/sdk-near':
+        specifier: workspace:^
+        version: link:../sdk-near
+      '@fileonchain/sdk-solana':
+        specifier: workspace:^
+        version: link:../sdk-solana
+      '@fileonchain/sdk-starknet':
+        specifier: workspace:^
+        version: link:../sdk-starknet
+      '@fileonchain/sdk-substrate':
+        specifier: workspace:^
+        version: link:../sdk-substrate
+      '@fileonchain/sdk-sui':
+        specifier: workspace:^
+        version: link:../sdk-sui
+      '@fileonchain/sdk-ton':
+        specifier: workspace:^
+        version: link:../sdk-ton
+      '@fileonchain/sdk-tron':
+        specifier: workspace:^
+        version: link:../sdk-tron
+      '@fileonchain/utils':
+        specifier: workspace:^
+        version: link:../utils
     devDependencies:
       '@polkadot/api':
         specifier: 15.10.2
