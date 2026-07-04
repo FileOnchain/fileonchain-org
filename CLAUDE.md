@@ -7,14 +7,16 @@ architecture or conventions change.
 
 FileOnChain — a pnpm workspace monorepo:
 
-- **`apps/web`** — Next.js webapp for anchoring file CIDs across four chain
-  families (EVM, Substrate, Solana, Aptos), paying for an encrypted private
-  cache, and funding public infrastructure via donations.
+- **`apps/web`** — Next.js webapp for anchoring file CIDs across twelve chain
+  families (EVM, Substrate, Solana, Aptos, Cosmos, Sui, Starknet, NEAR, TRON,
+  Cardano, TON, Hedera), paying for an encrypted private cache, and funding
+  public infrastructure via donations.
 - **`packages/sdk`** — `@fileonchain/sdk`, the publishable SDK. **Single
   source of truth** for supported networks, contract addresses, ABIs, and the
   anchor clients. The webapp consumes it via `workspace:*`.
-- **`contracts/`** — Foundry workspace with the Solidity registry / cache /
-  donation contracts.
+- **`contracts/`** — one directory per runtime (`evm/` Foundry, `aptos/` +
+  `sui/` Move, `starknet/` Cairo, `near/` Rust) — see `contracts/README.md`;
+  per-chain deploy runbooks live in `docs/deploy/`.
 
 **Anchoring is real where a chain is provisioned; everything else is mock.**
 The pay-as-you-go upload flow sends real transactions through
@@ -78,12 +80,18 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
   `substrate:autonomys-mainnet`. Contract addresses live **on the chain
   entries** (`registryContract`, `cacheContract`, `donationContract`,
   `programId`, `moduleAddress`, `palletContract`) — no separate address maps.
-  Explorer URLs come from `buildTxUrl` / `buildAddressUrl`. Every family has
-  mainnet **and testnet** entries (`testnet: true`); `MAINNET_CHAINS` /
+  Explorer URLs come from `buildTxUrl` / `buildAddressUrl`. Family-specific
+  provisioning fields are optional and appear only where relevant:
+  `memoAnchoring` (the deliberate on-switch for memo/metadata/comment
+  anchoring — Cosmos, TRON, Cardano, TON; true on their testnets, flipped on
+  mainnets after QA), `bech32Prefix` (Cosmos), `hcsTopicId` (Hedera), and
+  `embedsChunkData` (chunk bytes ride along only on Autonomys). Every family
+  has mainnet **and testnet** entries (`testnet: true`); `MAINNET_CHAINS` /
   `TESTNET_CHAINS` / `getVisibleChains(showTestnets)` split them — webapp
   pickers use `useVisibleChains()` (preference-driven), static marketing copy
   counts `MAINNET_CHAINS`. **To add or change a chain or a deployed address,
-  edit `chains.ts` — never hardcode chain data in webapp components.**
+  edit `chains.ts` — never hardcode chain data in webapp components** (see
+  `docs/chains/checklist.md` for the full chain-addition checklist).
 - `src/types.ts` — `ChainFamily`, `ChainId` (template-literal
   `` `${ChainFamily}:${string}` ``), `CIDRegistryRecord`.
 - `src/abis/*` — generated from `contracts/evm/out` by `scripts/extract-abis.mjs`;
@@ -95,16 +103,22 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
   provisioning seam (`isChainProvisioned`, `ChainNotProvisionedError` —
   thrown by family clients when a chain has nothing deployed, so callers can
   fall back to a simulated flow).
-- Family clients, one subpath each, all exposing `anchorChunkedFile` with
-  the same progress/receipt shape: `src/evm/` (`@fileonchain/sdk/evm`,
-  peer viem) — `FileRegistry.anchorCID` per chunk + file; `src/substrate/`
-  (`.../substrate`, peer @polkadot/api) — `utility.batchAll` of
-  `system.remarkWithEvent` per chunk, chunk bytes included, size-budgeted
-  batches; `src/solana/` (`.../solana`, peer @solana/web3.js) — SPL Memo
-  instructions (native program, needs no deployment); `src/aptos/`
-  (`.../aptos`, dependency-free) — `file_registry::anchor_cid` module calls
-  via the wallet provider, gated on `moduleAddress`. Peer deps are
-  **optional**; the core entry stays dependency-free.
+- Family clients, one subpath each (`@fileonchain/sdk/<family>` for all
+  twelve families), all exposing `anchorChunkedFile` with the same
+  progress/receipt shape plus a file-level `anchorCID*` for the server
+  worker: `src/evm/` (peer viem) — `FileRegistry.anchorCID` per chunk +
+  file; `src/substrate/` (peer @polkadot/api) — `utility.batchAll` of
+  `system.remarkWithEvent`, chunk bytes riding along only where
+  `embedsChunkData` is set (Autonomys); `src/solana/` (peer
+  @solana/web3.js) — SPL Memo (native program, needs no deployment). The
+  other nine (`aptos`, `cosmos`, `sui`, `starknet`, `near`, `tron`,
+  `cardano`, `ton`, `hedera`) are **dependency-free**: the SDK owns payload
+  building, ordering, batching, size validation, and progress, and a
+  minimal structural signer interface owns transport — callers adapt wallet
+  providers (browser) or chain SDKs (server) to it. Sui and Starknet batch
+  all anchors into one PTB/multicall per approval; memo/metadata/comment
+  families send one payload per transaction with pre-flight size checks.
+  Peer deps are **optional**; the core entry stays dependency-free.
 - Package `exports` point at `src/*.ts` for the workspace (the webapp lists
   the SDK in `transpilePackages`); `publishConfig.exports` point at `dist/`
   (built with tsup) for npm consumers.
@@ -125,9 +139,11 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
   (Nav, Footer, PageShell), and feature folders (`explorer/`, `cache/`,
   `donations/`, `chain/`, `upload/`, `onboarding/`, `registry/`). Bare files in
   `components/` are page sections (Hero, HowItWorks, …).
-- **`src/hooks/`** — one wallet hook per family (`useEVMWallet`,
-  `useSubstrateWallet`, `useSolanaWallet`, `useAptosWallet`) plus `useWallet`,
-  `useChain`, `useFileUploader`, `useCachePayment`, `useDonation`.
+- **`src/hooks/`** — one wallet hook per family (`use<Family>Wallet` for all
+  twelve; injected providers, SSR-safe, chain SDKs dynamic-imported) plus
+  `useWallet`, `useChain`, `useFileUploader`, `useWalletProof`,
+  `useCachePayment`, `useDonation`. `useHederaWallet` is an honest seam —
+  HashConnect pairing is a follow-up.
 - **`src/states/`** — Zustand stores, exported as `use<Name>States`
   (`useWalletStates`, `useChainsStates`, `useThemeStates`, `useCacheStates`,
   `useDonationsStates`, `usePreferencesStates` — localStorage-persisted
@@ -171,16 +187,23 @@ chain-side operations behind it stay mock:
   when their env creds are set; the `"wallet"` Credentials provider accepts a
   nonce-bound sign-message proof verified per family in
   `verify-wallet.ts` (EVM viem, Substrate signatureVerify, Solana/Aptos
-  ed25519). Client proof collection is shared via `hooks/useWalletProof.ts`.
+  ed25519; Tier 2 verifiers live under `lib/auth/verifiers/` — ADR-36
+  Cosmos, Sui personal-message intent, SNIP-12 via on-chain
+  `is_valid_signature` for Starknet, NEP-413 + access-key RPC binding for
+  NEAR, TIP-191 recovery for TRON, CIP-8 COSE_Sign1 for Cardano).
+  `WALLET_FAMILIES` in `wallet-message.ts` is the auth-capable list — TON
+  and Hedera anchor but can't sign in yet. Client proof collection is
+  shared via `hooks/useWalletProof.ts`.
   Guards: `app/dashboard/layout.tsx` server layout redirect + `requireUser()`
   in routes — **no Edge middleware** (Neon driver is Node-only).
 - **Services** — `src/lib/server/*`: `credits.ts` (ledger, advisory-lock
   debits), `api-keys.ts` (hashed `fok_` keys), `anchor-service.ts` +
   `anchor-worker.ts` (server-side anchoring shared by `/api/uploads` and
   `/api/v1/anchor` — anchors the file CID for real through the SDK clients
-  when the chain is provisioned AND its signer env is set
-  (`ANCHOR_EVM_PRIVATE_KEY` / `ANCHOR_SUBSTRATE_SEED` /
-  `ANCHOR_SOLANA_SECRET_KEY` / `ANCHOR_APTOS_PRIVATE_KEY`); otherwise falls
+  when the chain is provisioned AND its `ANCHOR_*` signer env vars are set
+  (all documented in `apps/web/.env.example`; EVM/Substrate/Solana/Aptos
+  signers are inline in the worker, every Tier 2 family has a module under
+  `lib/server/anchor-signers/`); otherwise falls
   back to the deterministic mock; on a real send failure the job is marked failed
   and credits are refunded), `byok.ts` + `lib/byok/providers.ts` (provider
   registry; keys sealed by `lib/crypto/secretbox.ts` with
@@ -192,9 +215,11 @@ chain-side operations behind it stay mock:
   `app/api/organizations/shared.ts`).
 - **Mock seams to make real later**: deposit confirmation
   (`api/credits/deposit/[id]/confirm` — replace with a USDC Transfer
-  watcher), the Aptos anchoring Move module (worker code is ready; real sends
-  wait on a deployed module + `moduleAddress` in `chains.ts`), and `byok.ts`
-  validation (real Auto Drive call).
+  watcher), `byok.ts` validation (real Auto Drive call), and the per-chain
+  deployments themselves — all anchoring code paths are written; real sends
+  wait on deployed contracts/modules/topics recorded in `chains.ts` (see
+  `docs/deploy/`) plus funded `ANCHOR_*` signers. Mainnet
+  memo-anchoring flags (Cosmos/TRON/Cardano/TON) flip on after testnet QA.
 - Env vars are documented in `apps/web/.env.example`; all are optional for
   `pnpm build`, but runtime account features need `DATABASE_URL` +
   `AUTH_SECRET` (and `BYOK_ENCRYPTION_KEY` for BYOK).
