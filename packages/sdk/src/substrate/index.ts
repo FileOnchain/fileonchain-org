@@ -136,7 +136,11 @@ export interface SubstrateChunkedAnchorParams {
   sha256?: string;
   /** Optional IPFS / Arweave pointer, on the file-level anchor. */
   uri?: string;
-  /** Embed chunk bytes in the remarks (default true — Substrate stores data). */
+  /**
+   * Embed chunk bytes in the remarks. Defaults to the chain's
+   * `embedsChunkData` flag — true only on data-storage chains (Autonomys);
+   * Asset Hub remarks stay CID-only.
+   */
   includeData?: boolean;
   /** Split into multiple batch extrinsics past this many payload bytes. */
   maxBatchBytes?: number;
@@ -163,18 +167,19 @@ export const anchorChunkedFile = async (
     chunks,
     sha256,
     uri,
-    includeData = true,
+    includeData,
     maxBatchBytes = DEFAULT_MAX_BATCH_BYTES,
     onProgress,
   }: SubstrateChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
   const chain = resolveSubstrateChain(chainId);
+  const embedData = includeData ?? chain.embedsChunkData ?? false;
   const total = chunks.length;
 
   // Chunk remarks first, file-level anchor last — indexers see the file
   // anchor only once every chunk it references is already on-chain.
   const remarks = chunks.map((chunk) =>
-    buildChunkAnchorPayload({ fileCid, chunk, total, includeData })
+    buildChunkAnchorPayload({ fileCid, chunk, total, includeData: embedData })
   );
   remarks.push(buildFileAnchorPayload({ cid: fileCid, sha256, uri }));
 

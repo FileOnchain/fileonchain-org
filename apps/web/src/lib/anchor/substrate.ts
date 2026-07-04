@@ -22,8 +22,9 @@ const getApi = (chain: ChainConfig): Promise<ApiPromise> => {
 
 /**
  * Substrate sender — `utility.batchAll` of `system.remarkWithEvent` per
- * chunk, chunk bytes included (Substrate is the data-carrying family), one
- * signature per size-budgeted batch.
+ * chunk, one signature per size-budgeted batch. Chunk bytes ride along only
+ * on chains whose registry entry sets `embedsChunkData` (Autonomys); Asset
+ * Hub anchors stay CID-only.
  */
 export const sendSubstrateAnchor = async ({
   chain,
@@ -50,7 +51,6 @@ export const sendSubstrateAnchor = async ({
     signer: injector.signer,
     fileCid,
     chunks,
-    includeData: true,
     onProgress,
   });
 };
