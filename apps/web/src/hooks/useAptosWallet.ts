@@ -22,6 +22,13 @@ interface AptosProvider {
     message: string;
     nonce: string;
   }) => Promise<AptosSignMessageResponse>;
+  /** Petra / Martian entry-function flow — used by the anchor sender. */
+  signAndSubmitTransaction?: (payload: {
+    type: string;
+    function: string;
+    type_arguments: string[];
+    arguments: unknown[];
+  }) => Promise<{ hash: string }>;
   onAccountChange?: (handler: (addr: string | null) => void) => void;
   on?: (event: string, handler: (...args: unknown[]) => void) => void;
   removeListener?: (event: string, handler: (...args: unknown[]) => void) => void;

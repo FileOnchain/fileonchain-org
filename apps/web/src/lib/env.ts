@@ -34,4 +34,12 @@ export const env = {
   get authGithubSecret(): string | undefined {
     return process.env.AUTH_GITHUB_SECRET;
   },
+  /** Funded server signers for the credits/BYOK anchor worker — optional;
+   * absent keys keep the worker on the deterministic mock. */
+  get anchorEvmPrivateKey(): string | undefined {
+    return process.env.ANCHOR_EVM_PRIVATE_KEY;
+  },
+  get anchorSubstrateSeed(): string | undefined {
+    return process.env.ANCHOR_SUBSTRATE_SEED;
+  },
 };

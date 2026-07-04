@@ -16,9 +16,12 @@ FileOnChain — a pnpm workspace monorepo:
 - **`contracts/`** — Foundry workspace with the Solidity registry / cache /
   donation contracts.
 
-**The webapp is a front-end shell over a mock backend.** Every chain and
-contract interaction currently resolves through `apps/web/src/lib/mock/*`.
-The SDK's EVM/Substrate clients are the real seam — see "Mock layer" below.
+**Anchoring is real where a chain is provisioned; everything else is mock.**
+The pay-as-you-go upload flow sends real transactions through
+`apps/web/src/lib/anchor/*` (per-family `@fileonchain/sdk` clients) and falls
+back to `apps/web/src/lib/mock/*` only when a chain has nothing deployed
+(`ChainNotProvisionedError`). Registry reads, cache, donations, and the
+indexer still resolve through the mock layer — see "Mock layer" below.
 
 ## Commands
 
@@ -82,11 +85,23 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
   `` `${ChainFamily}:${string}` ``), `CIDRegistryRecord`.
 - `src/abis/*` — generated from `contracts/out` by `scripts/extract-abis.mjs`;
   don't hand-edit.
-- `src/evm/` (`@fileonchain/sdk/evm`) — real `FileRegistry.anchorCID` /
-  `getCIDRecord` via viem. `src/substrate/` (`@fileonchain/sdk/substrate`) —
-  anchoring via versioned `system.remarkWithEvent` JSON payloads
-  (`buildAnchorRemark` / `parseAnchorRemark`). viem and @polkadot/api are
-  **optional peer deps**; the core entry stays dependency-free.
+- `src/anchor.ts` — the chain-agnostic anchoring vocabulary: versioned JSON
+  payloads (`buildFileAnchorPayload` / `buildChunkAnchorPayload` /
+  `parseAnchorPayload`) written identically on every family, the
+  `AnchorChunk` / `ChunkedAnchorReceipt` / `AnchorProgress` types, and the
+  provisioning seam (`isChainProvisioned`, `ChainNotProvisionedError` —
+  thrown by family clients when a chain has nothing deployed, so callers can
+  fall back to a simulated flow).
+- Family clients, one subpath each, all exposing `anchorChunkedFile` with
+  the same progress/receipt shape: `src/evm/` (`@fileonchain/sdk/evm`,
+  peer viem) — `FileRegistry.anchorCID` per chunk + file; `src/substrate/`
+  (`.../substrate`, peer @polkadot/api) — `utility.batchAll` of
+  `system.remarkWithEvent` per chunk, chunk bytes included, size-budgeted
+  batches; `src/solana/` (`.../solana`, peer @solana/web3.js) — SPL Memo
+  instructions (native program, needs no deployment); `src/aptos/`
+  (`.../aptos`, dependency-free) — `file_registry::anchor_cid` module calls
+  via the wallet provider, gated on `moduleAddress`. Peer deps are
+  **optional**; the core entry stays dependency-free.
 - Package `exports` point at `src/*.ts` for the workspace (the webapp lists
   the SDK in `transpilePackages`); `publishConfig.exports` point at `dist/`
   (built with tsup) for npm consumers.
@@ -112,7 +127,10 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
 - **`src/states/`** — Zustand stores, exported as `use<Name>States`
   (`useWalletStates`, `useChainsStates`, `useThemeStates`, `useCacheStates`,
   `useDonationsStates`).
-- **`src/lib/`** — `cid/format.ts` (display formatting), `crypto/` (AES-GCM
+- **`src/lib/`** — `anchor/` (real pay-as-you-go sends: one sender per
+  family wrapping the SDK clients, dispatched by `anchorFileOnChain`; wallet
+  handles come from `useWalletStates.getState()`, heavy chain deps are
+  dynamic-imported), `cid/format.ts` (display formatting), `crypto/` (AES-GCM
   stub), `mock/` (see below), `site.ts` / `analytics.ts` / `faq.ts` (SEO).
 - **`src/types/types.ts`** — web-only types (`Account`). `ChainFamily`,
   `ChainId`, `CIDRegistryRecord` come from `@fileonchain/sdk`.
@@ -121,11 +139,12 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
 
 `apps/web/src/lib/mock/*` returns deterministic fake data and is the seam for
 real integration. Each file carries a `/* TODO: wire to … */` marker naming
-the real call to make (`upload.ts` → `@fileonchain/sdk/evm` `anchorCID` /
-`@fileonchain/sdk/substrate` `anchorCIDWithRemark`; `registry.ts` → contract
-reads; `cid-indexer.ts` → an indexer; `cache.ts`, `donations.ts` → their
-contracts). When implementing real behavior, replace the mock body and keep
-the exported signature stable so callers don't change.
+the real call to make (`registry.ts` → contract reads; `cid-indexer.ts` → an
+indexer; `cache.ts`, `donations.ts` → their contracts). `upload.ts` is
+already wired — it survives only as the fallback `useFileUploader` uses when
+`lib/anchor` throws `ChainNotProvisionedError`. When implementing real
+behavior, replace the mock body and keep the exported signature stable so
+callers don't change.
 
 ### Account backend (auth, DB, credits, API keys, BYOK)
 
@@ -149,16 +168,19 @@ chain-side operations behind it stay mock:
   in routes — **no Edge middleware** (Neon driver is Node-only).
 - **Services** — `src/lib/server/*`: `credits.ts` (ledger, advisory-lock
   debits), `api-keys.ts` (hashed `fok_` keys), `anchor-service.ts` +
-  `anchor-worker.ts` (mock server-side anchoring; shared by `/api/uploads`
-  and `/api/v1/anchor`), `byok.ts` + `lib/byok/providers.ts` (provider
+  `anchor-worker.ts` (server-side anchoring shared by `/api/uploads` and
+  `/api/v1/anchor` — anchors the file CID for real through the SDK clients
+  when the chain is provisioned AND its signer env is set
+  (`ANCHOR_EVM_PRIVATE_KEY` / `ANCHOR_SUBSTRATE_SEED`); otherwise falls back
+  to the deterministic mock; on a real send failure the job is marked failed
+  and credits are refunded), `byok.ts` + `lib/byok/providers.ts` (provider
   registry; keys sealed by `lib/crypto/secretbox.ts` with
   `BYOK_ENCRYPTION_KEY`), `activity.ts` (`logActivity`), `queries.ts`
   (dashboard reads).
 - **Mock seams to make real later**: deposit confirmation
   (`api/credits/deposit/[id]/confirm` — replace with a USDC Transfer
-  watcher), `anchor-worker.ts` (real chain senders), `byok.ts` validation
-  (real Auto Drive call), and pay-as-you-go per-chunk sends in
-  `useFileUploader.anchor()`.
+  watcher), Solana/Aptos server signers in `anchor-worker.ts`, and `byok.ts`
+  validation (real Auto Drive call).
 - Env vars are documented in `apps/web/.env.example`; all are optional for
   `pnpm build`, but runtime account features need `DATABASE_URL` +
   `AUTH_SECRET` (and `BYOK_ENCRYPTION_KEY` for BYOK).
@@ -211,9 +233,9 @@ hardcoding URLs or titles.
   bundle. The uploader never uses encryption. **Do not delete
   `apps/web/src/utils/empty-module.ts`** — it has no TS importers but is
   referenced by the webpack config.
-- **`apps/web/src/utils/uploadChunks.ts` and `src/lib/crypto/aes.ts`** are
-  real implementation stubs kept for future wiring, even though nothing
-  imports them yet. Leave them unless intentionally wiring real uploads.
+- **`apps/web/src/lib/crypto/aes.ts`** is a real implementation stub kept
+  for future wiring, even though nothing imports it yet. Leave it unless
+  intentionally wiring real encryption.
 - **Vercel** builds from Root Directory `apps/web`.
 
 ## Conventions
