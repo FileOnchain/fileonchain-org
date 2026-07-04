@@ -8,6 +8,11 @@ import {
   type ChainId,
 } from "@fileonchain/sdk";
 import { env } from "@/lib/env";
+import {
+  validateRpcUrl,
+  withRpcOverride,
+  type CustomRpcMap,
+} from "@/lib/rpc-endpoints";
 import type { UploadJobTx } from "@/lib/db/schema";
 
 /**
@@ -173,9 +178,20 @@ const anchorOnChain = async (
   jobId: string,
   cid: string,
   chainId: ChainId,
+  rpcOverrides: CustomRpcMap = {},
 ): Promise<UploadJobTx> => {
-  const chain = getChain(chainId);
-  if (!chain || !isChainProvisioned(chain)) return mockTx(jobId, cid, chainId);
+  const registryChain = getChain(chainId);
+  if (!registryChain || !isChainProvisioned(registryChain)) {
+    return mockTx(jobId, cid, chainId);
+  }
+
+  // Provisioning is judged on the registry entry; only the endpoint we dial
+  // changes. Re-check the stored URL (defense in depth — rows are validated
+  // at write time) and ignore it rather than fail the job if it went bad.
+  let chain = withRpcOverride(registryChain, rpcOverrides);
+  if (chain !== registryChain && validateRpcUrl(chain.family, chain.rpcUrl)) {
+    chain = registryChain;
+  }
 
   try {
     if (chain.family === "evm" && env.anchorEvmPrivateKey) {
@@ -219,6 +235,8 @@ const anchorOnChain = async (
       const { anchorOnTron } = await import("./anchor-signers/tron");
       return await anchorOnTron(chain, cid, env.anchorTronPrivateKey);
     }
+    // Cardano's signer talks to Blockfrost via its project key, not
+    // chain.rpcUrl — custom RPC overrides don't apply here.
     if (
       chain.family === "cardano" &&
       env.anchorCardanoSigningKey &&
@@ -236,6 +254,8 @@ const anchorOnChain = async (
       const { anchorOnTon } = await import("./anchor-signers/ton");
       return await anchorOnTon(chain, cid, env.anchorTonMnemonic, env.anchorTonApiKey);
     }
+    // Hedera's signer uses the SDK's built-in network map
+    // (Client.forMainnet/forTestnet), not chain.rpcUrl — overrides don't apply.
     if (
       chain.family === "hedera" &&
       env.anchorHederaOperatorId &&
@@ -261,10 +281,11 @@ export const runAnchorWorker = async (
   jobId: string,
   cid: string,
   chainIds: ChainId[],
+  rpcOverrides: CustomRpcMap = {},
 ): Promise<UploadJobTx[]> => {
   const results: UploadJobTx[] = [];
   for (const chainId of chainIds) {
-    results.push(await anchorOnChain(jobId, cid, chainId));
+    results.push(await anchorOnChain(jobId, cid, chainId, rpcOverrides));
   }
   return results;
 };

@@ -3,19 +3,21 @@ import type { ChainConfig, ChunkedAnchorReceipt } from "@fileonchain/sdk";
 import { useWalletStates } from "@/states/wallet";
 import type { AnchorRequest } from "./types";
 
-/** One live connection per chain, keyed by chain id — anchoring may target a
- * different Substrate chain than the one the wallet store connected to. */
+/** One live connection per chain+endpoint — anchoring may target a different
+ * Substrate chain than the one the wallet store connected to, and the URL is
+ * part of the key so a custom RPC override takes effect mid-session. */
 const apiCache = new Map<string, Promise<ApiPromise>>();
 
 const getApi = (chain: ChainConfig): Promise<ApiPromise> => {
-  let entry = apiCache.get(chain.id);
+  const cacheKey = `${chain.id}|${chain.rpcUrl}`;
+  let entry = apiCache.get(cacheKey);
   if (!entry) {
     entry = (async () => {
       const { ApiPromise, WsProvider } = await import("@polkadot/api");
       return ApiPromise.create({ provider: new WsProvider(chain.rpcUrl) });
     })();
-    entry.catch(() => apiCache.delete(chain.id));
-    apiCache.set(chain.id, entry);
+    entry.catch(() => apiCache.delete(cacheKey));
+    apiCache.set(cacheKey, entry);
   }
   return entry;
 };

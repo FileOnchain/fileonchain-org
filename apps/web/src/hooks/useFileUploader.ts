@@ -20,6 +20,8 @@ import {
 import { ChunkData, generateCIDs } from "@/utils/generateCIDs";
 import { readFileContent } from "@/utils/readFileContent";
 import { anchorFileOnChain, type AnchorOutcome } from "@/lib/anchor";
+import { withRpcOverride } from "@/lib/rpc-endpoints";
+import { getRpcOverrides } from "@/states/rpc-endpoints";
 import { mockAnchorCID } from "@/lib/mock/upload";
 import { useChain } from "@/hooks/useChain";
 import { useEVMWallet } from "@/hooks/useEVMWallet";
@@ -279,7 +281,9 @@ export const useFileUploader = () => {
     try {
       setAnchorStatus("signing");
       const outcome = await anchorFileOnChain({
-        chain: activeChain,
+        // Senders that dial an RPC themselves honor the account's custom
+        // endpoint; wallet-broadcast families ignore rpcUrl anyway.
+        chain: withRpcOverride(activeChain, getRpcOverrides()),
         fileCid,
         chunks,
         onProgress: (progress) => {
