@@ -69,7 +69,7 @@ export const ChainSwitcher = ({ variant = "full" }: ChainSwitcherProps) => {
         <DropdownMenu.Content
           align="start"
           sideOffset={8}
-          className="z-50 min-w-[20rem] rounded-lg border border-border bg-surface-elevated p-1 shadow-elev-3 animate-fade-in"
+          className="z-50 max-h-[min(70vh,30rem)] min-w-[20rem] overflow-y-auto rounded-lg border border-border bg-surface-elevated p-1 shadow-elev-3 animate-fade-in"
         >
           {groups.map((group) => (
             <div key={group.runtime} className="mb-1">
