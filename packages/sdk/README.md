@@ -122,6 +122,6 @@ The files under `src/abis/` are generated from the Foundry workspace. After
 changing a contract:
 
 ```bash
-cd contracts && forge build
+cd contracts/evm && forge build
 node scripts/extract-abis.mjs   # from packages/sdk
 ```

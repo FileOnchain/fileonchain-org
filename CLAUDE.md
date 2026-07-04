@@ -54,7 +54,7 @@ server/client boundary errors that `tsc` alone misses.
 Contracts (only when touching Solidity):
 
 ```bash
-cd contracts && forge build && forge test
+cd contracts/evm && forge build && forge test
 ```
 
 After changing a contract, regenerate the SDK ABIs:
@@ -86,7 +86,7 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
   edit `chains.ts` — never hardcode chain data in webapp components.**
 - `src/types.ts` — `ChainFamily`, `ChainId` (template-literal
   `` `${ChainFamily}:${string}` ``), `CIDRegistryRecord`.
-- `src/abis/*` — generated from `contracts/out` by `scripts/extract-abis.mjs`;
+- `src/abis/*` — generated from `contracts/evm/out` by `scripts/extract-abis.mjs`;
   don't hand-edit.
 - `src/anchor.ts` — the chain-agnostic anchoring vocabulary: versioned JSON
   payloads (`buildFileAnchorPayload` / `buildChunkAnchorPayload` /
