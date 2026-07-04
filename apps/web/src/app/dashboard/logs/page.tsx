@@ -22,6 +22,8 @@ const TYPE_LABELS: Record<ActivityType, { label: string; variant: BadgeVariant }
   api_key_revoked: { label: "API key revoked", variant: "warning" },
   byok_added: { label: "BYOK added", variant: "primary" },
   byok_removed: { label: "BYOK removed", variant: "default" },
+  rpc_endpoint_updated: { label: "Custom RPC saved", variant: "primary" },
+  rpc_endpoint_removed: { label: "Custom RPC removed", variant: "default" },
   preferences_updated: { label: "Preferences updated", variant: "default" },
   org_created: { label: "Org created", variant: "primary" },
   org_renamed: { label: "Org renamed", variant: "default" },

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect } from "react";
 import { useWalletStates } from "@/states/wallet";
+import { getRpcOverrides } from "@/states/rpc-endpoints";
 import { trackEvent } from "@/lib/analytics";
 
 /* TODO: wire to wallet-adapter for Phantom / Solflare standard flow */
@@ -96,7 +97,11 @@ export const useSolanaWallet = () => {
     const { Connection } = await import("@solana/web3.js");
     const { getChain } = await import("@fileonchain/sdk");
     const mainnet = getChain("solana:mainnet");
-    return new Connection(mainnet?.rpcUrl ?? "https://api.mainnet-beta.solana.com");
+    const rpcUrl =
+      getRpcOverrides()["solana:mainnet"] ??
+      mainnet?.rpcUrl ??
+      "https://api.mainnet-beta.solana.com";
+    return new Connection(rpcUrl);
   }, []);
 
   const getPublicKey = useCallback(async () => {

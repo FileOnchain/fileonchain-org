@@ -14,6 +14,7 @@ import {
 } from "@/lib/server/credits";
 import { logActivity } from "@/lib/server/activity";
 import { runAnchorWorker } from "@/lib/server/anchor-worker";
+import { getUserRpcOverrides } from "@/lib/server/rpc-endpoints";
 import { microToUsdc } from "@/lib/usdc";
 
 export class AnchorRequestError extends Error {
@@ -208,7 +209,13 @@ export const anchorWithAccount = async (
 
   let txHashes: Awaited<ReturnType<typeof runAnchorWorker>>;
   try {
-    txHashes = await runAnchorWorker(job.id, payload.cid, payload.chainIds);
+    const rpcOverrides = await getUserRpcOverrides(ctx.userId);
+    txHashes = await runAnchorWorker(
+      job.id,
+      payload.cid,
+      payload.chainIds,
+      rpcOverrides,
+    );
   } catch (error) {
     // A configured on-chain send failed — fail the job and give the
     // credits back rather than leaving a debit with nothing anchored.

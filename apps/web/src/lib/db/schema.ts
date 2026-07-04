@@ -192,6 +192,8 @@ export type ActivityType =
   | "api_key_revoked"
   | "byok_added"
   | "byok_removed"
+  | "rpc_endpoint_updated"
+  | "rpc_endpoint_removed"
   | "preferences_updated"
   | "org_created"
   | "org_renamed"
@@ -240,6 +242,31 @@ export const byokKeys = pgTable("byok_key", {
     .defaultNow(),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
 });
+
+/**
+ * Per-chain custom RPC endpoints ("bring your own RPC"). Plain URLs — not
+ * secrets, so no encryption (unlike `byok_key`). Validated against
+ * `lib/rpc-endpoints.ts` `validateRpcUrl` at write time; consumed by the
+ * browser anchor senders and the server anchor worker via `withRpcOverride`.
+ */
+export const customRpcEndpoints = pgTable(
+  "custom_rpc",
+  {
+    id: text("id").primaryKey().$defaultFn(uuid),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chainId: text("chain_id").$type<ChainId>().notNull(),
+    url: text("url").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [uniqueIndex("custom_rpc_user_chain_idx").on(t.userId, t.chainId)],
+);
 
 /**
  * Per-user account preferences, one row per user created lazily on first

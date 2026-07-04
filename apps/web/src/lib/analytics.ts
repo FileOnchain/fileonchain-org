@@ -54,6 +54,8 @@ export interface AnalyticsEvents {
   chain_anchor_fallback_mock: { family: string; chain_id: string };
   /** An account preference was changed (field name only, never the value). */
   preference_change: { field: string };
+  /** A custom RPC endpoint was saved or removed (never the URL itself). */
+  rpc_endpoint: { chain_id: string; action: "set" | "remove" };
   /** An organization was created or managed. */
   organization: {
     action: "create" | "rename" | "delete" | "member_add" | "member_remove";

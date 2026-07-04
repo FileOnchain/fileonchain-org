@@ -10,6 +10,7 @@ const SECTIONS = [
   { href: "/dashboard/credits", label: "Credits" },
   { href: "/dashboard/keys", label: "API Keys" },
   { href: "/dashboard/byok", label: "BYOK" },
+  { href: "/dashboard/rpc", label: "RPC Endpoints" },
   { href: "/dashboard/preferences", label: "Preferences" },
 ] as const;
 
