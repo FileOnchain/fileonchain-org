@@ -42,7 +42,7 @@ Smoke-test by submitting one anchor message and checking it at
 `https://hashscan.io/testnet/topic/<topicId>`. Repeat on mainnet once QA
 passes — each network gets its own topic.
 
-Record the result in `packages/sdk/src/chains.ts`: set `hcsTopicId` to the
+Record the result in `packages/utils/src/chains.ts`: set `hcsTopicId` to the
 topic id on the `hedera:testnet` entry first, then `hedera:mainnet`.
 `isChainProvisioned` flips on from `hcsTopicId`.
 

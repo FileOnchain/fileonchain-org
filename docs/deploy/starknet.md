@@ -40,9 +40,9 @@ Or with sncast: `sncast declare --contract-name FileRegistry` then
 
 Smoke-test with an anchor call and check the `CIDAnchored` event on
 `https://sepolia.starkscan.co/contract/<address>`. Repeat against the
-mainnet RPC (`packages/sdk/src/chains.ts` has the URL) once QA passes.
+mainnet RPC (`packages/utils/src/chains.ts` has the URL) once QA passes.
 
-Record the result in `packages/sdk/src/chains.ts`: set `registryContract`
+Record the result in `packages/utils/src/chains.ts`: set `registryContract`
 to the deployed contract address on the `starknet:sepolia` entry first,
 then `starknet:mainnet`. `isChainProvisioned` flips on from
 `registryContract`.

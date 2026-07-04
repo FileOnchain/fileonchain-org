@@ -62,7 +62,7 @@ Tier 1B — same command, per chain (mainnet + its testnet):
 | Celo | 42220 | Alfajores | 44787 |
 
 RPC URLs for every entry live on the chain configs in
-`packages/sdk/src/chains.ts` — reuse them as `--rpc-url`.
+`packages/utils/src/chains.ts` — reuse them as `--rpc-url`.
 
 **zkSync Era (324 / 300):** vanilla Foundry cannot broadcast to zkEVM. Use
 [foundry-zksync](https://github.com/matter-labs/foundry-zksync)
@@ -74,12 +74,12 @@ needs no changes.
 If the contracts changed since the last deploy, regenerate the SDK ABIs:
 
 ```bash
-cd packages/sdk && node scripts/extract-abis.mjs
+cd packages/sdk-evm && node scripts/extract-abis.mjs
 ```
 
 Then run `pnpm build` from the repo root and confirm it is green.
 
-Record the result in `packages/sdk/src/chains.ts`: set `registryContract`
+Record the result in `packages/utils/src/chains.ts`: set `registryContract`
 (and `cacheContract` / `donationContract` if you deployed them) on the
 chain's `evm:<chainId>` entry, replacing `ZERO_ADDRESS`.
 `isChainProvisioned` flips on from `registryContract` alone.

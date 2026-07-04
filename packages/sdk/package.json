@@ -1,7 +1,7 @@
 {
   "name": "@fileonchain/sdk",
   "version": "0.1.0",
-  "description": "Anchor file and folder CIDs on-chain with the FileOnChain contracts \u2014 supported networks, contract addresses, ABIs, and chain clients.",
+  "description": "Anchor file and folder CIDs on-chain with the FileOnChain contracts — supported networks, contract addresses, ABIs, and chain clients.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -15,18 +15,19 @@
   ],
   "exports": {
     ".": "./src/index.ts",
-    "./evm": "./src/evm/index.ts",
-    "./substrate": "./src/substrate/index.ts",
-    "./solana": "./src/solana/index.ts",
-    "./aptos": "./src/aptos/index.ts",
-    "./cosmos": "./src/cosmos/index.ts",
-    "./sui": "./src/sui/index.ts",
-    "./starknet": "./src/starknet/index.ts",
-    "./near": "./src/near/index.ts",
-    "./tron": "./src/tron/index.ts",
-    "./cardano": "./src/cardano/index.ts",
-    "./ton": "./src/ton/index.ts",
-    "./hedera": "./src/hedera/index.ts"
+    "./evm": "./src/evm.ts",
+    "./substrate": "./src/substrate.ts",
+    "./solana": "./src/solana.ts",
+    "./aptos": "./src/aptos.ts",
+    "./cosmos": "./src/cosmos.ts",
+    "./sui": "./src/sui.ts",
+    "./starknet": "./src/starknet.ts",
+    "./near": "./src/near.ts",
+    "./tron": "./src/tron.ts",
+    "./cardano": "./src/cardano.ts",
+    "./ton": "./src/ton.ts",
+    "./hedera": "./src/hedera.ts",
+    "./api": "./src/api.ts"
   },
   "publishConfig": {
     "access": "public",
@@ -37,64 +38,69 @@
         "require": "./dist/index.cjs"
       },
       "./evm": {
-        "types": "./dist/evm/index.d.ts",
-        "import": "./dist/evm/index.js",
-        "require": "./dist/evm/index.cjs"
+        "types": "./dist/evm.d.ts",
+        "import": "./dist/evm.js",
+        "require": "./dist/evm.cjs"
       },
       "./substrate": {
-        "types": "./dist/substrate/index.d.ts",
-        "import": "./dist/substrate/index.js",
-        "require": "./dist/substrate/index.cjs"
+        "types": "./dist/substrate.d.ts",
+        "import": "./dist/substrate.js",
+        "require": "./dist/substrate.cjs"
       },
       "./solana": {
-        "types": "./dist/solana/index.d.ts",
-        "import": "./dist/solana/index.js",
-        "require": "./dist/solana/index.cjs"
+        "types": "./dist/solana.d.ts",
+        "import": "./dist/solana.js",
+        "require": "./dist/solana.cjs"
       },
       "./aptos": {
-        "types": "./dist/aptos/index.d.ts",
-        "import": "./dist/aptos/index.js",
-        "require": "./dist/aptos/index.cjs"
+        "types": "./dist/aptos.d.ts",
+        "import": "./dist/aptos.js",
+        "require": "./dist/aptos.cjs"
       },
       "./cosmos": {
-        "types": "./dist/cosmos/index.d.ts",
-        "import": "./dist/cosmos/index.js",
-        "require": "./dist/cosmos/index.cjs"
+        "types": "./dist/cosmos.d.ts",
+        "import": "./dist/cosmos.js",
+        "require": "./dist/cosmos.cjs"
       },
       "./sui": {
-        "types": "./dist/sui/index.d.ts",
-        "import": "./dist/sui/index.js",
-        "require": "./dist/sui/index.cjs"
+        "types": "./dist/sui.d.ts",
+        "import": "./dist/sui.js",
+        "require": "./dist/sui.cjs"
       },
       "./starknet": {
-        "types": "./dist/starknet/index.d.ts",
-        "import": "./dist/starknet/index.js",
-        "require": "./dist/starknet/index.cjs"
+        "types": "./dist/starknet.d.ts",
+        "import": "./dist/starknet.js",
+        "require": "./dist/starknet.cjs"
       },
       "./near": {
-        "types": "./dist/near/index.d.ts",
-        "import": "./dist/near/index.js",
-        "require": "./dist/near/index.cjs"
+        "types": "./dist/near.d.ts",
+        "import": "./dist/near.js",
+        "require": "./dist/near.cjs"
       },
       "./tron": {
-        "types": "./dist/tron/index.d.ts",
-        "import": "./dist/tron/index.js",
-        "require": "./dist/tron/index.cjs"
+        "types": "./dist/tron.d.ts",
+        "import": "./dist/tron.js",
+        "require": "./dist/tron.cjs"
       },
       "./cardano": {
-        "types": "./dist/cardano/index.d.ts",
-        "import": "./dist/cardano/index.js",
-        "require": "./dist/cardano/index.cjs"
+        "types": "./dist/cardano.d.ts",
+        "import": "./dist/cardano.js",
+        "require": "./dist/cardano.cjs"
       },
       "./ton": {
-        "types": "./dist/ton/index.d.ts",
-        "import": "./dist/ton/index.js",
-        "require": "./dist/ton/index.cjs"
+        "types": "./dist/ton.d.ts",
+        "import": "./dist/ton.js",
+        "require": "./dist/ton.cjs"
       },
       "./hedera": {
-        "types": "./dist/hedera/index.d.ts",
-        "import": "./dist/hedera/index.js",
-        "require": "./dist/hedera/index.cjs"
+        "types": "./dist/hedera.d.ts",
+        "import": "./dist/hedera.js",
+        "require": "./dist/hedera.cjs"
+      },
+      "./api": {
+        "types": "./dist/api.d.ts",
+        "import": "./dist/api.js",
+        "require": "./dist/api.cjs"
       }
     }
   },
@@ -102,6 +108,22 @@
     "build": "tsup",
     "lint": "tsc --noEmit",
     "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@fileonchain/api": "workspace:^",
+    "@fileonchain/sdk-aptos": "workspace:^",
+    "@fileonchain/sdk-cardano": "workspace:^",
+    "@fileonchain/sdk-cosmos": "workspace:^",
+    "@fileonchain/sdk-evm": "workspace:^",
+    "@fileonchain/sdk-hedera": "workspace:^",
+    "@fileonchain/sdk-near": "workspace:^",
+    "@fileonchain/sdk-solana": "workspace:^",
+    "@fileonchain/sdk-starknet": "workspace:^",
+    "@fileonchain/sdk-substrate": "workspace:^",
+    "@fileonchain/sdk-sui": "workspace:^",
+    "@fileonchain/sdk-ton": "workspace:^",
+    "@fileonchain/sdk-tron": "workspace:^",
+    "@fileonchain/utils": "workspace:^"
   },
   "peerDependencies": {
     "@polkadot/api": ">=15",

@@ -2,7 +2,7 @@
 
 On-chain anchoring artifacts, organized **one directory per runtime**. Every
 artifact writes the same `fileonchain` v1 JSON payload (see
-`packages/sdk/src/anchor.ts`) — only the transaction envelope differs.
+`packages/utils/src/anchor.ts`) — only the transaction envelope differs.
 
 | Directory | Runtime | Toolchain | Artifact |
 | --- | --- | --- | --- |
@@ -20,7 +20,7 @@ Hedera (HCS topic — create one with the runbook and set `hcsTopicId`).
 
 Per-runtime deploy runbooks live in [`docs/deploy/`](../docs/deploy/). After
 deploying anything, record the address/account/topic on the chain's entry in
-`packages/sdk/src/chains.ts` — that registry is the single source of truth,
+`packages/utils/src/chains.ts` — that registry is the single source of truth,
 and `isChainProvisioned` flips real anchoring on from those fields alone.
 
 ## EVM (`evm/`)
@@ -33,7 +33,7 @@ forge test
 ```
 
 After changing a contract, regenerate the SDK ABIs:
-`cd packages/sdk && node scripts/extract-abis.mjs`.
+`cd packages/sdk-evm && node scripts/extract-abis.mjs`.
 
 ## Aptos (`aptos/`)
 

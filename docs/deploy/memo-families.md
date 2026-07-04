@@ -4,10 +4,10 @@ These four families anchor through a **native channel of the chain** — there
 is nothing to deploy and nothing for them under `contracts/`. Provisioning
 is a registry flip: `isChainProvisioned` returns true for them when
 `memoAnchoring: true` is set on the chain entry (see
-`packages/sdk/src/anchor.ts`).
+`packages/utils/src/anchor.ts`).
 
 Every family's **testnet entry already has `memoAnchoring: true`** in
-`packages/sdk/src/chains.ts` (`cosmos:theta-testnet-001`, `tron:nile`,
+`packages/utils/src/chains.ts` (`cosmos:theta-testnet-001`, `tron:nile`,
 `cardano:preprod`, `ton:testnet`). The runbook per family is:
 
 1. Set the family's signer env vars (below) and fund the account on testnet.
@@ -57,7 +57,7 @@ Every family's **testnet entry already has `memoAnchoring: true`** in
   (send it a first incoming transfer). Testnet TON from the
   @testgiver_ton_bot faucet; mainnet needs real TON.
 
-Record the result in `packages/sdk/src/chains.ts`: after testnet QA
+Record the result in `packages/utils/src/chains.ts`: after testnet QA
 passes, set `memoAnchoring: true` on the family's **mainnet** entry
 (`cosmos:cosmoshub-4`, `tron:mainnet`, `cardano:mainnet`, `ton:mainnet`).
 That flag is the provisioning switch — no address to record.

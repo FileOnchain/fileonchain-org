@@ -1,7 +1,7 @@
 //! FileOnChain anchoring contract for Starknet. A Cairo port of the EVM
 //! FileRegistry's anchoring surface: `anchor_cid` emits one event whose
 //! `payload` field carries the versioned `fileonchain` JSON verbatim
-//! (see packages/sdk/src/anchor.ts). Starknet is its own chain family in
+//! (see packages/utils/src/anchor.ts). Starknet is its own chain family in
 //! the SDK (`starknet:*`) — this is not EVM bytecode.
 
 #[starknet::interface]

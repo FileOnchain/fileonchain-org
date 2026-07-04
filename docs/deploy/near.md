@@ -52,7 +52,7 @@ near contract call-function as-transaction fileonchain.testnet anchor_cid \
 Check the tx on `https://testnet.nearblocks.io`. Repeat on
 `network-config mainnet` once QA passes.
 
-Record the result in `packages/sdk/src/chains.ts`: set `moduleAddress` to
+Record the result in `packages/utils/src/chains.ts`: set `moduleAddress` to
 the contract **account id** (e.g. `fileonchain.testnet`, not a hash) on the
 `near:testnet` entry first, then `near:mainnet`. `isChainProvisioned` flips
 on from `moduleAddress`.

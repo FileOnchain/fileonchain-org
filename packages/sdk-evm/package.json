@@ -1,0 +1,57 @@
+{
+  "name": "@fileonchain/sdk-evm",
+  "version": "0.1.0",
+  "description": "FileOnChain EVM client — anchor CIDs via the FileRegistry contract.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FileOnchain/fileonchain-org.git",
+    "directory": "packages/sdk-evm"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./abis": "./src/abis/index.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      },
+      "./abis": {
+        "types": "./dist/abis/index.d.ts",
+        "import": "./dist/abis/index.js",
+        "require": "./dist/abis/index.cjs"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "lint": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@fileonchain/utils": "workspace:^"
+  },
+  "peerDependencies": {
+    "viem": "^2"
+  },
+  "peerDependenciesMeta": {
+    "viem": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "viem": "^2.53.1",
+    "@types/node": "^20",
+    "tsup": "^8.5.0",
+    "typescript": "^5"
+  }
+}

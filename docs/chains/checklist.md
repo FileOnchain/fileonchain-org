@@ -5,7 +5,7 @@ existing entry (mock → real). Work through it top to bottom; a chain ships
 when every box is checked.
 
 - [ ] **Registry entry** — the chain has an entry in
-  `packages/sdk/src/chains.ts` with every field correct: `id`
+  `packages/utils/src/chains.ts` with every field correct: `id`
   (`family:reference`), `family`, names, `rpcUrl`, explorer URL + tx/address
   paths, `nativeCurrency`, `icon`, `testnet`, and any family extras
   (`bech32Prefix`, `embedsChunkData`). Both mainnet **and** testnet entries
@@ -15,7 +15,7 @@ when every box is checked.
 - [ ] **Cost row** — the chain has a per-anchor cost row in
   `apps/web/src/lib/mock/costs.ts` so the upload estimator prices it.
 - [ ] **Provisioned** — `isChainProvisioned` (see
-  `packages/sdk/src/anchor.ts`) returns true via the **right field for the
+  `packages/utils/src/anchor.ts`) returns true via the **right field for the
   family**: `registryContract` (EVM, Starknet), `moduleAddress` (Aptos, Sui,
   NEAR), `palletContract` (Substrate), `memoAnchoring` (Cosmos, TRON,
   Cardano, TON), `hcsTopicId` (Hedera). Solana is always provisioned. Set it

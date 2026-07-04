@@ -16,6 +16,13 @@ The SDK is the single source of truth for:
 A folder anchors exactly like a file: compute the CID of the folder's DAG root
 and anchor that CID.
 
+This package is an **umbrella**: the root entry re-exports
+[`@fileonchain/utils`](../utils) (plus the EVM ABIs), each `./​<family>`
+subpath re-exports the standalone `@fileonchain/sdk-<family>` package, and
+`./api` re-exports [`@fileonchain/api`](../api), the client for the hosted
+HTTP API. Depend on the individual packages instead when you want the
+smallest possible install.
+
 ## Install
 
 ```bash
@@ -121,12 +128,32 @@ back gracefully. Solana needs no deployment — anchors ride the native SPL
 Memo program. Aptos stays unprovisioned until `moduleAddress` lands in the
 registry.
 
+## Anchor through the hosted API
+
+With a dashboard API key (`fok_…`), `@fileonchain/sdk/api` anchors without
+any wallet — FileOnChain's workers sign and account credits pay:
+
+```ts
+import { FileOnChainClient } from "@fileonchain/sdk/api";
+
+const client = new FileOnChainClient({ apiKey: process.env.FILEONCHAIN_API_KEY! });
+const job = await client.anchor({
+  cid: "bafybeig...",
+  fileName: "data.bin",
+  fileSizeBytes: 150_000,
+  chunkCount: 3,
+  chainIds: ["substrate:autonomys-mainnet"],
+  paymentMethod: "credits",
+});
+job.txHashes; // one { chainId, txHash, blockNumber } per chain
+```
+
 ## Regenerating ABIs
 
-The files under `src/abis/` are generated from the Foundry workspace. After
-changing a contract:
+The ABIs live in `@fileonchain/sdk-evm` (`packages/sdk-evm/src/abis/`) and
+are generated from the Foundry workspace. After changing a contract:
 
 ```bash
 cd contracts/evm && forge build
-node scripts/extract-abis.mjs   # from packages/sdk
+cd packages/sdk-evm && node scripts/extract-abis.mjs
 ```
