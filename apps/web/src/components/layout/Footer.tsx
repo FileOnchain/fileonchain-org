@@ -2,7 +2,7 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { FaGithub, FaLinkedin, FaTwitter } from "react-icons/fa";
-import { CHAINS, CHAIN_FAMILY_LABELS, type ChainFamily } from "@fileonchain/sdk";
+import { MAINNET_CHAINS, CHAIN_FAMILY_LABELS, type ChainFamily } from "@fileonchain/sdk";
 import { siteConfig } from "@/lib/site";
 
 const GITHUB_REPO = "https://github.com/FileOnchain/fileonchain-org";
@@ -147,7 +147,7 @@ const Footer = () => (
             <p className={columnHeading}>Networks</p>
             <ul className="flex flex-col gap-2">
               {FAMILIES.map((family) => {
-                const count = CHAINS.filter((c) => c.family === family).length;
+                const count = MAINNET_CHAINS.filter((c) => c.family === family).length;
                 return (
                   <li key={family}>
                     <Link
@@ -182,7 +182,7 @@ const Footer = () => (
           </a>
         </p>
         <p className="font-mono text-[11px]">
-          {CHAINS.length} chains · anchored forever
+          {MAINNET_CHAINS.length} chains · anchored forever
         </p>
         <div className="flex items-center gap-3">
           <span>Built by Marc-Aurèle Besner</span>

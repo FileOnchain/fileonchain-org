@@ -5,12 +5,12 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import { FiCheck } from "react-icons/fi";
 import {
-  CHAINS,
   CHAIN_FAMILY_LABELS,
   CHAIN_FAMILY_TAGLINES,
   type ChainConfig,
 } from "@fileonchain/sdk";
 import { useChain } from "@/hooks/useChain";
+import { useVisibleChains } from "@/hooks/useVisibleChains";
 import { Badge } from "@/components/ui/Badge";
 import ScrollReveal from "@/components/ScrollReveal";
 
@@ -84,6 +84,7 @@ const ChainTile = ({ chain, active, onSelect }: ChainTileProps) => {
 
 const ChainsGrid = () => {
   const { activeChain, setActiveChainId } = useChain();
+  const visibleChains = useVisibleChains();
 
   return (
     <ScrollReveal as="section" stagger amount={0.15} className="w-full">
@@ -93,7 +94,7 @@ const ChainsGrid = () => {
             Supported chains
           </p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-            {CHAINS.length} chains across four runtimes.
+            {visibleChains.length} chains across four runtimes.
           </h2>
         </div>
         <p className="max-w-sm text-sm text-muted">
@@ -105,7 +106,7 @@ const ChainsGrid = () => {
 
       <div className="space-y-6">
         {RUNTIMES.map((runtime: Runtime) => {
-          const chains = CHAINS.filter((c) => c.family === runtime);
+          const chains = visibleChains.filter((c) => c.family === runtime);
           return (
             <motion.section
               key={runtime}

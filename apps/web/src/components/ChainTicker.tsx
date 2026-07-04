@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { CHAINS } from "@fileonchain/sdk";
 import Image from "next/image";
+import { useVisibleChains } from "@/hooks/useVisibleChains";
 
 interface ChainTickerProps {
   className?: string;
@@ -18,8 +18,9 @@ interface ChainTickerProps {
  * The strips fade at both edges so the loop is not visually abrupt.
  */
 const ChainTicker = ({ className }: ChainTickerProps) => {
+  const visibleChains = useVisibleChains();
   // Tile the chain list twice to produce a seamless marquee loop.
-  const tiles = [...CHAINS, ...CHAINS];
+  const tiles = [...visibleChains, ...visibleChains];
 
   return (
     <motion.div

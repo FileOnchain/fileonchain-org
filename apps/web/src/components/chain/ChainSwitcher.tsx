@@ -6,7 +6,8 @@ import { FiCheck, FiChevronDown } from "react-icons/fi";
 import { ChainBadge } from "@/components/ui/ChainBadge";
 import { Badge } from "@/components/ui/Badge";
 import { useChain } from "@/hooks/useChain";
-import { CHAINS, CHAIN_FAMILY_LABELS, type ChainConfig } from "@fileonchain/sdk";
+import { useVisibleChains } from "@/hooks/useVisibleChains";
+import { CHAIN_FAMILY_LABELS, type ChainConfig } from "@fileonchain/sdk";
 import { cn } from "@/lib/cn";
 
 interface ChainSwitcherProps {
@@ -21,6 +22,7 @@ interface ChainSwitcherProps {
  */
 export const ChainSwitcher = ({ variant = "full" }: ChainSwitcherProps) => {
   const { activeChain, setActiveChainId } = useChain();
+  const visibleChains = useVisibleChains();
 
   const groups = React.useMemo(() => {
     const runtimes: Array<"evm" | "substrate" | "solana" | "aptos"> = [
@@ -32,9 +34,9 @@ export const ChainSwitcher = ({ variant = "full" }: ChainSwitcherProps) => {
     return runtimes.map((runtime) => ({
       runtime,
       label: CHAIN_FAMILY_LABELS[runtime],
-      chains: CHAINS.filter((c) => c.family === runtime),
+      chains: visibleChains.filter((c) => c.family === runtime),
     }));
-  }, []);
+  }, [visibleChains]);
 
   return (
     <DropdownMenu.Root>

@@ -1,5 +1,6 @@
 import { sendGAEvent } from "@next/third-parties/google";
 import { gaId } from "@/lib/site";
+import { usePreferencesStates } from "@/states/preferences";
 
 /**
  * Typed GA4 custom events.
@@ -42,6 +43,12 @@ export interface AnalyticsEvents {
     chain_count: number;
     chunk_count: number;
   };
+  /** An account preference was changed (field name only, never the value). */
+  preference_change: { field: string };
+  /** An organization was created or managed. */
+  organization: {
+    action: "create" | "rename" | "delete" | "member_add" | "member_remove";
+  };
 }
 
 type GAEventParams = Record<string, string | number | boolean | undefined>;
@@ -55,5 +62,7 @@ export function trackEvent<K extends keyof AnalyticsEvents>(
   params: AnalyticsEvents[K]
 ): void {
   if (!gaId) return;
+  // Respect the account-level analytics-cookies opt-out.
+  if (!usePreferencesStates.getState().analyticsEnabled) return;
   sendGAEvent("event", name, params as GAEventParams);
 }

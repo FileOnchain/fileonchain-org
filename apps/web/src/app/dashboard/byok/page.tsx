@@ -4,7 +4,7 @@ import { desc, eq, isNull, and } from "drizzle-orm";
 import { FiShield } from "react-icons/fi";
 import { auth } from "@/lib/auth";
 import { db, byokKeys } from "@/lib/db";
-import { formatAgo } from "@/lib/format";
+import FormattedDate from "@/components/ui/FormattedDate";
 import { getByokProvider } from "@/lib/byok/providers";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -72,9 +72,9 @@ export default async function ByokPage() {
                     </Badge>
                   </div>
                   <p className="mt-0.5 text-xs text-muted">
-                    Added {formatAgo(key.createdAt)}
+                    Added <FormattedDate date={key.createdAt} />
                     {key.lastValidatedAt
-                      ? ` · validated ${formatAgo(key.lastValidatedAt)}`
+                      ? <> · validated <FormattedDate date={key.lastValidatedAt} /></>
                       : ""}
                   </p>
                 </div>

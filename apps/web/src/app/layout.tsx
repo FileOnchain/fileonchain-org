@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Instrument_Serif } from "next/font/google";
-import { GoogleAnalytics } from "@next/third-parties/google";
+import AnalyticsGate from "@/components/AnalyticsGate";
 import ThemeProvider from "@/components/ThemeProvider";
 import AuthSessionProvider from "@/components/providers/AuthSessionProvider";
 import { ToastProvider } from "@/components/ui/Toast";
@@ -191,9 +191,9 @@ export default function RootLayout({
           </AuthSessionProvider>
         </ThemeProvider>
       </body>
-      {/* Google Analytics 4 — only mounts when NEXT_PUBLIC_GA_ID is configured,
-          so local/dev builds don't ship an empty gtag. */}
-      {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
+      {/* Google Analytics 4 — mounts only when NEXT_PUBLIC_GA_ID is configured
+          AND the user's analytics-cookies preference allows it. */}
+      {gaId ? <AnalyticsGate gaId={gaId} /> : null}
     </html>
   );
 }
