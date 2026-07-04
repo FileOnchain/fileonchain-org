@@ -1,5 +1,6 @@
 import {
   bigint,
+  boolean,
   index,
   integer,
   jsonb,
@@ -11,6 +12,8 @@ import {
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 import type { ChainFamily, ChainId } from "@fileonchain/sdk";
+// Relative import (not "@/…") so drizzle-kit can bundle the schema.
+import type { DateFormatPreference } from "../preferences";
 
 /**
  * Single source of truth for the account system's Postgres schema (Neon).
@@ -188,7 +191,13 @@ export type ActivityType =
   | "api_key_created"
   | "api_key_revoked"
   | "byok_added"
-  | "byok_removed";
+  | "byok_removed"
+  | "preferences_updated"
+  | "org_created"
+  | "org_renamed"
+  | "org_deleted"
+  | "org_member_added"
+  | "org_member_removed";
 
 export type ActivityMetadata = Record<string, string | number | boolean | null>;
 
@@ -231,6 +240,69 @@ export const byokKeys = pgTable("byok_key", {
     .defaultNow(),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
 });
+
+/**
+ * Per-user account preferences, one row per user created lazily on first
+ * write. UI defaults for missing rows live in `lib/preferences.ts`
+ * (`DEFAULT_PREFERENCES`) — keep column defaults in sync with it.
+ */
+export const userPreferences = pgTable("user_preferences", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  /** Public handle, lowercase, unique across the platform. */
+  username: text("username").unique(),
+  showTestnets: boolean("show_testnets").notNull().default(false),
+  dateFormat: text("date_format")
+    .$type<DateFormatPreference>()
+    .notNull()
+    .default("locale"),
+  analyticsEnabled: boolean("analytics_enabled").notNull().default(true),
+  notifyUploadComplete: boolean("notify_upload_complete")
+    .notNull()
+    .default(true),
+  notifyLowCredit: boolean("notify_low_credit").notNull().default(true),
+  notifyPromotions: boolean("notify_promotions").notNull().default(false),
+  notifyNewsletter: boolean("notify_newsletter").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export type OrganizationRole = "owner" | "admin" | "member";
+
+/** A team workspace. The owner also appears in `organization_member`. */
+export const organizations = pgTable("organization", {
+  id: text("id").primaryKey().$defaultFn(uuid),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  ownerId: text("owner_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const organizationMembers = pgTable(
+  "organization_member",
+  {
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").$type<OrganizationRole>().notNull().default("member"),
+    joinedAt: timestamp("joined_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.orgId, t.userId] }),
+    index("organization_member_user_idx").on(t.userId),
+  ],
+);
 
 export type UploadJobStatus = "pending" | "anchoring" | "complete" | "failed";
 export type UploadPaymentMethod = "credits" | "byok";
