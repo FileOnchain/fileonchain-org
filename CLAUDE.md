@@ -179,8 +179,9 @@ chain-side operations behind it stay mock:
   `anchor-worker.ts` (server-side anchoring shared by `/api/uploads` and
   `/api/v1/anchor` — anchors the file CID for real through the SDK clients
   when the chain is provisioned AND its signer env is set
-  (`ANCHOR_EVM_PRIVATE_KEY` / `ANCHOR_SUBSTRATE_SEED`); otherwise falls back
-  to the deterministic mock; on a real send failure the job is marked failed
+  (`ANCHOR_EVM_PRIVATE_KEY` / `ANCHOR_SUBSTRATE_SEED` /
+  `ANCHOR_SOLANA_SECRET_KEY` / `ANCHOR_APTOS_PRIVATE_KEY`); otherwise falls
+  back to the deterministic mock; on a real send failure the job is marked failed
   and credits are refunded), `byok.ts` + `lib/byok/providers.ts` (provider
   registry; keys sealed by `lib/crypto/secretbox.ts` with
   `BYOK_ENCRYPTION_KEY`), `activity.ts` (`logActivity`), `queries.ts`
@@ -191,7 +192,8 @@ chain-side operations behind it stay mock:
   `app/api/organizations/shared.ts`).
 - **Mock seams to make real later**: deposit confirmation
   (`api/credits/deposit/[id]/confirm` — replace with a USDC Transfer
-  watcher), Solana/Aptos server signers in `anchor-worker.ts`, and `byok.ts`
+  watcher), the Aptos anchoring Move module (worker code is ready; real sends
+  wait on a deployed module + `moduleAddress` in `chains.ts`), and `byok.ts`
   validation (real Auto Drive call).
 - Env vars are documented in `apps/web/.env.example`; all are optional for
   `pnpm build`, but runtime account features need `DATABASE_URL` +
