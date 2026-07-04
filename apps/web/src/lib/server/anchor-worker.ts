@@ -17,10 +17,11 @@ import type { UploadJobTx } from "@/lib/db/schema";
  * backend — only the client-side pay-as-you-go flow anchors per chunk.)
  *
  * A chain anchors for real only when it is provisioned (deployed registry /
- * pallet / module) AND its signer env var is set; otherwise the worker falls
- * back to the deterministic mock so environments without secrets keep
- * working. Signers: ANCHOR_EVM_PRIVATE_KEY, ANCHOR_SUBSTRATE_SEED,
- * ANCHOR_SOLANA_SECRET_KEY, ANCHOR_APTOS_PRIVATE_KEY.
+ * pallet / module / memo mode) AND its signer env vars are set; otherwise
+ * the worker falls back to the deterministic mock so environments without
+ * secrets keep working. EVM/Substrate/Solana/Aptos signers live inline
+ * below; every Tier 2 family has its own module under ./anchor-signers/.
+ * The env vars per family are documented in apps/web/.env.example.
  */
 
 const mockTx = (jobId: string, cid: string, chainId: ChainId): UploadJobTx => {
@@ -188,6 +189,65 @@ const anchorOnChain = async (
     }
     if (chain.family === "aptos" && env.anchorAptosPrivateKey) {
       return await anchorOnAptos(chain, cid, env.anchorAptosPrivateKey);
+    }
+    if (chain.family === "cosmos" && env.anchorCosmosMnemonic) {
+      const { anchorOnCosmos } = await import("./anchor-signers/cosmos");
+      return await anchorOnCosmos(chain, cid, env.anchorCosmosMnemonic);
+    }
+    if (chain.family === "sui" && env.anchorSuiPrivateKey) {
+      const { anchorOnSui } = await import("./anchor-signers/sui");
+      return await anchorOnSui(chain, cid, env.anchorSuiPrivateKey);
+    }
+    if (
+      chain.family === "starknet" &&
+      env.anchorStarknetAccount &&
+      env.anchorStarknetPrivateKey
+    ) {
+      const { anchorOnStarknet } = await import("./anchor-signers/starknet");
+      return await anchorOnStarknet(
+        chain,
+        cid,
+        env.anchorStarknetAccount,
+        env.anchorStarknetPrivateKey,
+      );
+    }
+    if (chain.family === "near" && env.anchorNearAccountId && env.anchorNearPrivateKey) {
+      const { anchorOnNear } = await import("./anchor-signers/near");
+      return await anchorOnNear(chain, cid, env.anchorNearAccountId, env.anchorNearPrivateKey);
+    }
+    if (chain.family === "tron" && env.anchorTronPrivateKey) {
+      const { anchorOnTron } = await import("./anchor-signers/tron");
+      return await anchorOnTron(chain, cid, env.anchorTronPrivateKey);
+    }
+    if (
+      chain.family === "cardano" &&
+      env.anchorCardanoSigningKey &&
+      env.anchorCardanoBlockfrostKey
+    ) {
+      const { anchorOnCardano } = await import("./anchor-signers/cardano");
+      return await anchorOnCardano(
+        chain,
+        cid,
+        env.anchorCardanoSigningKey,
+        env.anchorCardanoBlockfrostKey,
+      );
+    }
+    if (chain.family === "ton" && env.anchorTonMnemonic) {
+      const { anchorOnTon } = await import("./anchor-signers/ton");
+      return await anchorOnTon(chain, cid, env.anchorTonMnemonic, env.anchorTonApiKey);
+    }
+    if (
+      chain.family === "hedera" &&
+      env.anchorHederaOperatorId &&
+      env.anchorHederaPrivateKey
+    ) {
+      const { anchorOnHedera } = await import("./anchor-signers/hedera");
+      return await anchorOnHedera(
+        chain,
+        cid,
+        env.anchorHederaOperatorId,
+        env.anchorHederaPrivateKey,
+      );
     }
   } catch (error) {
     if (error instanceof ChainNotProvisionedError) return mockTx(jobId, cid, chainId);
