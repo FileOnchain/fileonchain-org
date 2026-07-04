@@ -2,7 +2,7 @@
 /// FileRegistry: `anchor_cid` records one CID anchor as a module event whose
 /// `payload` field carries the versioned `fileonchain` JSON verbatim, so a
 /// single indexer can parse anchors from any chain family
-/// (see packages/sdk/src/anchor.ts).
+/// (see packages/utils/src/anchor.ts).
 ///
 /// The SDK's Aptos client (`@fileonchain/sdk/aptos`) calls
 /// `<moduleAddress>::file_registry::anchor_cid` — keep the module and

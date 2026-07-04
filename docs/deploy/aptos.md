@@ -38,7 +38,7 @@ The module lands at `<account>::file_registry`; anchors are
 
 Repeat with the mainnet profile once testnet QA passes.
 
-Record the result in `packages/sdk/src/chains.ts`: set `moduleAddress` to
+Record the result in `packages/utils/src/chains.ts`: set `moduleAddress` to
 the publishing account address on the `aptos:testnet` entry first, then
 `aptos:mainnet` after the mainnet publish. `isChainProvisioned` flips on
 from `moduleAddress`.

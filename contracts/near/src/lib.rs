@@ -1,6 +1,6 @@
 //! FileOnChain anchoring contract for NEAR. `anchor_cid` records one CID
 //! anchor as a NEP-297 event log whose `payload` field carries the versioned
-//! `fileonchain` JSON verbatim (see packages/sdk/src/anchor.ts), so indexers
+//! `fileonchain` JSON verbatim (see packages/utils/src/anchor.ts), so indexers
 //! discover anchors by streaming `EVENT_JSON` logs — no storage growth.
 
 use near_sdk::serde_json::json;

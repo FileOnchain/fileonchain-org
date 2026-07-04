@@ -11,9 +11,20 @@ FileOnChain — a pnpm workspace monorepo:
   families (EVM, Substrate, Solana, Aptos, Cosmos, Sui, Starknet, NEAR, TRON,
   Cardano, TON, Hedera), paying for an encrypted private cache, and funding
   public infrastructure via donations.
-- **`packages/sdk`** — `@fileonchain/sdk`, the publishable SDK. **Single
-  source of truth** for supported networks, contract addresses, ABIs, and the
-  anchor clients. The webapp consumes it via `workspace:*`.
+- **`packages/`** — the publishable `@fileonchain/*` packages:
+  - `utils/` — `@fileonchain/utils`, the dependency-free core. **Single
+    source of truth** for supported networks, contract addresses, CID
+    validation, the anchor payload vocabulary, and the orchestration
+    helpers the family clients build on.
+  - `sdk-<family>/` ×12 — `@fileonchain/sdk-evm` … `sdk-hedera`, one anchor
+    client per chain family. `sdk-evm` also owns the generated ABIs.
+  - `api/` — `@fileonchain/api`, typed client for the hosted HTTP API
+    (`/api/v1/*`, `fok_` key auth).
+  - `sdk/` — `@fileonchain/sdk`, the umbrella: root = utils + EVM ABIs,
+    `./<family>` subpaths re-export the family packages, `./api` re-exports
+    the API client. The webapp depends only on this, via `workspace:*`.
+  - `mcp/` — `@fileonchain/mcp`, stdio MCP server for AI agents (registry
+    lookups + API-backed anchoring; see `packages/mcp/README.md`).
 - **`contracts/`** — one directory per runtime (`evm/` Foundry, `aptos/` +
   `sui/` Move, `starknet/` Cairo, `near/` Rust) — see `contracts/README.md`;
   per-chain deploy runbooks live in `docs/deploy/`.
@@ -37,8 +48,8 @@ pnpm start          # serve the webapp production build
 pnpm clean          # remove build outputs
 ```
 
-Or scope to one package: `pnpm --filter @fileonchain/sdk build`,
-`pnpm --filter @fileonchain/web dev`.
+Or scope to one package: `pnpm --filter @fileonchain/utils build`,
+`pnpm --filter "@fileonchain/sdk-*" lint`, `pnpm --filter @fileonchain/web dev`.
 
 Database (Neon Postgres via Drizzle, from `apps/web`):
 
@@ -60,7 +71,7 @@ cd contracts/evm && forge build && forge test
 ```
 
 After changing a contract, regenerate the SDK ABIs:
-`cd packages/sdk && node scripts/extract-abis.mjs`.
+`cd packages/sdk-evm && node scripts/extract-abis.mjs`.
 
 ## Package manager & runtime
 
@@ -72,7 +83,9 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
 
 ## Architecture
 
-### The SDK — source of truth (`packages/sdk`)
+### The SDK packages — source of truth (`packages/`)
+
+`@fileonchain/utils` (`packages/utils`) is the shared, dependency-free core:
 
 - `src/chains.ts` — `ChainConfig` registry. `CHAINS` is a
   `readonly ChainConfig[]`; look up with `getChain(id)` /
@@ -94,8 +107,6 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
   `docs/chains/checklist.md` for the full chain-addition checklist).
 - `src/types.ts` — `ChainFamily`, `ChainId` (template-literal
   `` `${ChainFamily}:${string}` ``), `CIDRegistryRecord`.
-- `src/abis/*` — generated from `contracts/evm/out` by `scripts/extract-abis.mjs`;
-  don't hand-edit.
 - `src/anchor.ts` — the chain-agnostic anchoring vocabulary: versioned JSON
   payloads (`buildFileAnchorPayload` / `buildChunkAnchorPayload` /
   `parseAnchorPayload`) written identically on every family, the
@@ -103,25 +114,50 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
   provisioning seam (`isChainProvisioned`, `ChainNotProvisionedError` —
   thrown by family clients when a chain has nothing deployed, so callers can
   fall back to a simulated flow).
-- Family clients, one subpath each (`@fileonchain/sdk/<family>` for all
-  twelve families), all exposing `anchorChunkedFile` with the same
-  progress/receipt shape plus a file-level `anchorCID*` for the server
-  worker: `src/evm/` (peer viem) — `FileRegistry.anchorCID` per chunk +
-  file; `src/substrate/` (peer @polkadot/api) — `utility.batchAll` of
-  `system.remarkWithEvent`, chunk bytes riding along only where
-  `embedsChunkData` is set (Autonomys); `src/solana/` (peer
-  @solana/web3.js) — SPL Memo (native program, needs no deployment). The
-  other nine (`aptos`, `cosmos`, `sui`, `starknet`, `near`, `tron`,
-  `cardano`, `ton`, `hedera`) are **dependency-free**: the SDK owns payload
-  building, ordering, batching, size validation, and progress, and a
-  minimal structural signer interface owns transport — callers adapt wallet
-  providers (browser) or chain SDKs (server) to it. Sui and Starknet batch
-  all anchors into one PTB/multicall per approval; memo/metadata/comment
-  families send one payload per transaction with pre-flight size checks.
-  Peer deps are **optional**; the core entry stays dependency-free.
-- Package `exports` point at `src/*.ts` for the workspace (the webapp lists
-  the SDK in `transpilePackages`); `publishConfig.exports` point at `dist/`
-  (built with tsup) for npm consumers.
+- `src/helpers.ts` — the orchestration the family clients share:
+  `resolveFamilyChain` (behind every `resolve<Family>Chain` guard),
+  `assertPayloadFits` (memo/comment/message size pre-flight),
+  `batchByBytes` / `batchByCount`, `buildChunkedAnchorPayloads` (chunks
+  first, file anchor **last** — indexers rely on that ordering), and
+  `runSequentialChunkedAnchor` (the payload-per-tx loop used by Cosmos,
+  TRON, Cardano, TON, Hedera). Extend these rather than re-inlining
+  orchestration in a family package.
+
+Family clients, one package each (`packages/sdk-<family>` →
+`@fileonchain/sdk-<family>`, all twelve), all exposing `anchorChunkedFile`
+with the same progress/receipt shape plus a file-level `anchorCID*` for the
+server worker: `sdk-evm` (peer viem) — `FileRegistry.anchorCID` per chunk +
+file, and owner of `src/abis/*` (generated from `contracts/evm/out` by its
+`scripts/extract-abis.mjs`; don't hand-edit) exposed on a viem-free
+`./abis` subpath; `sdk-substrate` (peer @polkadot/api) — `utility.batchAll`
+of `system.remarkWithEvent`, chunk bytes riding along only where
+`embedsChunkData` is set (Autonomys); `sdk-solana` (peer @solana/web3.js) —
+SPL Memo (native program, needs no deployment). The other nine (`aptos`,
+`cosmos`, `sui`, `starknet`, `near`, `tron`, `cardano`, `ton`, `hedera`)
+are **dependency-free**: the SDK owns payload building, ordering, batching,
+size validation, and progress, and a minimal structural signer interface
+owns transport — callers adapt wallet providers (browser) or chain SDKs
+(server) to it. Sui and Starknet batch all anchors into one PTB/multicall
+per approval; memo/metadata/comment families send one payload per
+transaction with pre-flight size checks. Peer deps are **optional**.
+
+`@fileonchain/api` (`packages/api`) — `FileOnChainClient` wrapping the
+hosted `/api/v1/*` endpoints (anchor, job polling, credits) with `fok_` key
+auth; zero runtime deps. `@fileonchain/mcp` (`packages/mcp`) — stdio MCP
+server: five read-only registry tools + three API-backed anchoring tools
+(env `FILEONCHAIN_API_KEY` / `FILEONCHAIN_API_URL`); its dist bundles the
+workspace deps so `node packages/mcp/dist/index.js` runs from the repo.
+
+`@fileonchain/sdk` (`packages/sdk`) is the umbrella the webapp consumes:
+root entry = utils + the three EVM ABIs, `./<family>` subpaths re-export
+the family packages, `./api` re-exports the API client. Wiring conventions
+shared by all packages: tsconfig extends `packages/tsconfig.base.json`;
+`exports` point at `src/*.ts` for the workspace — so **every package the
+umbrella re-exports must be listed in the webapp's `transpilePackages`**
+(`apps/web/next.config.ts`); `publishConfig.exports` point at `dist/`
+(tsup); internal deps are `workspace:^` so publishing rewrites them to real
+semver ranges. Repo-level Claude Code skills live in `.claude/skills/`
+(`fileonchain-anchor`, `fileonchain-chains`, `fileonchain-packages`).
 
 ### The webapp (`apps/web`)
 

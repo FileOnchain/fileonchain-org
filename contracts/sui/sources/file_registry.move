@@ -2,7 +2,7 @@
 /// `file_registry::anchor_cid(cid, payload)` — but is a separate
 /// implementation: Sui's object model and event system share no code with
 /// Aptos Move. The `payload` field carries the versioned `fileonchain` JSON
-/// verbatim (see packages/sdk/src/anchor.ts).
+/// verbatim (see packages/utils/src/anchor.ts).
 module fileonchain::file_registry {
     use std::string::String;
     use sui::event;

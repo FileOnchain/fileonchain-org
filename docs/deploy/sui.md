@@ -32,7 +32,7 @@ Repeat on mainnet (`sui client switch --env mainnet`) once testnet QA
 passes. Publishing mints a new package id per network — record each one on
 its own chain entry.
 
-Record the result in `packages/sdk/src/chains.ts`: set `moduleAddress` to
+Record the result in `packages/utils/src/chains.ts`: set `moduleAddress` to
 the package id on the `sui:testnet` entry first, then `sui:mainnet`.
 `isChainProvisioned` flips on from `moduleAddress`.
 

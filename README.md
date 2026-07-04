@@ -28,21 +28,34 @@ fileonchain-org/
 │           ├── types/       Web-only types
 │           └── utils/       File processing helpers (generateCIDs, readFileContent, …)
 ├── packages/
-│   └── sdk/            @fileonchain/sdk — networks, contract addresses, ABIs, anchor clients
+│   ├── utils/          @fileonchain/utils — networks, contract addresses, CID + anchor payload core
+│   ├── sdk-<family>/   @fileonchain/sdk-evm … sdk-hedera — one anchor client per chain family (×12)
+│   ├── api/            @fileonchain/api — typed client for the hosted HTTP API
+│   ├── sdk/            @fileonchain/sdk — umbrella re-exporting utils + every family + the API client
+│   └── mcp/            @fileonchain/mcp — MCP server for AI agents (registry lookups, API anchoring)
 └── contracts/          Foundry project: FileRegistry, CachePayments, DonationEscrow + tests
 ```
 
 ## The SDK
 
 [`@fileonchain/sdk`](packages/sdk/README.md) lets anyone anchor file and folder
-CIDs with the FileOnChain contracts without going through the frontend. It is
-the single source of truth for supported networks and deployed contract
-addresses — the webapp consumes it as a workspace dependency.
+CIDs with the FileOnChain contracts without going through the frontend. The
+chain registry in [`@fileonchain/utils`](packages/utils) is the single source
+of truth for supported networks and deployed contract addresses — the webapp
+consumes it through the umbrella as a workspace dependency.
 
 ```ts
-import { CHAINS, getChain } from "@fileonchain/sdk";
-import { anchorCID } from "@fileonchain/sdk/evm";
+import { CHAINS, getChain } from "@fileonchain/sdk";   // umbrella root = @fileonchain/utils + ABIs
+import { anchorCID } from "@fileonchain/sdk/evm";      // or the standalone @fileonchain/sdk-evm
 ```
+
+| Package | Use it when |
+|---|---|
+| `@fileonchain/sdk` | You want everything under one install (each family stays behind a subpath) |
+| `@fileonchain/utils` | You only need chain metadata, CID validation, or payload parsing |
+| `@fileonchain/sdk-<family>` | You anchor on one family and want the smallest dependency surface |
+| `@fileonchain/api` | You anchor through the hosted API with a dashboard key (`fok_…`) |
+| `@fileonchain/mcp` | You want FileOnChain tools in an MCP-capable AI agent |
 
 ## Supported chains (v2)
 
@@ -101,7 +114,7 @@ corepack prepare pnpm@10.28.1 --activate
 Every chain / contract interaction in the webapp is mocked under
 `apps/web/src/lib/mock/` with `/* TODO: … */` markers. The SDK's EVM and
 Substrate clients are the real seam — wire the mocks to them as contracts
-deploy and the addresses in `packages/sdk/src/chains.ts` fill in.
+deploy and the addresses in `packages/utils/src/chains.ts` fill in.
 
 ## Deploy on Vercel
 
