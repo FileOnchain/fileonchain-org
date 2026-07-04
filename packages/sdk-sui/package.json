@@ -1,0 +1,42 @@
+{
+  "name": "@fileonchain/sdk-sui",
+  "version": "0.1.0",
+  "description": "FileOnChain Sui client — anchor CIDs via file_registry Move calls batched into PTBs.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FileOnchain/fileonchain-org.git",
+    "directory": "packages/sdk-sui"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "lint": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@fileonchain/utils": "workspace:^"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsup": "^8.5.0",
+    "typescript": "^5"
+  }
+}

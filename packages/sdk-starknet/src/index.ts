@@ -1,0 +1,175 @@
+import {
+  buildChunkAnchorPayload,
+  buildFileAnchorPayload,
+  ChainNotProvisionedError,
+  type AnchorChunk,
+  type AnchorProgressHandler,
+  type BuildFileAnchorParams,
+  type ChunkedAnchorReceipt,
+} from "@fileonchain/utils";
+import { getChain, ZERO_ADDRESS, type ChainConfig } from "@fileonchain/utils";
+import type { ChainId } from "@fileonchain/utils";
+
+/**
+ * Starknet client. Anchors call `anchor_cid(cid: ByteArray, payload: ByteArray)`
+ * on the Cairo FileRegistry (contracts/starknet), whose address lives in
+ * `registryContract` on the chain entry. Starknet accounts execute multicalls
+ * natively, so all chunk anchors plus the file anchor share as few
+ * transactions (and wallet approvals) as possible. Built against a minimal
+ * signer surface so the SDK stays dependency-free — the caller adapts
+ * starknet.js (server) or an injected Argent/Braavos account (browser),
+ * which also handle ByteArray calldata encoding.
+ */
+
+/** Contract entrypoint every anchor calls on the FileRegistry. */
+export const ANCHOR_ENTRYPOINT = "anchor_cid" as const;
+
+/** One `anchor_cid` call — the signer encodes both strings as ByteArrays. */
+export interface StarknetAnchorCall {
+  cid: string;
+  payload: string;
+}
+
+/**
+ * The account surface the client needs. Implementations execute the calls as
+ * one multicall transaction against `registryContract` and resolve once it
+ * is accepted.
+ */
+export interface StarknetAnchorSigner {
+  /** Account contract address paying for and signing the transactions. */
+  address: string;
+  executeAnchorCalls(
+    registryContract: string,
+    calls: StarknetAnchorCall[]
+  ): Promise<{ transactionHash: string; blockNumber?: number }>;
+}
+
+/**
+ * Resolve a `starknet:*` chain with a deployed FileRegistry, or throw with a
+ * message that says exactly what's missing.
+ */
+export const resolveStarknetChain = (
+  chainId: ChainId
+): ChainConfig & { registryContract: `0x${string}` } => {
+  const chain = getChain(chainId);
+  if (!chain) throw new Error(`Unknown chain "${chainId}".`);
+  if (chain.family !== "starknet") {
+    throw new Error(`Chain "${chainId}" is not a Starknet chain; use the ${chain.family} client instead.`);
+  }
+  if (!chain.registryContract || chain.registryContract === ZERO_ADDRESS) {
+    throw new ChainNotProvisionedError(chainId, "the Cairo registry contract is not deployed yet.");
+  }
+  return chain as ChainConfig & { registryContract: `0x${string}` };
+};
+
+/**
+ * Calls per multicall transaction — conservative enough to stay under the
+ * sequencer's calldata and Cairo step limits with room for ByteArray
+ * encoding overhead.
+ */
+export const DEFAULT_MAX_CALLS_PER_TX = 64;
+
+export interface StarknetAnchorParams extends BuildFileAnchorParams {
+  /** A `starknet:*` chain id, e.g. "starknet:mainnet". */
+  chainId: ChainId;
+}
+
+/** Anchor a single CID as one single-call execute. */
+export const anchorCID = async (
+  signer: StarknetAnchorSigner,
+  { chainId, ...payload }: StarknetAnchorParams
+): Promise<{ transactionHash: string; payload: string }> => {
+  const chain = resolveStarknetChain(chainId);
+  const serialized = buildFileAnchorPayload(payload);
+  const { transactionHash } = await signer.executeAnchorCalls(chain.registryContract, [
+    { cid: payload.cid, payload: serialized },
+  ]);
+  return { transactionHash, payload: serialized };
+};
+
+export interface StarknetChunkedAnchorParams {
+  /** A `starknet:*` chain id, e.g. "starknet:mainnet". */
+  chainId: ChainId;
+  /** CIDv1 of the whole file. */
+  fileCid: string;
+  /** Chunks to anchor; `data` is ignored — the registry stores CIDs, not bytes. */
+  chunks: AnchorChunk[];
+  /** Optional SHA-256 (hex) of the raw content, on the file-level anchor. */
+  sha256?: string;
+  /** Optional IPFS / Arweave pointer, on the file-level anchor. */
+  uri?: string;
+  /** Override the calls-per-multicall budget. */
+  maxCallsPerTx?: number;
+  onProgress?: AnchorProgressHandler;
+}
+
+/**
+ * Anchor every chunk, then the file CID, as multicall transactions of up to
+ * `maxCallsPerTx` calls each. One wallet confirmation per multicall; the
+ * last one carries the file anchor.
+ */
+export const anchorChunkedFile = async (
+  signer: StarknetAnchorSigner,
+  {
+    chainId,
+    fileCid,
+    chunks,
+    sha256,
+    uri,
+    maxCallsPerTx = DEFAULT_MAX_CALLS_PER_TX,
+    onProgress,
+  }: StarknetChunkedAnchorParams
+): Promise<ChunkedAnchorReceipt> => {
+  const chain = resolveStarknetChain(chainId);
+  const total = chunks.length;
+
+  // Chunk anchors first, file anchor last — indexers see the file anchor
+  // only after every chunk.
+  const calls: StarknetAnchorCall[] = chunks.map((chunk) => ({
+    cid: chunk.cid,
+    payload: buildChunkAnchorPayload({ fileCid, chunk, total }),
+  }));
+  calls.push({ cid: fileCid, payload: buildFileAnchorPayload({ cid: fileCid, sha256, uri }) });
+
+  const batches: StarknetAnchorCall[][] = [];
+  for (let i = 0; i < calls.length; i += maxCallsPerTx) {
+    batches.push(calls.slice(i, i + maxCallsPerTx));
+  }
+
+  const txHashes: string[] = [];
+  let lastBlockNumber: number | undefined;
+  let chunksAnchored = 0;
+
+  for (const batch of batches) {
+    onProgress?.({ stage: "signing", chunksAnchored, chunksTotal: total });
+    const { transactionHash, blockNumber } = await signer.executeAnchorCalls(
+      chain.registryContract,
+      batch
+    );
+    txHashes.push(transactionHash);
+    lastBlockNumber = blockNumber ?? lastBlockNumber;
+    // The file-level call is not a chunk, so cap the count at the total.
+    chunksAnchored = Math.min(chunksAnchored + batch.length, total);
+    onProgress?.({
+      stage: "confirming",
+      chunksAnchored,
+      chunksTotal: total,
+      txHash: transactionHash,
+    });
+  }
+
+  onProgress?.({
+    stage: "confirmed",
+    chunksAnchored: total,
+    chunksTotal: total,
+    txHash: txHashes[txHashes.length - 1],
+  });
+
+  return {
+    chainId: chain.id,
+    txHashes,
+    txHash: txHashes[txHashes.length - 1],
+    blockNumber: lastBlockNumber,
+    submitter: signer.address,
+  };
+};
