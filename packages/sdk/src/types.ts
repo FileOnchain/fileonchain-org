@@ -3,7 +3,19 @@
  * frontend, and any third-party integration.
  */
 
-export type ChainFamily = "evm" | "substrate" | "solana" | "aptos";
+export type ChainFamily =
+  | "evm"
+  | "substrate"
+  | "solana"
+  | "aptos"
+  | "cosmos"
+  | "sui"
+  | "starknet"
+  | "near"
+  | "tron"
+  | "cardano"
+  | "ton"
+  | "hedera";
 
 /**
  * Branded chain id. Use as a primary key in maps and as a URL segment.
