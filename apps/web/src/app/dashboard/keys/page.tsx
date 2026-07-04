@@ -4,7 +4,7 @@ import { desc, eq } from "drizzle-orm";
 import { FiKey } from "react-icons/fi";
 import { auth } from "@/lib/auth";
 import { db, apiKeys } from "@/lib/db";
-import { formatAgo } from "@/lib/format";
+import FormattedDate from "@/components/ui/FormattedDate";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
@@ -65,10 +65,12 @@ export default async function KeysPage() {
                     )}
                   </div>
                   <p className="mt-0.5 text-xs text-muted">
-                    Created {formatAgo(key.createdAt)}
-                    {key.lastUsedAt
-                      ? ` · last used ${formatAgo(key.lastUsedAt)}`
-                      : " · never used"}
+                    Created <FormattedDate date={key.createdAt} />
+                    {key.lastUsedAt ? (
+                      <> · last used <FormattedDate date={key.lastUsedAt} /></>
+                    ) : (
+                      " · never used"
+                    )}
                   </p>
                 </div>
                 {!revoked && <RevokeApiKeyButton keyId={key.id} />}

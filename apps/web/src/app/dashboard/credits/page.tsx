@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { FiDollarSign } from "react-icons/fi";
 import { auth } from "@/lib/auth";
 import { getCreditBalance, getLedgerEntries } from "@/lib/server/queries";
-import { formatAgo } from "@/lib/format";
+import FormattedDate from "@/components/ui/FormattedDate";
 import { formatMicroUsdc } from "@/lib/usdc";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -94,7 +94,7 @@ export default async function CreditsPage() {
                       )}
                     </span>
                     <span className="text-xs text-muted">
-                      {formatAgo(entry.createdAt)}
+                      <FormattedDate date={entry.createdAt} withTime />
                     </span>
                   </div>
                 </li>

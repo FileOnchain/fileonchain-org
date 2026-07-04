@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { FiActivity } from "react-icons/fi";
 import { auth } from "@/lib/auth";
 import { getRecentActivity } from "@/lib/server/queries";
-import { formatAgo } from "@/lib/format";
+import FormattedDate from "@/components/ui/FormattedDate";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { ActivityType } from "@/lib/db/schema";
@@ -22,6 +22,12 @@ const TYPE_LABELS: Record<ActivityType, { label: string; variant: BadgeVariant }
   api_key_revoked: { label: "API key revoked", variant: "warning" },
   byok_added: { label: "BYOK added", variant: "primary" },
   byok_removed: { label: "BYOK removed", variant: "default" },
+  preferences_updated: { label: "Preferences updated", variant: "default" },
+  org_created: { label: "Org created", variant: "primary" },
+  org_renamed: { label: "Org renamed", variant: "default" },
+  org_deleted: { label: "Org deleted", variant: "warning" },
+  org_member_added: { label: "Org member added", variant: "primary" },
+  org_member_removed: { label: "Org member removed", variant: "default" },
 };
 
 export default async function LogsPage() {
@@ -68,7 +74,7 @@ export default async function LogsPage() {
               )}
             </div>
             <span className="shrink-0 text-xs text-muted">
-              {formatAgo(log.createdAt)}
+              <FormattedDate date={log.createdAt} withTime />
             </span>
           </li>
         );

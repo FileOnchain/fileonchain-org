@@ -78,9 +78,12 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
   `substrate:autonomys-mainnet`. Contract addresses live **on the chain
   entries** (`registryContract`, `cacheContract`, `donationContract`,
   `programId`, `moduleAddress`, `palletContract`) — no separate address maps.
-  Explorer URLs come from `buildTxUrl` / `buildAddressUrl`. **To add or change
-  a chain or a deployed address, edit `chains.ts` — never hardcode chain data
-  in webapp components.**
+  Explorer URLs come from `buildTxUrl` / `buildAddressUrl`. Every family has
+  mainnet **and testnet** entries (`testnet: true`); `MAINNET_CHAINS` /
+  `TESTNET_CHAINS` / `getVisibleChains(showTestnets)` split them — webapp
+  pickers use `useVisibleChains()` (preference-driven), static marketing copy
+  counts `MAINNET_CHAINS`. **To add or change a chain or a deployed address,
+  edit `chains.ts` — never hardcode chain data in webapp components.**
 - `src/types.ts` — `ChainFamily`, `ChainId` (template-literal
   `` `${ChainFamily}:${string}` ``), `CIDRegistryRecord`.
 - `src/abis/*` — generated from `contracts/out` by `scripts/extract-abis.mjs`;
@@ -112,11 +115,12 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
   from `@fileonchain/sdk`; only web-specific code uses `@/...`.
 - **`src/app/`** — App Router. Routes: `/` (upload), `/explorer` (+ `/explorer/[cid]`),
   `/cache`, `/donations`, `/leaderboard`, `/profile/[address]`, `/login`, and
-  the auth-guarded `/dashboard` (+ `logs`, `credits`, `keys`, `byok`
-  subroutes). API routes under `app/api/`: the mock trio (`cid`,
+  the auth-guarded `/dashboard` (+ `logs`, `credits`, `keys`, `byok`,
+  `preferences` subroutes). API routes under `app/api/`: the mock trio (`cid`,
   `search-file`, `upload-fallback`) plus the account backend (`auth`,
-  `wallets`, `credits`, `keys`, `byok`, `uploads`) and the API-key-scoped
-  `v1/` namespace (`v1/anchor`, `v1/credits`).
+  `wallets`, `credits`, `keys`, `byok`, `uploads`, `preferences`,
+  `organizations`) and the API-key-scoped `v1/` namespace (`v1/anchor`,
+  `v1/credits`).
 - **`src/components/`** — `ui/` primitives (Button, Modal, Card, …), `layout/`
   (Nav, Footer, PageShell), and feature folders (`explorer/`, `cache/`,
   `donations/`, `chain/`, `upload/`, `onboarding/`, `registry/`). Bare files in
@@ -126,7 +130,10 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
   `useChain`, `useFileUploader`, `useCachePayment`, `useDonation`.
 - **`src/states/`** — Zustand stores, exported as `use<Name>States`
   (`useWalletStates`, `useChainsStates`, `useThemeStates`, `useCacheStates`,
-  `useDonationsStates`).
+  `useDonationsStates`, `usePreferencesStates` — localStorage-persisted
+  mirror of display preferences: testnet visibility, date format, analytics
+  opt-out; hydrated post-mount like the theme store, synced from the server
+  row by the preferences page).
 - **`src/lib/`** — `anchor/` (real pay-as-you-go sends: one sender per
   family wrapping the SDK clients, dispatched by `anchorFileOnChain`; wallet
   handles come from `useWalletStates.getState()`, heavy chain deps are
@@ -153,7 +160,8 @@ chain-side operations behind it stay mock:
 
 - **DB** — schema in `src/lib/db/schema.ts` (Auth.js tables + `wallets`,
   `auth_nonces`, `api_keys`, `credit_ledger`, `deposits`, `activity_logs`,
-  `byok_keys`, `upload_jobs`); client in `src/lib/db/index.ts` (Neon
+  `byok_keys`, `upload_jobs`, `user_preferences`, `organizations`,
+  `organization_members`); client in `src/lib/db/index.ts` (Neon
   **WebSocket** driver — credit debits need interactive transactions; created
   lazily so builds pass without `DATABASE_URL`). Migrations live in
   `apps/web/drizzle/` (`db:generate` after schema edits). Money is bigint
@@ -176,7 +184,11 @@ chain-side operations behind it stay mock:
   and credits are refunded), `byok.ts` + `lib/byok/providers.ts` (provider
   registry; keys sealed by `lib/crypto/secretbox.ts` with
   `BYOK_ENCRYPTION_KEY`), `activity.ts` (`logActivity`), `queries.ts`
-  (dashboard reads).
+  (dashboard reads), `preferences.ts` (upsert per-user preferences; shared
+  field vocabulary + validation lives in the client-safe
+  `src/lib/preferences.ts`), `organizations.ts` (owner/admin/member role
+  model; throws `OrgError(status, message)` which the org routes map via
+  `app/api/organizations/shared.ts`).
 - **Mock seams to make real later**: deposit confirmation
   (`api/credits/deposit/[id]/confirm` — replace with a USDC Transfer
   watcher), Solana/Aptos server signers in `anchor-worker.ts`, and `byok.ts`
@@ -192,8 +204,10 @@ descriptions) and `gaId`. Both read from env: `NEXT_PUBLIC_SITE_URL` (origin,
 no trailing slash; defaults to `https://fileonchain.org`) and
 `NEXT_PUBLIC_GA_ID` (GA4 id — see `apps/web/.env.example`). The root
 `layout.tsx` sets `metadataBase`, a title `template`, default OG/Twitter tags,
-`robots`, Organization + WebSite JSON-LD, and mounts `<GoogleAnalytics>` from
-`@next/third-parties/google` **only when `gaId` is set**. `robots.ts` and
+`robots`, Organization + WebSite JSON-LD, and mounts GA4 via
+`components/AnalyticsGate.tsx` **only when `gaId` is set AND the user's
+analytics-cookies preference allows it** (`usePreferencesStates`; opting out
+also flips Google's `ga-disable-<id>` global and `trackEvent` checks it). `robots.ts` and
 `sitemap.ts` under `src/app/` are generated from `siteConfig`. **Custom
 events:** fire them through `trackEvent(name, params)` in `src/lib/analytics.ts`
 — a typed wrapper over `sendGAEvent` that no-ops when `gaId` is unset. Add new

@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Identicon } from "@/components/ui/Identicon";
 import { useChain } from "@/hooks/useChain";
-import { CHAINS, CHAIN_FAMILY_LABELS } from "@fileonchain/sdk";
+import { useVisibleChains } from "@/hooks/useVisibleChains";
+import { CHAIN_FAMILY_LABELS } from "@fileonchain/sdk";
 import { useSubstrateWallet } from "@/hooks/useSubstrateWallet";
 import { useEVMWallet } from "@/hooks/useEVMWallet";
 import { useSolanaWallet } from "@/hooks/useSolanaWallet";
@@ -34,6 +35,7 @@ interface ChainConnectModalProps {
  */
 export const ChainConnectModal = ({ open, onOpenChange }: ChainConnectModalProps) => {
   const { activeChain, setActiveChainId } = useChain();
+  const visibleChains = useVisibleChains();
   const chainFamily = activeChain.family;
 
   // Substrate state
@@ -139,7 +141,7 @@ export const ChainConnectModal = ({ open, onOpenChange }: ChainConnectModalProps
           within it so the modal body swaps to the matching connect flow. */}
       <div className="mb-4 flex flex-wrap gap-2">
         {(["evm", "substrate", "solana", "aptos"] as const).map((runtime) => {
-          const firstOfRuntime = CHAINS.find((c) => c.family === runtime);
+          const firstOfRuntime = visibleChains.find((c) => c.family === runtime);
           return (
             <button
               key={runtime}

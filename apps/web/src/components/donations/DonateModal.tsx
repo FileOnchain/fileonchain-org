@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
 import { useDonation } from "@/hooks/useDonation";
+import { useVisibleChains } from "@/hooks/useVisibleChains";
 import { CHAINS, isValidCID } from "@fileonchain/sdk";
 import type { DonationRecipient } from "@/lib/mock/donations";
 
@@ -33,6 +34,7 @@ export const DonateModal = ({ open, onOpenChange, defaultCid }: DonateModalProps
   const [error, setError] = React.useState<string | null>(null);
   const { toast } = useToast();
   const { donate } = useDonation();
+  const visibleChains = useVisibleChains();
 
   const reset = () => {
     setCid(defaultCid ?? "");
@@ -138,7 +140,7 @@ export const DonateModal = ({ open, onOpenChange, defaultCid }: DonateModalProps
               onChange={(e) => setChainId(e.target.value as never)}
               className="mt-1 w-full p-2 rounded-md bg-surface text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm"
             >
-              {CHAINS.map((chain) => (
+              {visibleChains.map((chain) => (
                 <option key={chain.id} value={chain.id}>
                   {chain.name} {chain.testnet ? "(testnet)" : ""}
                 </option>

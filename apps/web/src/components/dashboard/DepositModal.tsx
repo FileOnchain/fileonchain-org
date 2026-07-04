@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { CHAINS, DEFAULT_CHAIN_ID, type ChainId } from "@fileonchain/sdk";
+import { DEFAULT_CHAIN_ID, type ChainId } from "@fileonchain/sdk";
+import { useVisibleChains } from "@/hooks/useVisibleChains";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -34,6 +35,7 @@ const PRESETS = [1, 5, 50] as const;
 export const DepositModal = ({ open, onOpenChange }: DepositModalProps) => {
   const router = useRouter();
   const { toast } = useToast();
+  const visibleChains = useVisibleChains();
 
   const [chainId, setChainId] = React.useState<ChainId>(DEFAULT_CHAIN_ID);
   const [amount, setAmount] = React.useState<number>(5);
@@ -168,7 +170,7 @@ export const DepositModal = ({ open, onOpenChange }: DepositModalProps) => {
               onChange={(event) => setChainId(event.target.value as ChainId)}
               className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              {CHAINS.map((chain) => (
+              {visibleChains.map((chain) => (
                 <option key={chain.id} value={chain.id}>
                   {chain.name}
                   {chain.testnet ? " (testnet)" : ""}

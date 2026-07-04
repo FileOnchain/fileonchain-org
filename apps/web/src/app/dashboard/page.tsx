@@ -11,7 +11,8 @@ import {
   getUploadStats,
 } from "@/lib/server/queries";
 import RuntimeChip from "@/components/profile/RuntimeChip";
-import { formatAgo, formatSize } from "@/lib/format";
+import { formatSize } from "@/lib/format";
+import FormattedDate from "@/components/ui/FormattedDate";
 import { formatMicroUsdc } from "@/lib/usdc";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -152,7 +153,7 @@ export default async function DashboardPage() {
                         <span>·</span>
                         <span>{job.chunkCount} chunks</span>
                         <span>·</span>
-                        <span>{formatAgo(job.createdAt)}</span>
+                        <FormattedDate date={job.createdAt} />
                         <span>·</span>
                         <span>{formatMicroUsdc(job.costMicroUsdc)}</span>
                       </div>
