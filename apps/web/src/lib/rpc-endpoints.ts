@@ -40,18 +40,29 @@ const PRIVATE_HOST_SUFFIXES = [".localhost", ".local", ".internal"];
  * acceptable bar.
  */
 const isPrivateHost = (hostname: string): boolean => {
-  const host = hostname.toLowerCase();
+  // WHATWG URL keeps the square brackets on IPv6 hostnames ("[::1]").
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (host === "localhost" || PRIVATE_HOST_SUFFIXES.some((s) => host.endsWith(s))) {
     return true;
   }
 
-  // IPv6 — `URL` strips the brackets from `hostname`.
   if (host.includes(":")) {
     if (host === "::" || host === "::1") return true;
     if (host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80")) {
       return true;
     }
-    if (host.startsWith("::ffff:")) return isPrivateHost(host.slice("::ffff:".length));
+    // Mapped IPv4 — URL canonicalizes "::ffff:10.0.0.1" to hex ("::ffff:a00:1").
+    if (host.startsWith("::ffff:")) {
+      const tail = host.slice("::ffff:".length);
+      if (tail.includes(".")) return isPrivateHost(tail);
+      const groups = tail.split(":").map((g) => parseInt(g || "0", 16));
+      if (groups.length === 2 && groups.every((g) => Number.isFinite(g))) {
+        return isPrivateHost(
+          `${groups[0] >> 8}.${groups[0] & 255}.${groups[1] >> 8}.${groups[1] & 255}`,
+        );
+      }
+      return true; // unparseable mapped form — refuse rather than trust it
+    }
     return false;
   }
 
