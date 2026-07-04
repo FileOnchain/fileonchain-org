@@ -1,7 +1,7 @@
 /**
- * ABI for contracts/src/FileRegistry.sol — generated from the Foundry build
- * output (contracts/out). Regenerate after changing the contract:
- * cd contracts && forge build, then re-run the extraction (see packages/sdk/README.md).
+ * ABI for contracts/evm/src/FileRegistry.sol — generated from the Foundry build
+ * output (contracts/evm/out). Regenerate after changing the contract:
+ * cd contracts/evm && forge build, then re-run the extraction (see packages/sdk-evm/scripts/extract-abis.mjs).
  */
 export const fileRegistryAbi = [
   {

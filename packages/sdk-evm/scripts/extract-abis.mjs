@@ -23,7 +23,7 @@ for (const [name, exportName] of CONTRACTS) {
   const source = `/**
  * ABI for contracts/evm/src/${name}.sol — generated from the Foundry build
  * output (contracts/evm/out). Regenerate after changing the contract:
- * cd contracts/evm && forge build, then re-run the extraction (see packages/sdk/README.md).
+ * cd contracts/evm && forge build, then re-run the extraction (see packages/sdk-evm/scripts/extract-abis.mjs).
  */
 export const ${exportName} = ${JSON.stringify(artifact.abi, null, 2)} as const;
 `;
