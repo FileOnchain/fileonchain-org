@@ -9,7 +9,9 @@
  *   - "@fileonchain/sdk/evm"       (peer: viem)
  *   - "@fileonchain/sdk/substrate" (peer: @polkadot/api)
  *   - "@fileonchain/sdk/solana"    (peer: @solana/web3.js)
- *   - "@fileonchain/sdk/aptos"     (dependency-free — wallet provider based)
+ *   - "@fileonchain/sdk/aptos", "/cosmos", "/sui", "/starknet", "/near",
+ *     "/tron", "/cardano", "/ton", "/hedera" (dependency-free — the SDK
+ *     orchestrates, a minimal structural signer owns transport)
  */
 
 export type { ChainFamily, ChainId, CIDRegistryRecord } from "./types";
@@ -17,6 +19,7 @@ export {
   CHAINS,
   DEFAULT_CHAIN_ID,
   ZERO_ADDRESS,
+  CHAIN_FAMILIES,
   CHAIN_FAMILY_LABELS,
   CHAIN_FAMILY_TAGLINES,
   MAINNET_CHAINS,

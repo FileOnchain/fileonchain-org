@@ -1145,6 +1145,10 @@ export const CHAIN_FAMILY_TAGLINES: Record<ChainFamily, string> = {
   hedera: "Anchors are Consensus Service messages on a topic. Use HashPack.",
 };
 
+/** Every chain family, in display order — UI surfaces that enumerate
+ * runtimes (filters, grids, switchers) iterate this, never a local list. */
+export const CHAIN_FAMILIES = Object.keys(CHAIN_FAMILY_LABELS) as readonly ChainFamily[];
+
 /**
  * Build an explorer link for a tx hash.
  */

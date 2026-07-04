@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import LiveLedgerTicker, { StatCounter } from "@/components/LiveLedgerTicker";
 import { compactNumber, truncateCID } from "@/lib/cid/format";
-import { CHAINS, CHAIN_FAMILY_LABELS, type ChainFamily } from "@fileonchain/sdk";
+import { CHAINS, CHAIN_FAMILIES, CHAIN_FAMILY_LABELS, type ChainFamily } from "@fileonchain/sdk";
 import type {
   FileCategory,
   ExplorerStats,
@@ -183,7 +183,7 @@ const ExplorerShell = () => {
           </div>
         </header>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {(["evm", "substrate", "solana", "aptos"] as ChainFamily[]).map(
+          {CHAIN_FAMILIES.map(
             (runtimeId) => {
               const chains = CHAINS.filter((c) => c.family === runtimeId);
               const mainnet = chains.filter((c) => !c.testnet).length;
