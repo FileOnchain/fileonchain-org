@@ -63,6 +63,11 @@ export const DonateModal = ({ open, onOpenChange, defaultCid }: DonateModalProps
     clearDraft();
   };
 
+  const close = () => {
+    reset();
+    onOpenChange(false);
+  };
+
   const handleSubmit = async () => {
     setError(null);
     if (Number(amount) <= 0) {
@@ -91,8 +96,7 @@ export const DonateModal = ({ open, onOpenChange, defaultCid }: DonateModalProps
         description: `Mock tx ${txHash.slice(0, 10)}… — thanks!`,
         variant: "success",
       });
-      reset();
-      onOpenChange(false);
+      close();
     } catch (e) {
       toast({
         title: "Donation failed",
@@ -113,7 +117,7 @@ export const DonateModal = ({ open, onOpenChange, defaultCid }: DonateModalProps
       description={`Treasury: ${TREASURY_ADDRESS.slice(0, 8)}…${TREASURY_ADDRESS.slice(-6)}`}
       footer={
         <>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button variant="ghost" onClick={close}>
             Cancel
           </Button>
           <Button onClick={handleSubmit} leftIcon={<FiHeart size={14} />}>
