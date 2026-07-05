@@ -7,12 +7,20 @@ import { cn } from "@/lib/cn";
 
 export type ToastVariant = "default" | "success" | "danger" | "warning" | "info";
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 export interface Toast {
   id: string;
   title: string;
   description?: string;
   variant?: ToastVariant;
+  /** Auto-dismiss delay in ms. Pass 0 to keep the toast until dismissed. */
   duration?: number;
+  /** Optional call-to-action rendered under the description. */
+  action?: ToastAction;
 }
 
 interface ToastContextValue {
@@ -104,6 +112,15 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
                 <p className="text-sm font-medium">{t.title}</p>
                 {t.description && (
                   <p className="mt-0.5 text-xs text-muted break-words">{t.description}</p>
+                )}
+                {t.action && (
+                  <button
+                    type="button"
+                    onClick={t.action.onClick}
+                    className="mt-2 inline-flex h-7 items-center rounded-md bg-primary px-2.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
+                  >
+                    {t.action.label}
+                  </button>
                 )}
               </div>
               <button

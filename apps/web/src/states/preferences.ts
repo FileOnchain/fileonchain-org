@@ -5,7 +5,7 @@ import {
   isDateFormatPreference,
   type DateFormatPreference,
 } from "@/lib/preferences";
-import { useChainsStates } from "@/states/chains";
+import { hydrateActiveChain, useChainsStates } from "@/states/chains";
 
 /**
  * Client-side mirror of the display-affecting account preferences. It is the
@@ -100,6 +100,9 @@ export const usePreferencesStates = create<PreferencesState>((set, get) => ({
 // same pattern as states/theme.ts.
 export const hydratePreferences = () => {
   if (typeof window === "undefined") return;
+  // Restore the persisted chain first (idempotent) so the testnet guard
+  // below always runs against the value the user will actually see.
+  hydrateActiveChain();
   const stored = readStored();
   usePreferencesStates.setState({ ...stored, hydrated: true });
   applyGaOptOut(

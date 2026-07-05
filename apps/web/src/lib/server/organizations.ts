@@ -8,6 +8,7 @@ import {
   users,
   type OrganizationRole,
 } from "@/lib/db";
+import { HttpError } from "@/lib/server/http-error";
 
 /**
  * Organization service. Role model:
@@ -17,15 +18,8 @@ import {
  * All operations are scoped by the acting user's membership row.
  */
 
-/** Domain error carrying an HTTP status; routes forward it as-is. */
-export class OrgError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
-    super(message);
-  }
-}
+/** Domain error carrying an HTTP status; `asRouteError` maps it as-is. */
+export class OrgError extends HttpError {}
 
 export interface OrganizationSummary {
   id: string;

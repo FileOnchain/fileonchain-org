@@ -2,9 +2,12 @@ import { create } from "zustand";
 import {
   CHAINS,
   DEFAULT_CHAIN_ID,
+  getChain,
   type ChainConfig,
   type ChainId,
 } from "@fileonchain/sdk";
+
+const ACTIVE_CHAIN_STORAGE_KEY = "fileonchain-active-chain";
 
 interface ChainsState {
   activeChainId: ChainId;
@@ -14,9 +17,35 @@ interface ChainsState {
 
 export const useChainsStates = create<ChainsState>((set, get) => ({
   activeChainId: DEFAULT_CHAIN_ID,
-  setActiveChainId: (id) => set({ activeChainId: id }),
+  setActiveChainId: (id) => {
+    if (typeof window !== "undefined") {
+      try {
+        window.sessionStorage.setItem(ACTIVE_CHAIN_STORAGE_KEY, id);
+      } catch {
+        // Storage unavailable — the selection just won't survive a refresh.
+      }
+    }
+    set({ activeChainId: id });
+  },
   activeChain: () => {
     const id = get().activeChainId;
     return CHAINS.find((c) => c.id === id) ?? CHAINS[0];
   },
 }));
+
+// Restore the picked chain after mount so SSR markup stays deterministic —
+// same pattern as states/theme.ts. Session-scoped on purpose: it protects
+// the selection across the "new version" refresh without pinning it forever.
+let activeChainHydrated = false;
+export const hydrateActiveChain = () => {
+  if (typeof window === "undefined" || activeChainHydrated) return;
+  activeChainHydrated = true;
+  try {
+    const stored = window.sessionStorage.getItem(ACTIVE_CHAIN_STORAGE_KEY);
+    if (stored && getChain(stored as ChainId)) {
+      useChainsStates.setState({ activeChainId: stored as ChainId });
+    }
+  } catch {
+    // Storage unavailable — keep the default chain.
+  }
+};

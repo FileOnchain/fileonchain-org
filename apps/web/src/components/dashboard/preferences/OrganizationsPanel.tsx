@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { trackEvent } from "@/lib/analytics";
 
 /** Wire shapes returned by /api/organizations — dates as ISO strings. */
@@ -72,6 +73,13 @@ export const OrganizationsPanel = ({
   const [newName, setNewName] = React.useState("");
   const [creating, setCreating] = React.useState(false);
   const [managedOrgId, setManagedOrgId] = React.useState<string | null>(null);
+
+  // Keeps a half-typed organization name across a page refresh.
+  useFormDraft(
+    "org-create",
+    { newName },
+    { restore: (draft) => setNewName(draft.newName) },
+  );
 
   const refresh = React.useCallback(async () => {
     const data = await request<{ organizations: OrgSummary[] }>(
@@ -207,6 +215,18 @@ const ManageOrgModal = ({
   const [inviteRole, setInviteRole] = React.useState<"member" | "admin">("member");
   const [busy, setBusy] = React.useState(false);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
+
+  // Invite fields only — `name` reloads from the server on every mutation.
+  useFormDraft(
+    `org-invite:${orgId}`,
+    { inviteEmail, inviteRole },
+    {
+      restore: (draft) => {
+        setInviteEmail(draft.inviteEmail);
+        setInviteRole(draft.inviteRole);
+      },
+    },
+  );
 
   const load = React.useCallback(async () => {
     try {

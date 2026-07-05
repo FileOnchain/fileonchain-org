@@ -4,6 +4,7 @@ import { Instrument_Serif } from "next/font/google";
 import AnalyticsGate from "@/components/AnalyticsGate";
 import ThemeProvider from "@/components/ThemeProvider";
 import AuthSessionProvider from "@/components/providers/AuthSessionProvider";
+import VersionWatcher from "@/components/VersionWatcher";
 import { ToastProvider } from "@/components/ui/Toast";
 import Nav from "@/components/layout/Nav";
 import Footer from "@/components/layout/Footer";
@@ -181,6 +182,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthSessionProvider>
             <ToastProvider>
+              <VersionWatcher />
               <ScrollProgress />
               <Nav />
               <RouteFade>

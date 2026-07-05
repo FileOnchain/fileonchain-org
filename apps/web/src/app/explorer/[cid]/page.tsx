@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import * as React from "react";
-import Link from "next/link";
-import { PageShell } from "@/components/layout/PageShell";
+import { notFound } from "next/navigation";
 import { lookupFile } from "@/lib/mock/cid-indexer";
 import { truncateCID } from "@/lib/cid/format";
 import { siteConfig } from "@/lib/site";
@@ -51,28 +50,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function ExplorerCIDPage({ params }: PageProps) {
   const { cid } = await params;
   const result = await lookupFile(cid);
-  if (!result) {
-    return (
-      <PageShell size="wide" padding="lg">
-        <div className="rounded-2xl border border-dashed border-border bg-surface p-8 text-center">
-          <p className="text-base font-semibold text-foreground">
-            No public record for this CID
-          </p>
-          <p className="mt-2 text-sm text-muted">
-            The CID may be valid on a chain but hasn&apos;t been indexed yet, or it
-            was never anchored on FileOnChain. Try one of the seeded examples
-            on the explorer index.
-          </p>
-          <Link
-            href="/explorer"
-            className="mt-4 inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
-          >
-            Back to explorer
-          </Link>
-        </div>
-      </PageShell>
-    );
-  }
+  // Real 404 (status + contextual not-found.tsx) instead of a soft-404 —
+  // generateMetadata above already marks the unresolved CID as noindex.
+  if (!result) notFound();
 
   // Breadcrumb structured data — lets Google render "Home › Explorer › file"
   // instead of the raw URL in search results.

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { DEFAULT_CHAIN_ID, type ChainId } from "@fileonchain/sdk";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { useVisibleChains } from "@/hooks/useVisibleChains";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
@@ -47,11 +48,27 @@ export const DepositModal = ({ open, onOpenChange }: DepositModalProps) => {
 
   const effectiveAmount = custom ? Number(custom) : amount;
 
+  // Keeps the picked chain/amount across a page refresh while the modal is
+  // open (the pending step is server state and recreates cleanly).
+  const { clearDraft } = useFormDraft(
+    "credit-deposit",
+    { chainId, amount, custom },
+    {
+      enabled: open,
+      restore: (draft) => {
+        setChainId(draft.chainId);
+        setAmount(draft.amount);
+        setCustom(draft.custom);
+      },
+    },
+  );
+
   const reset = () => {
     setPending(null);
     setBusy(false);
     setError(null);
     setCustom("");
+    clearDraft();
   };
 
   const handleCreate = async () => {

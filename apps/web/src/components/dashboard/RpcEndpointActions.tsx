@@ -16,6 +16,7 @@ import {
   type CustomRpcMap,
 } from "@/lib/rpc-endpoints";
 import { useRpcEndpointsStates } from "@/states/rpc-endpoints";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { trackEvent } from "@/lib/analytics";
 
 /** Client widgets for the server-rendered RPC Endpoints page. */
@@ -69,6 +70,20 @@ const RpcEndpointModal = ({
     }
   }, [open, fixedChainId, initialUrl]);
 
+  // Declared after the reset-on-open effect so a stored draft re-applies on
+  // top of the reset when the modal reopens after a page refresh.
+  const { clearDraft } = useFormDraft(
+    `rpc-endpoint:${fixedChainId ?? "new"}`,
+    { chainId, url },
+    {
+      enabled: open,
+      restore: (draft) => {
+        if (!fixedChainId) setChainId(draft.chainId);
+        setUrl(draft.url);
+      },
+    },
+  );
+
   const chain = getChain(chainId) ?? CONFIGURABLE_CHAINS[0];
   const protocol = allowedProtocolFor(chain.family);
 
@@ -85,6 +100,7 @@ const RpcEndpointModal = ({
       setLocalEndpoints(endpoints);
       trackEvent("rpc_endpoint", { chain_id: chain.id, action: "set" });
       toast({ title: `Custom RPC saved for ${chain.name}`, variant: "success" });
+      clearDraft();
       onOpenChange(false);
       router.refresh();
     } catch (err) {
