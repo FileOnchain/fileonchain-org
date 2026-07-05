@@ -1,8 +1,21 @@
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import type { NextConfig } from "next";
 import webpack from "webpack";
 
+// One id per build, inlined into BOTH bundles at build time: the client
+// keeps the id it was built with while `/api/version` serves the id of the
+// currently deployed build — a mismatch is what triggers the "new version
+// available" refresh toast (components/VersionWatcher.tsx). Prefer the
+// commit SHA so redeploys of identical code don't prompt a refresh.
+const buildId =
+  process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? randomUUID();
+
 const nextConfig: NextConfig = {
+  generateBuildId: () => buildId,
+  env: {
+    NEXT_PUBLIC_BUILD_ID: buildId,
+  },
   // The SDK packages are consumed straight from their TypeScript sources in
   // the workspace, so every package the @fileonchain/sdk umbrella re-exports
   // must be listed here too.
