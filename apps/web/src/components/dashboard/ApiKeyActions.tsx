@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { useToast } from "@/components/ui/Toast";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { trackEvent } from "@/lib/analytics";
 
 /**
@@ -24,12 +25,20 @@ export const CreateApiKeyButton = () => {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // Draft the key name only — the plaintext secret must never hit storage.
+  const { clearDraft } = useFormDraft(
+    "api-key-name",
+    { name },
+    { enabled: open && !secret, restore: (draft) => setName(draft.name) },
+  );
+
   const close = (next: boolean) => {
     setOpen(next);
     if (!next) {
       setName("");
       setSecret(null);
       setError(null);
+      clearDraft();
       // The list behind the modal refreshes once the secret is dismissed.
       router.refresh();
     }

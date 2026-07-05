@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
 import ChainSelect from "@/components/chain/ChainSelect";
 import { useDonation } from "@/hooks/useDonation";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { useVisibleChains } from "@/hooks/useVisibleChains";
 import { CHAINS, isValidCID } from "@fileonchain/sdk";
 import type { DonationRecipient } from "@/lib/mock/donations";
@@ -37,12 +38,29 @@ export const DonateModal = ({ open, onOpenChange, defaultCid }: DonateModalProps
   const { donate } = useDonation();
   const visibleChains = useVisibleChains();
 
+  // Keeps typed values across a page refresh while the modal is open.
+  const { clearDraft } = useFormDraft(
+    "donate",
+    { tab, cid, chainId, amount, memo },
+    {
+      enabled: open,
+      restore: (draft) => {
+        setTab(draft.tab);
+        setCid(draft.cid);
+        setChainId(draft.chainId);
+        setAmount(draft.amount);
+        setMemo(draft.memo);
+      },
+    },
+  );
+
   const reset = () => {
     setCid(defaultCid ?? "");
     setChainId(CHAINS[0].id);
     setAmount("5");
     setMemo("");
     setError(null);
+    clearDraft();
   };
 
   const handleSubmit = async () => {

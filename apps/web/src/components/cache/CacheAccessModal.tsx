@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { useCacheStates } from "@/states/cache";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { truncateFileName } from "@/utils/truncateFileName";
 
 interface CacheAccessModalProps {
@@ -28,6 +29,13 @@ export const CacheAccessModal = ({ open, onOpenChange, entryId }: CacheAccessMod
 
   const [address, setAddress] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
+
+  // Keeps a half-typed grantee address across a page refresh.
+  useFormDraft(
+    "cache-access-grant",
+    { address },
+    { enabled: open, restore: (draft) => setAddress(draft.address) },
+  );
 
   const entry = entries.find((e) => e.id === entryId) ?? null;
 
