@@ -14,6 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/leaderboard", priority: 0.7, changeFrequency: "daily" },
     { path: "/cache", priority: 0.7, changeFrequency: "weekly" },
     { path: "/donations", priority: 0.6, changeFrequency: "weekly" },
+    { path: "/docs", priority: 0.7, changeFrequency: "weekly" },
   ];
 
   // Evaluated at build time, so lastModified tracks the deploy — the
