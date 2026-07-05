@@ -7,6 +7,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Identicon } from "@/components/ui/Identicon";
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import { useChain } from "@/hooks/useChain";
 import { useVisibleChains } from "@/hooks/useVisibleChains";
 import { CHAIN_FAMILY_LABELS, type ChainFamily } from "@fileonchain/sdk";
@@ -230,22 +231,21 @@ export const ChainConnectModal = ({ open, onOpenChange }: ChainConnectModalProps
           <p className="text-sm text-muted">
             Approve the FileOnChain app in your polkadot.js / Talisman / SubWallet extension, then pick a network and account.
           </p>
-          <label className="block">
+          <label className="block" htmlFor="substrate-network">
             <span className="text-sm font-medium text-foreground">Network</span>
-            <select
-              value={networkId}
-              onChange={(e) => {
-                const network = networks.find((net) => net.name === e.target.value);
-                setNetworkId((network?.id as NetworkId) ?? networkId);
-              }}
-              className="mt-1 w-full p-2 rounded-md bg-surface text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-            >
-              {networks.map((network) => (
-                <option key={network.name} value={network.name}>
-                  {network.name}
-                </option>
-              ))}
-            </select>
+            <div className="mt-1">
+              <SearchSelect
+                id="substrate-network"
+                ariaLabel="Substrate network"
+                options={networks.map((network) => ({
+                  value: network.id,
+                  label: network.name,
+                }))}
+                value={networkId}
+                onValueChange={(id) => setNetworkId(id as NetworkId)}
+                searchPlaceholder="Search networks…"
+              />
+            </div>
           </label>
           <label className="block">
             <span className="text-sm font-medium text-foreground">Account</span>

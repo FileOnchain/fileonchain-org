@@ -7,6 +7,7 @@ import { CHAINS, getChain, type ChainId } from "@fileonchain/sdk";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import ChainSelect from "@/components/chain/ChainSelect";
 import { useToast } from "@/components/ui/Toast";
 import {
   allowedProtocolFor,
@@ -108,20 +109,13 @@ const RpcEndpointModal = ({
           >
             Chain
           </label>
-          <select
+          <ChainSelect
             id="rpc-chain"
+            chains={CONFIGURABLE_CHAINS}
             value={chainId}
+            onValueChange={setChainId}
             disabled={Boolean(fixedChainId)}
-            onChange={(event) => setChainId(event.target.value as ChainId)}
-            className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60"
-          >
-            {CONFIGURABLE_CHAINS.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-                {c.testnet ? " (testnet)" : ""}
-              </option>
-            ))}
-          </select>
+          />
           <p className="mt-1 text-xs text-muted">
             {protocol === "wss:" ? "WebSocket (wss://)" : "HTTPS"} endpoint ·
             default: <code className="font-mono">{chain.rpcUrl}</code>

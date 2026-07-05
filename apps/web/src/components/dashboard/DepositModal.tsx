@@ -7,6 +7,7 @@ import { useVisibleChains } from "@/hooks/useVisibleChains";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import ChainSelect from "@/components/chain/ChainSelect";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
@@ -164,19 +165,12 @@ export const DepositModal = ({ open, onOpenChange }: DepositModalProps) => {
             >
               Chain
             </label>
-            <select
+            <ChainSelect
               id="deposit-chain"
+              chains={visibleChains}
               value={chainId}
-              onChange={(event) => setChainId(event.target.value as ChainId)}
-              className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              {visibleChains.map((chain) => (
-                <option key={chain.id} value={chain.id}>
-                  {chain.name}
-                  {chain.testnet ? " (testnet)" : ""}
-                </option>
-              ))}
-            </select>
+              onValueChange={setChainId}
+            />
           </div>
 
           <div>
