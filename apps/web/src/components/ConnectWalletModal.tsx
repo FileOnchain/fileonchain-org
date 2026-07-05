@@ -2,6 +2,7 @@
 
 import { NetworkId, networks } from "@autonomys/auto-utils";
 import { useEffect } from "react";
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import { useWallet } from "@/hooks/useWallet";
 import { useWalletStates } from "@/states/wallet";
 
@@ -45,22 +46,21 @@ const ConnectWalletModal = ({ isOpen, onClose }: ConnectWalletModalProps) => {
         <h2 id="connect-wallet-title" className="text-xl font-semibold mb-4">
           Connect Wallet
         </h2>
-        <label className="block mb-3">
+        <label className="block mb-3" htmlFor="connect-network">
           <span className="text-sm font-medium text-foreground">Network</span>
-          <select
-            value={networkId}
-            onChange={(e) => {
-              const network = networks.find((net) => net.name === e.target.value);
-              setNetworkId(network?.id as NetworkId);
-            }}
-            className="mt-1 w-full p-2 rounded-md bg-surface text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            {networks.map((network) => (
-              <option key={network.name} value={network.name}>
-                {network.name}
-              </option>
-            ))}
-          </select>
+          <div className="mt-1">
+            <SearchSelect
+              id="connect-network"
+              ariaLabel="Substrate network"
+              options={networks.map((network) => ({
+                value: network.id,
+                label: network.name,
+              }))}
+              value={networkId}
+              onValueChange={(id) => setNetworkId(id as NetworkId)}
+              searchPlaceholder="Search networks…"
+            />
+          </div>
         </label>
         <label className="block mb-4">
           <span className="text-sm font-medium text-foreground">Account</span>

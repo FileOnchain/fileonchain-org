@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
+import ChainSelect from "@/components/chain/ChainSelect";
 import { useDonation } from "@/hooks/useDonation";
 import { useVisibleChains } from "@/hooks/useVisibleChains";
 import { CHAINS, isValidCID } from "@fileonchain/sdk";
@@ -133,19 +134,16 @@ export const DonateModal = ({ open, onOpenChange, defaultCid }: DonateModalProps
         </TabsContent>
 
         <TabsContent value="PerChain">
-          <label className="block">
+          <label className="block" htmlFor="donate-chain">
             <span className="text-sm font-medium text-foreground">Chain</span>
-            <select
-              value={chainId}
-              onChange={(e) => setChainId(e.target.value as never)}
-              className="mt-1 w-full p-2 rounded-md bg-surface text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-            >
-              {visibleChains.map((chain) => (
-                <option key={chain.id} value={chain.id}>
-                  {chain.name} {chain.testnet ? "(testnet)" : ""}
-                </option>
-              ))}
-            </select>
+            <div className="mt-1">
+              <ChainSelect
+                id="donate-chain"
+                chains={visibleChains}
+                value={chainId}
+                onValueChange={setChainId}
+              />
+            </div>
           </label>
           <p className="mt-2 text-xs text-muted">
             Funds the public cache layer for the selected chain.
