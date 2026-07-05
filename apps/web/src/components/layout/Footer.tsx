@@ -2,7 +2,7 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { FaGithub, FaLinkedin, FaTwitter } from "react-icons/fa";
-import { MAINNET_CHAINS, CHAIN_FAMILY_LABELS, type ChainFamily } from "@fileonchain/sdk";
+import { MAINNET_CHAINS, CHAIN_FAMILIES, CHAIN_FAMILY_LABELS } from "@fileonchain/sdk";
 import { siteConfig } from "@/lib/site";
 
 const GITHUB_REPO = "https://github.com/FileOnchain/fileonchain-org";
@@ -38,8 +38,6 @@ const AUTHOR_LINKS = [
   },
   { href: "https://x.com/marcaureleb", label: "Marc-Aurèle on X", Icon: FaTwitter },
 ] as const;
-
-const FAMILIES: ChainFamily[] = ["evm", "substrate", "solana", "aptos"];
 
 const columnHeading =
   "text-[10px] font-semibold uppercase tracking-[0.22em] text-muted";
@@ -86,8 +84,9 @@ const Footer = () => (
             </span>
           </Link>
           <p className="max-w-xs text-sm leading-relaxed text-muted">
-            Permanent file storage, anchored one transaction at a time across
-            EVM, Substrate, Solana, and Aptos chains.
+            Permanent file storage, anchored one transaction at a time across{" "}
+            {CHAIN_FAMILIES.length} chain families — from EVM and Substrate to
+            Cardano, TON, and Hedera.
           </p>
           <div className="flex items-center gap-3">
             {ORG_SOCIALS.map(({ href, label, Icon }) => (
@@ -146,8 +145,10 @@ const Footer = () => (
 
           <nav aria-label="Networks" className="flex flex-col gap-3">
             <p className={columnHeading}>Networks</p>
-            <ul className="flex flex-col gap-2">
-              {FAMILIES.map((family) => {
+            {/* Two sub-columns: twelve families would otherwise double the
+                footer's height next to the six-item link columns. */}
+            <ul className="grid grid-cols-2 gap-x-4 gap-y-2">
+              {CHAIN_FAMILIES.map((family) => {
                 const count = MAINNET_CHAINS.filter((c) => c.family === family).length;
                 return (
                   <li key={family}>
