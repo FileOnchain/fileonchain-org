@@ -11,6 +11,8 @@ import DropZone from "@/components/upload/DropZone";
 import ChunkProgressList from "@/components/upload/ChunkProgressList";
 import CostEstimatePanel from "@/components/upload/CostEstimatePanel";
 import PaymentMethodSelector from "@/components/upload/PaymentMethodSelector";
+import UploadAdvisor, { type AdvisorApplyPayload } from "@/components/upload/UploadAdvisor";
+import { useChain } from "@/hooks/useChain";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -51,6 +53,7 @@ const FileUploader = () => {
     processFile,
   } = useFileUploader();
 
+  const { setActiveChainId } = useChain();
   const selectedAccount = useWalletStates((state) => state.selectedAccount);
   const [isWalletModalOpen, setIsWalletModalOpen] = React.useState(false);
   const [selectedChunkIndex, setSelectedChunkIndex] = React.useState<number | null>(null);
@@ -111,6 +114,22 @@ const FileUploader = () => {
             : paymentMethod === "credits"
               ? "Anchor with credits"
               : "Anchor via provider";
+
+  // Same chunk estimate the cost panel uses: real chunk count once the
+  // split ran, a rough 64KB byte split before that.
+  const estimatedChunkCount = Math.max(
+    1,
+    cids.length > 0 ? cids.length : Math.ceil((file?.size ?? 0) / 65_536),
+  );
+
+  const applyRecommendation = React.useCallback(
+    ({ chainId, paymentMethod: method, byokKeyId: keyId }: AdvisorApplyPayload) => {
+      setActiveChainId(chainId);
+      setPaymentMethod(method);
+      setByokKeyId(keyId ?? null);
+    },
+    [setActiveChainId, setPaymentMethod, setByokKeyId],
+  );
 
   const handleChunkClick = React.useCallback(
     (chunk: (typeof cids)[number], index: number) => {
@@ -229,6 +248,14 @@ const FileUploader = () => {
               </div>
             </Card>
 
+            {/* One actionable suggestion before the detailed selectors —
+                Accept applies chain + payment; overriding below still works. */}
+            <UploadAdvisor
+              file={file}
+              chunkCount={estimatedChunkCount}
+              onApply={applyRecommendation}
+            />
+
             <PaymentMethodSelector
               value={paymentMethod}
               byokKeyId={byokKeyId}
@@ -240,7 +267,7 @@ const FileUploader = () => {
             {/* Cost estimate — only show once the chunk count is known.
                 Falls back to the file's rough byte-to-chunk split before
                 the split runs (assumes 64KB chunks). */}
-            <CostEstimatePanel chunkCount={Math.max(1, cids.length > 0 ? cids.length : Math.ceil((file?.size ?? 0) / 65_536))} />
+            <CostEstimatePanel chunkCount={estimatedChunkCount} />
 
             <CIDPreviewPanel data={preview} />
 

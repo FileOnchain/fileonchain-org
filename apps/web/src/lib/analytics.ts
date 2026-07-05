@@ -52,6 +52,25 @@ export interface AnalyticsEvents {
   };
   /** An anchor fell back to the simulated flow (chain not provisioned). */
   chain_anchor_fallback_mock: { family: string; chain_id: string };
+  /** An upload recommendation was rendered to the user. */
+  recommendation_shown: {
+    chain_id: string;
+    payment_method: string;
+    confidence: string;
+    chunk_count: number;
+    file_size: number;
+    source: "api" | "fallback";
+  };
+  /** The user accepted the advisor's suggested chain + payment method. */
+  recommendation_accepted: {
+    chain_id: string;
+    payment_method: string;
+    chunk_count: number;
+  };
+  /** The user dismissed the advisor for this file session. */
+  recommendation_dismissed: { chain_id: string; payment_method: string };
+  /** The user changed the advisor intent (testing/production/lowest cost). */
+  recommendation_intent_changed: { intent: string };
   /** An account preference was changed (field name only, never the value). */
   preference_change: { field: string };
   /** A custom RPC endpoint was saved or removed (never the URL itself). */

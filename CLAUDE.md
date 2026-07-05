@@ -169,7 +169,8 @@ semver ranges. Repo-level Claude Code skills live in `.claude/skills/`
   `preferences` subroutes). API routes under `app/api/`: the mock trio (`cid`,
   `search-file`, `upload-fallback`) plus the account backend (`auth`,
   `wallets`, `credits`, `keys`, `byok`, `uploads`, `preferences`,
-  `organizations`) and the API-key-scoped `v1/` namespace (`v1/anchor`,
+  `organizations`), the auth-optional `recommendations/upload` (Upload
+  Advisor), and the API-key-scoped `v1/` namespace (`v1/anchor`,
   `v1/credits`).
 - **`src/components/`** — `ui/` primitives (Button, Modal, Card, …), `layout/`
   (Nav, Footer, PageShell), and feature folders (`explorer/`, `cache/`,
@@ -190,7 +191,15 @@ semver ranges. Repo-level Claude Code skills live in `.claude/skills/`
   family wrapping the SDK clients, dispatched by `anchorFileOnChain`; wallet
   handles come from `useWalletStates.getState()`, heavy chain deps are
   dynamic-imported), `cid/format.ts` (display formatting), `crypto/` (AES-GCM
-  stub), `mock/` (see below), `site.ts` / `analytics.ts` / `faq.ts` (SEO).
+  stub), `mock/` (see below), `site.ts` / `analytics.ts` / `faq.ts` (SEO),
+  `recommendations/` (Upload Advisor: `engine.ts` is a pure, isomorphic
+  rule engine shared by `POST /api/recommendations/upload` and the client
+  fallback in `hooks/useUploadRecommendation.ts`; `llm.ts` — server-only,
+  OpenRouter via `OPENROUTER_API_KEY` — only polishes headline/rationale
+  copy, never the suggested settings; UI is
+  `components/upload/UploadAdvisor.tsx`, gated by
+  `NEXT_PUBLIC_UPLOAD_ADVISOR_ENABLED` and the per-user
+  `uploadAdvisorEnabled` preference).
 - **`src/types/types.ts`** — web-only types (`Account`). `ChainFamily`,
   `ChainId`, `CIDRegistryRecord` come from `@fileonchain/sdk`.
 
