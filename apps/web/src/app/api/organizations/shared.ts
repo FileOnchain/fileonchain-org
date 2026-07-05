@@ -1,10 +1,8 @@
-import { NextResponse } from "next/server";
 import { asRouteError } from "@/lib/auth";
-import {
-  OrgError,
-  type OrganizationDetail,
-  type OrganizationMemberInfo,
-  type OrganizationSummary,
+import type {
+  OrganizationDetail,
+  OrganizationMemberInfo,
+  OrganizationSummary,
 } from "@/lib/server/organizations";
 
 /** Shared serialization + error mapping for the organization routes. */
@@ -31,8 +29,8 @@ export const serializeOrgDetail = (org: OrganizationDetail) => ({
   members: org.members.map(serializeMember),
 });
 
-/** OrgError → its HTTP status; everything else via asRouteError. */
-export const asOrgError = (error: unknown): NextResponse =>
-  error instanceof OrgError
-    ? NextResponse.json({ error: error.message }, { status: error.status })
-    : asRouteError(error);
+/**
+ * `OrgError` extends `HttpError`, so the shared route-error mapper handles
+ * it directly — kept as a named alias so the org routes read domain-first.
+ */
+export const asOrgError = asRouteError;

@@ -13,11 +13,12 @@ interface ErrorProps {
 }
 
 /**
- * Root error boundary — surfaces any uncaught runtime error in the route
- * tree. Logs to the console so the digest + stack show up in the dev
- * terminal, and gives the user a one-click reset.
+ * Route error boundary — surfaces any uncaught runtime error in the route
+ * tree (root-layout crashes escalate to `global-error.tsx`). Logs to the
+ * console so the digest + stack show up in the dev terminal, and gives the
+ * user a one-click reset.
  */
-export default function GlobalError({ error, reset }: ErrorProps) {
+export default function RouteError({ error, reset }: ErrorProps) {
   React.useEffect(() => {
     // eslint-disable-next-line no-console
     console.error("[FileOnChain] Route error:", error);

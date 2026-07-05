@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
+import { HttpError } from "@/lib/server/http-error";
 import { authConfig } from "./config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
@@ -21,11 +22,16 @@ export const requireUser = async (): Promise<string> => {
 };
 
 /**
- * Unwrap `requireUser` failures inside route handlers: thrown `NextResponse`
- * objects become the response; anything else is a real error.
+ * Unwrap thrown errors inside route handlers: thrown `NextResponse` objects
+ * become the response, `HttpError`s (and subclasses like `OrgError`) map to
+ * their status + code; anything else is a real error and logs as a 500.
  */
 export const asRouteError = (error: unknown): NextResponse => {
   if (error instanceof NextResponse) return error;
+  if (error instanceof HttpError) return error.toResponse();
   console.error(error);
-  return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  return NextResponse.json(
+    { error: "Internal error", code: "internal_error" },
+    { status: 500 },
+  );
 };
