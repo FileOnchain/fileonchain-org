@@ -285,6 +285,9 @@ export const userPreferences = pgTable("user_preferences", {
     .notNull()
     .default("locale"),
   analyticsEnabled: boolean("analytics_enabled").notNull().default(true),
+  uploadAdvisorEnabled: boolean("upload_advisor_enabled")
+    .notNull()
+    .default(true),
   notifyUploadComplete: boolean("notify_upload_complete")
     .notNull()
     .default(true),

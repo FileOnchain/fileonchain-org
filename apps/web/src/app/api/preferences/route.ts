@@ -25,6 +25,7 @@ export async function GET() {
 const BOOLEAN_KEYS = [
   "showTestnets",
   "analyticsEnabled",
+  "uploadAdvisorEnabled",
   "notifyUploadComplete",
   "notifyLowCredit",
   "notifyPromotions",

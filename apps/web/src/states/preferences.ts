@@ -21,6 +21,7 @@ export interface LocalPreferences {
   showTestnets: boolean;
   dateFormat: DateFormatPreference;
   analyticsEnabled: boolean;
+  uploadAdvisorEnabled: boolean;
 }
 
 interface PreferencesState extends LocalPreferences {
@@ -32,6 +33,7 @@ const localDefaults: LocalPreferences = {
   showTestnets: DEFAULT_PREFERENCES.showTestnets,
   dateFormat: DEFAULT_PREFERENCES.dateFormat,
   analyticsEnabled: DEFAULT_PREFERENCES.analyticsEnabled,
+  uploadAdvisorEnabled: DEFAULT_PREFERENCES.uploadAdvisorEnabled,
 };
 
 /** Google's kill switch — gtag no-ops while this global is true. */
@@ -63,6 +65,8 @@ const readStored = (): Partial<LocalPreferences> => {
       out.dateFormat = parsed.dateFormat;
     if (typeof parsed.analyticsEnabled === "boolean")
       out.analyticsEnabled = parsed.analyticsEnabled;
+    if (typeof parsed.uploadAdvisorEnabled === "boolean")
+      out.uploadAdvisorEnabled = parsed.uploadAdvisorEnabled;
     return out;
   } catch {
     return {};
@@ -74,11 +78,17 @@ export const usePreferencesStates = create<PreferencesState>((set, get) => ({
   hydrated: false,
   setLocalPreferences: (patch) => {
     set(patch);
-    const { showTestnets, dateFormat, analyticsEnabled } = get();
+    const { showTestnets, dateFormat, analyticsEnabled, uploadAdvisorEnabled } =
+      get();
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
         PREFERENCES_STORAGE_KEY,
-        JSON.stringify({ showTestnets, dateFormat, analyticsEnabled }),
+        JSON.stringify({
+          showTestnets,
+          dateFormat,
+          analyticsEnabled,
+          uploadAdvisorEnabled,
+        }),
       );
     }
     if ("analyticsEnabled" in patch) applyGaOptOut(analyticsEnabled);

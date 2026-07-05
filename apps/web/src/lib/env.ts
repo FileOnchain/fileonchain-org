@@ -91,4 +91,17 @@ export const env = {
   get anchorHederaPrivateKey(): string | undefined {
     return process.env.ANCHOR_HEDERA_PRIVATE_KEY;
   },
+  /** Upload Advisor LLM copy layer — optional; absent key means template
+   * copy only, the deterministic rule engine always runs. */
+  get openRouterApiKey(): string | undefined {
+    return process.env.OPENROUTER_API_KEY;
+  },
+  get recommendationLlmModel(): string {
+    return process.env.RECOMMENDATION_LLM_MODEL || "openai/gpt-4o-mini";
+  },
+  /** Set RECOMMENDATION_LLM_ENABLED=0 to force deterministic copy even
+   * when an OpenRouter key is present. */
+  get recommendationLlmEnabled(): boolean {
+    return process.env.RECOMMENDATION_LLM_ENABLED !== "0";
+  },
 };

@@ -1,0 +1,1 @@
+ALTER TABLE "user_preferences" ADD COLUMN "upload_advisor_enabled" boolean DEFAULT true NOT NULL;

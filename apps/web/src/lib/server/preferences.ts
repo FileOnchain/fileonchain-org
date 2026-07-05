@@ -14,6 +14,7 @@ const toData = (
   showTestnets: row.showTestnets,
   dateFormat: row.dateFormat,
   analyticsEnabled: row.analyticsEnabled,
+  uploadAdvisorEnabled: row.uploadAdvisorEnabled,
   notifyUploadComplete: row.notifyUploadComplete,
   notifyLowCredit: row.notifyLowCredit,
   notifyPromotions: row.notifyPromotions,

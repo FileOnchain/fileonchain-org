@@ -74,6 +74,7 @@ export const PreferencesForm = ({ initialPreferences }: PreferencesFormProps) =>
       showTestnets: initialPreferences.showTestnets,
       dateFormat: initialPreferences.dateFormat,
       analyticsEnabled: initialPreferences.analyticsEnabled,
+      uploadAdvisorEnabled: initialPreferences.uploadAdvisorEnabled,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -87,6 +88,7 @@ export const PreferencesForm = ({ initialPreferences }: PreferencesFormProps) =>
         showTestnets: next.showTestnets,
         dateFormat: next.dateFormat,
         analyticsEnabled: next.analyticsEnabled,
+        uploadAdvisorEnabled: next.uploadAdvisorEnabled,
       });
       try {
         const res = await fetch("/api/preferences", {
@@ -112,6 +114,7 @@ export const PreferencesForm = ({ initialPreferences }: PreferencesFormProps) =>
           showTestnets: previous.showTestnets,
           dateFormat: previous.dateFormat,
           analyticsEnabled: previous.analyticsEnabled,
+          uploadAdvisorEnabled: previous.uploadAdvisorEnabled,
         });
         toast({
           title: "Could not save preference",
@@ -223,6 +226,24 @@ export const PreferencesForm = ({ initialPreferences }: PreferencesFormProps) =>
               </option>
             ))}
           </Select>
+        </div>
+      </Card>
+
+      <Card padding="lg">
+        <CardHeader>
+          <CardTitle>AI assistance</CardTitle>
+          <CardDescription>
+            AI-powered helpers. Recommendations only ever see file metadata
+            (size, type, name) — never file contents.
+          </CardDescription>
+        </CardHeader>
+        <div className="mt-2 divide-y divide-border">
+          <ToggleRow
+            label="Upload advisor"
+            description="Suggest the best chain and payment method after you pick a file. Turning this off hides the suggestion entirely."
+            checked={prefs.uploadAdvisorEnabled}
+            onChange={(checked) => save({ uploadAdvisorEnabled: checked })}
+          />
         </div>
       </Card>
 
