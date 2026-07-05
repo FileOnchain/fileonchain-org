@@ -21,6 +21,8 @@ export interface UserPreferencesData {
   showTestnets: boolean;
   dateFormat: DateFormatPreference;
   analyticsEnabled: boolean;
+  /** AI-assisted chain & payment recommendation on the upload screen. */
+  uploadAdvisorEnabled: boolean;
   notifyUploadComplete: boolean;
   notifyLowCredit: boolean;
   notifyPromotions: boolean;
@@ -32,6 +34,7 @@ export const DEFAULT_PREFERENCES: UserPreferencesData = {
   showTestnets: false,
   dateFormat: "locale",
   analyticsEnabled: true,
+  uploadAdvisorEnabled: true,
   notifyUploadComplete: true,
   notifyLowCredit: true,
   notifyPromotions: false,
