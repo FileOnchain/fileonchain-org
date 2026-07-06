@@ -63,10 +63,43 @@ contract DonationEscrowTest is Test {
     badEscrow.donate{value: 0.1 ether}(DonationEscrow.Recipient.Platform, bytes32(0), "");
   }
 
+  function test_RevertWhen_ConstructorZeroTreasury() public {
+    vm.expectRevert(bytes("DonationEscrow: zero treasury"));
+    new DonationEscrow(address(0));
+  }
+
+  function test_DonationTotalViews() public {
+    vm.deal(alice, 10 ether);
+    vm.startPrank(alice);
+    escrow.donate{value: 0.5 ether}(DonationEscrow.Recipient.PerCID, CID_HASH, "for cid");
+    escrow.donate{value: 2 ether}(DonationEscrow.Recipient.PerChain, CHAIN_TARGET, "for base");
+    vm.stopPrank();
+
+    assertEq(escrow.cidDonationTotal(CID_HASH), 0.5 ether);
+    assertEq(escrow.chainDonationTotal(CHAIN_TARGET), 2 ether);
+    assertEq(escrow.cidDonationTotal(keccak256("other-cid")), 0);
+    assertEq(escrow.chainDonationTotal(bytes32("evm:8453")), 0);
+  }
+
+  function test_PlatformDonationTouchesNoTargetTotals() public {
+    vm.deal(alice, 1 ether);
+    vm.prank(alice);
+    escrow.donate{value: 1 ether}(DonationEscrow.Recipient.Platform, CID_HASH, "tip");
+
+    // Platform donations skip both per-target ledgers even when a target is
+    // passed along.
+    assertEq(escrow.cidDonationTotal(CID_HASH), 0);
+    assertEq(escrow.chainDonationTotal(CID_HASH), 0);
+  }
+
   function test_SetTreasury() public {
+    address next = makeAddr("new-treasury");
+    vm.expectEmit(true, true, false, true);
+    emit DonationEscrow.TreasuryUpdated(treasury, next);
+
     vm.prank(treasury);
-    escrow.setTreasury(makeAddr("new-treasury"));
-    assertEq(escrow.treasury(), makeAddr("new-treasury"));
+    escrow.setTreasury(next);
+    assertEq(escrow.treasury(), next);
   }
 
   function test_RevertWhen_SetTreasuryByNonTreasury() public {
