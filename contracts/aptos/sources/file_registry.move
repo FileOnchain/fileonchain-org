@@ -43,5 +43,43 @@ module fileonchain::file_registry {
         );
         let events = event::emitted_events<CIDAnchored>();
         assert!(std::vector::length(&events) == 1, 0);
+
+        let e = std::vector::borrow(&events, 0);
+        assert!(e.submitter == @0xA11CE, 1);
+        assert!(
+            e.cid == string::utf8(b"bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"),
+            2,
+        );
+        // The fileonchain JSON must ride along verbatim.
+        assert!(
+            e.payload == string::utf8(b"{\"p\":\"fileonchain\",\"v\":1,\"op\":\"anchor\",\"cid\":\"bafy...\"}"),
+            3,
+        );
+    }
+
+    #[test(user = @0xA11CE)]
+    fun reanchoring_same_cid_is_allowed(user: &signer) {
+        use std::string;
+        // Stateless by design: a second anchor of the same CID must not
+        // abort, and both events land in the stream.
+        anchor_cid(user, string::utf8(b"bafy-cid"), string::utf8(b"payload-one"));
+        anchor_cid(user, string::utf8(b"bafy-cid"), string::utf8(b"payload-two"));
+
+        let events = event::emitted_events<CIDAnchored>();
+        assert!(std::vector::length(&events) == 2, 0);
+        assert!(std::vector::borrow(&events, 0).payload == string::utf8(b"payload-one"), 1);
+        assert!(std::vector::borrow(&events, 1).payload == string::utf8(b"payload-two"), 2);
+    }
+
+    #[test(alice = @0xA11CE, bob = @0xB0B)]
+    fun submitter_tracks_caller(alice: &signer, bob: &signer) {
+        use std::string;
+        anchor_cid(alice, string::utf8(b"bafy-cid"), string::utf8(b"payload"));
+        anchor_cid(bob, string::utf8(b"bafy-cid"), string::utf8(b"payload"));
+
+        let events = event::emitted_events<CIDAnchored>();
+        assert!(std::vector::length(&events) == 2, 0);
+        assert!(std::vector::borrow(&events, 0).submitter == @0xA11CE, 1);
+        assert!(std::vector::borrow(&events, 1).submitter == @0xB0B, 2);
     }
 }
