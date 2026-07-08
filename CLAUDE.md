@@ -282,7 +282,11 @@ chain-side operations behind it stay mock:
   `src/lib/preferences.ts`), `organizations.ts` (owner/admin/member role
   model; throws `OrgError(status, message)` which the org routes map via
   `app/api/organizations/shared.ts`).
-- **Mock seams to make real later**: deposit confirmation
+- **Mock seams to make real later**: FOCAT anchor-pack fulfillment
+  (`lib/server/focat-orders.ts` — mainnet packs debit credits and record a
+  mock treasury transfer; replace with a real FOCAT send from the chain's
+  funded ANCHOR_* signer, and fund spoke treasuries via approved bridges),
+  deposit confirmation
   (`api/credits/deposit/[id]/confirm` — replace with a USDC Transfer
   watcher), `byok.ts` validation (real Auto Drive call), and the per-chain
   deployments themselves — all anchoring code paths are written; real sends

@@ -11,6 +11,7 @@ import DropZone from "@/components/upload/DropZone";
 import ChunkProgressList from "@/components/upload/ChunkProgressList";
 import CostEstimatePanel from "@/components/upload/CostEstimatePanel";
 import PaymentMethodSelector from "@/components/upload/PaymentMethodSelector";
+import FocatTopUp from "@/components/upload/FocatTopUp";
 import UploadAdvisor, { type AdvisorApplyPayload } from "@/components/upload/UploadAdvisor";
 import { useChain } from "@/hooks/useChain";
 import { Button } from "@/components/ui/Button";
@@ -263,6 +264,11 @@ const FileUploader = () => {
               onChange={setPaymentMethod}
               onByokKeyChange={setByokKeyId}
             />
+
+            {/* FOCAT enters the flow only where the wallet path requires
+                it: PAYG on a propose/verify chain escrows tip + bond from
+                the user's wallet. Credits users never see the token. */}
+            {paymentMethod === "payg" && <FocatTopUp />}
 
             {/* Cost estimate — only show once the chunk count is known.
                 Falls back to the file's rough byte-to-chunk split before
