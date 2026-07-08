@@ -137,7 +137,7 @@ export const apiKeys = pgTable("api_key", {
     .defaultNow(),
 });
 
-export type CreditReason = "deposit" | "anchor_debit" | "refund" | "adjustment";
+export type CreditReason = "deposit" | "anchor_debit" | "refund" | "adjustment" | "focat_pack";
 
 /** Append-only credit ledger; balance = SUM(delta_micro_usdc). */
 /* TODO: materialize a cached balance column once ledgers grow large. */
@@ -158,6 +158,40 @@ export const creditLedger = pgTable(
       .defaultNow(),
   },
   (t) => [index("credit_ledger_user_created_idx").on(t.userId, t.createdAt)],
+);
+
+export type FocatOrderStatus = "sent" | "failed";
+export type FocatPackKind = "anchor-pack" | "validator-starter" | "custom" | "faucet";
+
+/**
+ * Fixed-price FOCAT anchor-pack orders for the pay-as-you-go wallet path
+ * (credits users never need the token — the server worker holds it).
+ * Mainnet packs debit account credits; testnets drip from a free faucet.
+ * Fulfillment (treasury → wallet transfer on the target chain) is mocked.
+ */
+export const focatOrders = pgTable(
+  "focat_order",
+  {
+    id: text("id").primaryKey().$defaultFn(uuid),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chainId: text("chain_id").$type<ChainId>().notNull(),
+    /** Wallet the FOCAT is delivered to on that chain. */
+    walletAddress: text("wallet_address").notNull(),
+    pack: text("pack").$type<FocatPackKind>().notNull(),
+    /** Whole FOCAT delivered. */
+    focatAmount: integer("focat_amount").notNull(),
+    /** 0 for testnet faucet drips. */
+    priceMicroUsdc: bigint("price_micro_usdc", { mode: "bigint" }).notNull(),
+    status: text("status").$type<FocatOrderStatus>().notNull().default("sent"),
+    /** Treasury transfer hash (mock until treasuries are funded). */
+    txHash: text("tx_hash"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("focat_order_user_created_idx").on(t.userId, t.createdAt)],
 );
 
 export type DepositStatus = "pending" | "confirmed" | "failed";
@@ -186,6 +220,7 @@ export type ActivityType =
   | "wallet_unlinked"
   | "credit_deposit"
   | "credit_debit"
+  | "focat_pack_purchase"
   | "upload_anchor"
   | "api_call"
   | "api_key_created"

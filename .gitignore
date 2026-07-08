@@ -48,3 +48,7 @@ next-env.d.ts
 /contracts/evm/lcov.info
 *.mvcov
 /contracts/sui/traces/
+
+# forge install run from the repo root drops libraries here; the real vendored
+# copies live under contracts/evm/lib (also ignored)
+/lib/

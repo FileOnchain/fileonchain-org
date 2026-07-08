@@ -84,6 +84,25 @@ const TOKEN_POINTS = [
   },
 ] as const;
 
+const ACQUISITION_POINTS = [
+  {
+    title: "Most people: never touch the token",
+    body: "Sign in and pay with USD credits — FileOnChain's worker holds the FOCAT and anchors for you. You see \u201cverified anchor on Base \u2014 $X\u201d, not \u201cbuy 101 FOCAT\u201d. This is the recommended default in the app and the API.",
+  },
+  {
+    title: "Wallet anchoring: fixed-price anchor packs",
+    body: "Pay-as-you-go escrows the tip and refundable bond from your own wallet, so it needs FOCAT on that chain. The upload flow offers a fixed-price anchor pack — enough for one propose, paid from credits, delivered to your connected wallet. A verification fee, not a trading desk.",
+  },
+  {
+    title: "Validators: earn, don't buy",
+    body: "Validators and jurors earn FOCAT continuously — the 60% share of every verified tip plus slashed bonds from lost disputes. A validator starter pack (min stake + one propose) exists for bootstrapping, but purchase is optional.",
+  },
+  {
+    title: "Testnets: faucet only",
+    body: "Test networks drip FOCAT for free for QA. The faucet and the mainnet sale are never mixed.",
+  },
+] as const;
+
 const GOVERNANCE_POINTS = [
   "The FOCAT token votes through an on-chain Governor + timelock on EVM: fee split, platform caps and registration, bonds, tip minimums, windows, jury parameters, validator stake minimums, and treasury spends.",
   "The timelock is the protocol treasury — spending tip revenue is itself a governance proposal.",
@@ -164,6 +183,18 @@ const ProtocolPage = () => {
         <h2 className="text-lg font-semibold">The FOCAT token</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           {TOKEN_POINTS.map((point) => (
+            <Card key={point.title} className="p-5">
+              <h3 className="font-medium">{point.title}</h3>
+              <p className="mt-2 text-sm text-muted">{point.body}</p>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold">Getting FOCAT</h2>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          {ACQUISITION_POINTS.map((point) => (
             <Card key={point.title} className="p-5">
               <h3 className="font-medium">{point.title}</h3>
               <p className="mt-2 text-sm text-muted">{point.body}</p>
