@@ -40,7 +40,7 @@ cd starknet && scarb test                # cairo-test has no coverage tool yet
 
 ```bash
 cd evm
-forge install        # forge-std
+forge install foundry-rs/forge-std OpenZeppelin/openzeppelin-contracts@v5.4.0  # lib/ is untracked
 forge build
 forge test
 ```
