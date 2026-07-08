@@ -4,15 +4,20 @@ import { getNearProvider } from "@/hooks/useNearWallet";
 import type { AnchorRequest } from "./types";
 
 /**
- * NEAR sender — sequential `anchor_cid` contract calls through the injected
- * `window.near` provider (Sender / Meteor). Until a registry contract account
- * lands in the SDK chain registry, anchorChunkedFile throws
- * ChainNotProvisionedError and the uploader falls back to the simulated flow.
+ * NEAR sender — sequential free `anchor_cid` contract calls through the
+ * injected `window.near` provider (Sender / Meteor), then a paid
+ * `ft_transfer_call` on the FOC token for the file CID (tip + bond
+ * escrowed via the registry's ft_on_transfer) when the chain is
+ * propose-provisioned. Until a registry contract account lands in the SDK
+ * chain registry, anchorChunkedFile throws ChainNotProvisionedError and
+ * the uploader falls back to the simulated flow.
  */
 export const sendNearAnchor = async ({
   chain,
   fileCid,
   chunks,
+  platformId,
+  tip,
   onProgress,
 }: AnchorRequest): Promise<ChunkedAnchorReceipt> => {
   const { nearAddress } = useWalletStates.getState();
@@ -26,31 +31,42 @@ export const sendNearAnchor = async ({
     "@fileonchain/sdk/near"
   );
 
+  const sendFunctionCall = async (
+    receiverId: string,
+    methodName: string,
+    args: Record<string, unknown>,
+    deposit: string,
+    gas: string,
+  ) => {
+    const outcome = await provider.signAndSendTransaction({
+      receiverId,
+      actions: [
+        {
+          type: "FunctionCall",
+          params: { methodName, args, gas, deposit },
+        },
+      ],
+    });
+    // Sender / Meteor resolve with the RPC FinalExecutionOutcome object.
+    const txHash =
+      (outcome as { transaction?: { hash?: string } })?.transaction?.hash ?? "";
+    return { txHash };
+  };
+
   return anchorChunkedFile(
     {
       accountId: nearAddress,
-      callAnchor: async (contractId, cid, payload) => {
-        const outcome = await provider.signAndSendTransaction({
-          receiverId: contractId,
-          actions: [
-            {
-              type: "FunctionCall",
-              params: {
-                methodName: ANCHOR_METHOD,
-                args: { cid, payload },
-                gas: "30000000000000",
-                deposit: "0",
-              },
-            },
-          ],
-        });
-        // Sender / Meteor resolve with the RPC FinalExecutionOutcome object.
-        const txHash =
-          (outcome as { transaction?: { hash?: string } })?.transaction?.hash ??
-          "";
-        return { txHash };
-      },
+      callAnchor: (contractId, cid, payload) =>
+        sendFunctionCall(contractId, ANCHOR_METHOD, { cid, payload }, "0", "30000000000000"),
+      callMethod: (contractId, method, args, options) =>
+        sendFunctionCall(
+          contractId,
+          method,
+          args,
+          options?.attachedDeposit ?? "0",
+          options?.gas ?? "30000000000000",
+        ),
     },
-    { chainId: chain.id, fileCid, chunks, onProgress },
+    { chainId: chain.id, fileCid, chunks, platformId, tip, onProgress },
   );
 };
