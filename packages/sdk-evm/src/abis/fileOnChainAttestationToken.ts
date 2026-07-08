@@ -1,9 +1,9 @@
 /**
- * ABI for contracts/evm/src/FOCATToken.sol — generated from the Foundry build
+ * ABI for contracts/evm/src/FileOnChainAttestationToken.sol — generated from the Foundry build
  * output (contracts/evm/out). Regenerate after changing the contract:
  * cd contracts/evm && forge build, then re-run the extraction (see packages/sdk-evm/scripts/extract-abis.mjs).
  */
-export const focatTokenAbi = [
+export const fileOnChainAttestationTokenAbi = [
   {
     "type": "constructor",
     "inputs": [

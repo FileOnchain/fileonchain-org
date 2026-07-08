@@ -7,7 +7,7 @@
 //! registry's `ft_on_transfer` routes it.
 //!
 //! Fixed supply minted to `owner_id` at init (mirroring the EVM
-//! FOCATToken); the owner is the admin account that executes EVM
+//! FileOnChainAttestationToken); the owner is the admin account that executes EVM
 //! governance decisions — see docs/governance.md.
 
 use near_contract_standards::fungible_token::metadata::{

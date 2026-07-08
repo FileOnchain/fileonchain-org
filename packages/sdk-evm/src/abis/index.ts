@@ -1,5 +1,5 @@
 export { fileRegistryAbi } from "./fileRegistry";
-export { focatTokenAbi } from "./focatToken";
+export { fileOnChainAttestationTokenAbi } from "./fileOnChainAttestationToken";
 export { validatorStakingAbi } from "./validatorStaking";
 export { platformRegistryAbi } from "./platformRegistry";
 export { fileOnChainGovernorAbi } from "./fileOnChainGovernor";

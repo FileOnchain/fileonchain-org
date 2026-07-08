@@ -6,12 +6,12 @@ import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20P
 import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 
-/// @title FOCATToken
+/// @title FileOnChainAttestationToken
 /// @notice FOCAT — the FileOnChain protocol token. Denominates anchor tips,
 /// propose/challenge bonds, and validator stakes, and carries governance
 /// voting power (ERC20Votes) for the FileOnChainGovernor. Fixed supply,
 /// minted once to the initial holder.
-contract FOCATToken is ERC20, ERC20Permit, ERC20Votes {
+contract FileOnChainAttestationToken is ERC20, ERC20Permit, ERC20Votes {
   constructor(
     address initialHolder,
     uint256 initialSupply

@@ -19,7 +19,7 @@
 export * from "@fileonchain/utils";
 export {
   fileRegistryAbi,
-  focatTokenAbi,
+  fileOnChainAttestationTokenAbi,
   validatorStakingAbi,
   platformRegistryAbi,
   fileOnChainGovernorAbi,

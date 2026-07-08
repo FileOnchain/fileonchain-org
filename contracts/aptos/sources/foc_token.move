@@ -3,7 +3,7 @@
 /// validator stakes for `fileonchain::anchor_registry`.
 ///
 /// Supply is minted once to the publisher at `init_module` (mirroring the
-/// fixed-supply EVM FOCATToken); `mint` stays admin-gated for
+/// fixed-supply EVM FileOnChainAttestationToken); `mint` stays admin-gated for
 /// testnets. Protocol parameters on Aptos are administered by the account
 /// that executes EVM governance decisions — see docs/governance.md.
 module fileonchain::foc_token {

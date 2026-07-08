@@ -26,7 +26,7 @@ import {
   type ProposalStatus,
 } from "@fileonchain/utils";
 import { fileRegistryAbi } from "./abis/fileRegistry";
-import { focatTokenAbi } from "./abis/focatToken";
+import { fileOnChainAttestationTokenAbi } from "./abis/fileOnChainAttestationToken";
 import { validatorStakingAbi } from "./abis/validatorStaking";
 
 /**
@@ -193,7 +193,7 @@ const ensureRegistryAllowance = async (
   const account = requireAccount(walletClient);
   const allowance = await client.readContract({
     address: chain.tokenContract,
-    abi: focatTokenAbi,
+    abi: fileOnChainAttestationTokenAbi,
     functionName: "allowance",
     args: [account.address, chain.registryContract],
   });
@@ -203,7 +203,7 @@ const ensureRegistryAllowance = async (
     chain: toViemChain(chain),
     account,
     address: chain.tokenContract,
-    abi: focatTokenAbi,
+    abi: fileOnChainAttestationTokenAbi,
     functionName: "approve",
     args: [chain.registryContract, amount],
   });
@@ -512,7 +512,7 @@ export const getTokenBalance = async (
   const client = publicClientFor(chain, publicClient);
   return client.readContract({
     address: chain.tokenContract,
-    abi: focatTokenAbi,
+    abi: fileOnChainAttestationTokenAbi,
     functionName: "balanceOf",
     args: [address],
   });
@@ -529,7 +529,7 @@ export const approveToken = async (
     chain: toViemChain(chain),
     account,
     address: chain.tokenContract,
-    abi: focatTokenAbi,
+    abi: fileOnChainAttestationTokenAbi,
     functionName: "approve",
     args: [spender, amount],
   });

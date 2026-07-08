@@ -11,7 +11,7 @@ const contractsOut = resolve(sdkRoot, "../../contracts/evm/out");
 
 const CONTRACTS = [
   ["FileRegistry", "fileRegistryAbi"],
-  ["FOCATToken", "focatTokenAbi"],
+  ["FileOnChainAttestationToken", "fileOnChainAttestationTokenAbi"],
   ["ValidatorStaking", "validatorStakingAbi"],
   ["PlatformRegistry", "platformRegistryAbi"],
   ["FileOnChainGovernor", "fileOnChainGovernorAbi"],

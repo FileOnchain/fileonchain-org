@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Script.sol";
 import {IERC20 as OZIERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
-import {FOCATToken} from "../src/FOCATToken.sol";
+import {FileOnChainAttestationToken} from "../src/FileOnChainAttestationToken.sol";
 import {ValidatorStaking} from "../src/ValidatorStaking.sol";
 import {PlatformRegistry} from "../src/PlatformRegistry.sol";
 import {FileRegistry} from "../src/FileRegistry.sol";
@@ -31,7 +31,7 @@ import {MockUSDC} from "../src/mocks/MockUSDC.sol";
 /// Run with: `forge script script/Deploy.s.sol --rpc-url $RPC --broadcast`
 contract Deploy is Script {
   // Exposed for wiring assertions in Deploy.t.sol.
-  FOCATToken public token;
+  FileOnChainAttestationToken public token;
   FileOnChainTimelock public timelock;
   FileOnChainGovernor public governor;
   ValidatorStaking public staking;
@@ -54,8 +54,8 @@ contract Deploy is Script {
 
     vm.startBroadcast(pk);
 
-    token = new FOCATToken(deployer, initialSupply);
-    console.log("FOCATToken deployed at:", address(token));
+    token = new FileOnChainAttestationToken(deployer, initialSupply);
+    console.log("FileOnChainAttestationToken deployed at:", address(token));
 
     timelock = new FileOnChainTimelock(timelockMinDelay, new address[](0), new address[](0), deployer);
     console.log("FileOnChainTimelock deployed at:", address(timelock));

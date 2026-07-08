@@ -1,7 +1,7 @@
 //! FOCAT — the FileOnChain protocol token on Starknet. A deliberately minimal
 //! ERC-20 (no external dependencies, matching this package's cairo-test
 //! setup): fixed supply minted to the initial holder, standard
-//! transfer/approve surface, 18 decimals like the EVM FOCATToken.
+//! transfer/approve surface, 18 decimals like the EVM FileOnChainAttestationToken.
 //! Denominates anchor tips, propose/challenge bonds, and validator stakes
 //! for the AnchorRegistry contract.
 

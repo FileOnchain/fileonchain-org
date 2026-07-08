@@ -22,7 +22,7 @@ contract DeployTest is Test {
     deploy.run();
 
     // Protocol wiring: registry hooks, governance ownership, open executor.
-    FOCATToken token = deploy.token();
+    FileOnChainAttestationToken token = deploy.token();
     FileOnChainTimelock timelock = deploy.timelock();
     FileOnChainGovernor governor = deploy.governor();
     ValidatorStaking staking = deploy.staking();
