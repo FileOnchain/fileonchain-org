@@ -68,7 +68,7 @@ server.registerTool(
   {
     title: "List supported chains",
     description:
-      "List the chains FileOnChain can anchor on, with family, testnet flag, and whether real anchoring is provisioned today.",
+      "List the chains FileOnChain can anchor on, with family, testnet flag, rollout status (active/planned/deprecated — only active chains accept uploads), and whether real anchoring is provisioned today.",
     inputSchema: {
       family: familyEnum.optional().describe("Only chains of this family"),
       includeTestnets: z.boolean().optional().describe("Include testnet entries (default true)"),
@@ -82,6 +82,7 @@ server.registerTool(
       id: chain.id,
       name: chain.name,
       family: chain.family,
+      status: chain.status,
       testnet: chain.testnet ?? false,
       provisioned: isChainProvisioned(chain),
     }));
