@@ -29,11 +29,45 @@ module fileonchain::file_registry {
 
     #[test]
     fun anchor_emits_event() {
-        let ctx = tx_context::dummy();
+        let mut scenario = sui::test_scenario::begin(@0xA11CE);
         anchor_cid(
             b"bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi".to_string(),
             b"{\"p\":\"fileonchain\",\"v\":1,\"op\":\"anchor\",\"cid\":\"bafy...\"}".to_string(),
-            &ctx,
+            scenario.ctx(),
         );
+
+        let events = event::events_by_type<CIDAnchored>();
+        assert!(events.length() == 1);
+        let e = &events[0];
+        assert!(e.submitter == @0xA11CE);
+        assert!(e.cid == b"bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi".to_string());
+        // The fileonchain JSON must ride along verbatim.
+        assert!(e.payload == b"{\"p\":\"fileonchain\",\"v\":1,\"op\":\"anchor\",\"cid\":\"bafy...\"}".to_string());
+        scenario.end();
+    }
+
+    #[test]
+    fun reanchoring_same_cid_is_allowed() {
+        // Stateless by design: a second anchor of the same CID must not
+        // abort, and both events land in the stream.
+        let mut scenario = sui::test_scenario::begin(@0xA11CE);
+        anchor_cid(b"bafy-cid".to_string(), b"payload-one".to_string(), scenario.ctx());
+        anchor_cid(b"bafy-cid".to_string(), b"payload-two".to_string(), scenario.ctx());
+
+        let events = event::events_by_type<CIDAnchored>();
+        assert!(events.length() == 2);
+        assert!(events[0].payload == b"payload-one".to_string());
+        assert!(events[1].payload == b"payload-two".to_string());
+        scenario.end();
+    }
+
+    #[test]
+    fun submitter_tracks_sender() {
+        let ctx = tx_context::dummy();
+        anchor_cid(b"bafy-cid".to_string(), b"payload".to_string(), &ctx);
+
+        let events = event::events_by_type<CIDAnchored>();
+        assert!(events.length() == 1);
+        assert!(events[0].submitter == ctx.sender());
     }
 }

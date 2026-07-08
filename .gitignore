@@ -43,3 +43,8 @@ next-env.d.ts
 /contracts/sui/build/
 /contracts/starknet/target/
 /contracts/near/target/
+
+# Contracts — coverage artifacts (forge/aptos/sui coverage runs)
+/contracts/evm/lcov.info
+*.mvcov
+/contracts/sui/traces/

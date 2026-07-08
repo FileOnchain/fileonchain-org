@@ -23,6 +23,19 @@ deploying anything, record the address/account/topic on the chain's entry in
 `packages/utils/src/chains.ts` — that registry is the single source of truth,
 and `isChainProvisioned` flips real anchoring on from those fields alone.
 
+## Coverage
+
+Tests target **≥95% coverage** on every contract (the anchoring-only
+runtimes are single-function and sit at 100%). Measure with:
+
+```bash
+cd evm && forge coverage                 # per-file lines/branches/funcs
+cd aptos && aptos move test --coverage --dev
+cd sui && sui move test --coverage && sui move coverage summary
+cd near && cargo test                    # unit tests; the contract is one function
+cd starknet && scarb test                # cairo-test has no coverage tool yet
+```
+
 ## EVM (`evm/`)
 
 ```bash
