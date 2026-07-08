@@ -40,22 +40,23 @@ const anchorOnEvm = async (
   cid: string,
   privateKey: string,
 ): Promise<UploadJobTx> => {
-  const [{ createPublicClient, createWalletClient, http }, { privateKeyToAccount }, evm] =
-    await Promise.all([
-      import("viem"),
-      import("viem/accounts"),
-      import("@fileonchain/sdk/evm"),
-    ]);
+  const [{ createWalletClient, http }, { privateKeyToAccount }, evm] = await Promise.all([
+    import("viem"),
+    import("viem/accounts"),
+    import("@fileonchain/sdk/evm"),
+  ]);
   const viemChain = evm.toViemChain(chain);
   const walletClient = createWalletClient({
     account: privateKeyToAccount(privateKey as `0x${string}`),
     chain: viemChain,
     transport: http(chain.rpcUrl),
   });
-  const txHash = await evm.anchorCID(walletClient, { chainId: chain.id, cid });
-  const publicClient = createPublicClient({ chain: viemChain, transport: http(chain.rpcUrl) });
-  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-  return { chainId: chain.id, txHash, blockNumber: Number(receipt.blockNumber) };
+  // proposeAnchor escrows the FOC tip + bond from the server signer
+  // (defaults: platform 1, on-chain minTip; auto-approves when short) and
+  // waits for its own receipt. The anchor enters its challenge window here
+  // and verifies via permissionless finalize once the window closes.
+  const receipt = await evm.proposeAnchor(walletClient, { chainId: chain.id, cid });
+  return { chainId: chain.id, txHash: receipt.txHash, blockNumber: receipt.blockNumber };
 };
 
 const anchorOnSubstrate = async (

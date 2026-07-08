@@ -28,6 +28,13 @@ export interface FileAnchorPayload {
   sha256?: string;
   /** Optional IPFS / Arweave pointer. */
   uri?: string;
+  /**
+   * Optional originating platform id (integrator attribution for the
+   * propose/verify fee split). Carried in the payload on every family so
+   * memo-only chains keep attribution too; contract families additionally
+   * pass it as a `proposeAnchor` argument.
+   */
+  pid?: string;
 }
 
 /** Chunk-level anchor payload — one per 64KB chunk, chained via `next`. */
@@ -68,10 +75,12 @@ export interface BuildFileAnchorParams {
   cid: string;
   sha256?: string;
   uri?: string;
+  /** Originating platform id (see FileAnchorPayload.pid). */
+  platformId?: string;
 }
 
 /** Serialize the file-level anchor payload. */
-export const buildFileAnchorPayload = ({ cid, sha256, uri }: BuildFileAnchorParams): string => {
+export const buildFileAnchorPayload = ({ cid, sha256, uri, platformId }: BuildFileAnchorParams): string => {
   if (!isValidCID(cid)) throw new Error(`"${cid}" is not a valid CIDv1 base32 string.`);
   const payload: FileAnchorPayload = {
     p: ANCHOR_PROTOCOL,
@@ -81,6 +90,7 @@ export const buildFileAnchorPayload = ({ cid, sha256, uri }: BuildFileAnchorPara
   };
   if (sha256) payload.sha256 = sha256;
   if (uri) payload.uri = uri;
+  if (platformId) payload.pid = platformId;
   return JSON.stringify(payload);
 };
 
@@ -205,10 +215,61 @@ export const isChainProvisioned = (chain: ChainConfig): boolean => {
   }
 };
 
+/**
+ * Whether the optimistic propose/verify protocol is live on this chain —
+ * a stricter gate than `isChainProvisioned`: it additionally needs the FOC
+ * token (tips/bonds are token-denominated). Memo-only families never
+ * provision the propose path; their file anchors stay plain memos.
+ */
+export const isProposeProvisioned = (chain: ChainConfig): boolean => {
+  if (!isChainProvisioned(chain)) return false;
+  switch (chain.family) {
+    case "evm":
+    case "starknet":
+      return !!chain.tokenContract && chain.tokenContract !== ZERO_ADDRESS;
+    case "aptos":
+    case "sui":
+    case "near":
+      return !!chain.tokenContract;
+    default:
+      return false;
+  }
+};
+
+/**
+ * On-chain lifecycle of a file-anchor proposal (contract families only).
+ * proposed → challenge window open; challenged → jury dispute running;
+ * verified → finalized, tip split 60/25/15 validators/platform/protocol;
+ * rejected → dispute lost or another proposal verified the CID first.
+ */
+export type ProposalStatus = "none" | "proposed" | "challenged" | "verified" | "rejected";
+
+/** A file-anchor proposal as read back from a registry contract. */
+export interface AnchorProposal {
+  /** Registry-assigned proposal id (stringified uint). */
+  proposalId: string;
+  cid?: string;
+  status: ProposalStatus;
+  proposer: string;
+  /** Originating platform id (stringified uint). */
+  platformId: string;
+  /** Escrowed tip, token base units (stringified). */
+  tip: string;
+  /** Escrowed propose bond, token base units (stringified). */
+  bond: string;
+  /** Unix seconds when the challenge window closes. */
+  challengeDeadline: number;
+  /** Unix seconds when the proposal verified; 0 while unverified. */
+  verifiedAt: number;
+}
+
 /** Where a chunked anchor currently is. Families map their own tx lifecycle
- * onto these stages so UIs can render one progress model for every chain. */
+ * onto these stages so UIs can render one progress model for every chain.
+ * "approving" only occurs on propose-provisioned chains that need a token
+ * allowance before the propose transaction. */
 export type AnchorStage =
   | "connecting"
+  | "approving"
   | "signing"
   | "submitting"
   | "confirming"
@@ -236,4 +297,19 @@ export interface ChunkedAnchorReceipt {
   blockHash?: string;
   /** Address that signed the anchoring transactions. */
   submitter: string;
+  /**
+   * Present when the file anchor went through the propose/verify protocol:
+   * the proposal starts its challenge window at submission and verifies via
+   * `finalize` after the window (or a won dispute).
+   */
+  proposal?: {
+    proposalId: string;
+    platformId: string;
+    /** Escrowed tip, token base units (stringified). */
+    tip: string;
+    /** Escrowed propose bond, token base units (stringified). */
+    bond: string;
+    /** Unix seconds when the challenge window closes. */
+    challengeDeadline: number;
+  };
 }

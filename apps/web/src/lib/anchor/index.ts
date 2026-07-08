@@ -34,6 +34,13 @@ const reportAnchoredUpload = (request: AnchorRequest, receipt: ChunkedAnchorRece
   });
 };
 
+/** Platform attribution for the propose/verify fee split (25% of the tip). */
+const defaultPlatformId = (request: AnchorRequest): string =>
+  request.platformId ??
+  process.env.NEXT_PUBLIC_FILEONCHAIN_PLATFORM_ID ??
+  request.chain.defaultPlatformId ??
+  "1";
+
 /**
  * Anchor a chunked file on the request's chain with real transactions,
  * routed per family. Throws ChainNotProvisionedError (from @fileonchain/sdk)
@@ -41,8 +48,9 @@ const reportAnchoredUpload = (request: AnchorRequest, receipt: ChunkedAnchorRece
  * whether to surface that or fall back to a simulated anchor.
  */
 export const anchorFileOnChain = async (
-  request: AnchorRequest,
+  rawRequest: AnchorRequest,
 ): Promise<AnchorOutcome> => {
+  const request: AnchorRequest = { ...rawRequest, platformId: defaultPlatformId(rawRequest) };
   let receipt: ChunkedAnchorReceipt;
   switch (request.chain.family) {
     case "evm":

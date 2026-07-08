@@ -67,7 +67,7 @@ const receipt = await anchorChunkedFile(api, {
 receipt.txHashes; // every transaction sent
 receipt.txHash;   // the file-level anchor (always sent last)`;
 
-const EVM_SNIPPET = `import { anchorCID, getCIDRecord } from "@fileonchain/sdk/evm";
+const EVM_SNIPPET = `import { proposeAnchor, getVerifiedRecord } from "@fileonchain/sdk/evm";
 import { createWalletClient, custom } from "viem";
 
 const walletClient = createWalletClient({
@@ -75,14 +75,17 @@ const walletClient = createWalletClient({
   transport: custom(window.ethereum),
 });
 
-const txHash = await anchorCID(walletClient, {
+// Escrows a FOC tip + bond; verifies after the challenge window.
+const receipt = await proposeAnchor(walletClient, {
   chainId: "evm:8453",
   cid: "bafybeig...",
   uri: "ipfs://bafybeig...",
 });
+receipt.proposalId;
+receipt.challengeDeadline; // unix seconds
 
 // Later — anyone can verify without a wallet:
-const record = await getCIDRecord("evm:8453", "bafybeig...");
+const record = await getVerifiedRecord("evm:8453", "bafybeig...");
 record?.submitter;`;
 
 const SUBSTRATE_SNIPPET = `import { anchorCIDWithRemark } from "@fileonchain/sdk/substrate";
