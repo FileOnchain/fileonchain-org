@@ -105,7 +105,12 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
 - `src/chains.ts` — `ChainConfig` registry. `CHAINS` is a
   `readonly ChainConfig[]`; look up with `getChain(id)` /
   `getChainsByFamily(family)`; `DEFAULT_CHAIN_ID` is
-  `substrate:autonomys-mainnet`. Contract addresses live **on the chain
+  `evm:870` (Auto EVM, Autonomys' EVM domain). Every entry carries a
+  rollout `status` — `"active"` (open for uploads), `"planned"` (listed
+  with a badge but not selectable; the anchoring API rejects it), or
+  `"deprecated"` (reads only) — gated via `isChainActive` /
+  `ACTIVE_CHAINS`; status is a product switch, orthogonal to
+  `isChainProvisioned`. Contract addresses live **on the chain
   entries** (`registryContract`, `cacheContract`, `donationContract`,
   `programId`, `moduleAddress`, `palletContract`) — no separate address maps.
   Explorer URLs come from `buildTxUrl` / `buildAddressUrl`. Family-specific
