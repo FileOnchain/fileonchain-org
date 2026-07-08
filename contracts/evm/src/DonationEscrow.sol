@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
 /// @title DonationEscrow
 /// @notice Receives native-token donations for the FileOnChain platform.
 /// Three recipient categories: Platform (flat), PerCID (funds a specific
 /// CID's pinning), PerChain (funds a chain's public cache layer).
-contract DonationEscrow {
+/// Deployed behind an OZ TransparentUpgradeableProxy; the ProxyAdmin is
+/// owned by the timelock.
+contract DonationEscrow is Initializable {
   // ---------------------------------------------------------------------
   // Types
   // ---------------------------------------------------------------------
@@ -44,7 +48,12 @@ contract DonationEscrow {
   // Constructor
   // ---------------------------------------------------------------------
 
-  constructor(address _treasury) {
+  /// @custom:oz-upgrades-unsafe-allow constructor
+  constructor() {
+    _disableInitializers();
+  }
+
+  function initialize(address _treasury) external initializer {
     require(_treasury != address(0), "DonationEscrow: zero treasury");
     treasury = _treasury;
   }
@@ -91,4 +100,7 @@ contract DonationEscrow {
   function chainDonationTotal(bytes32 chainIdHash) external view returns (uint256) {
     return chainDonations[chainIdHash];
   }
+
+  /// @dev Reserved storage to keep future upgrades layout-safe.
+  uint256[48] private __gap;
 }

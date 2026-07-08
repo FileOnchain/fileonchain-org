@@ -6,18 +6,7 @@
 export const cachePaymentsAbi = [
   {
     "type": "constructor",
-    "inputs": [
-      {
-        "name": "_usdc",
-        "type": "address",
-        "internalType": "contract IERC20"
-      },
-      {
-        "name": "_treasury",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
+    "inputs": [],
     "stateMutability": "nonpayable"
   },
   {
@@ -130,6 +119,24 @@ export const cachePaymentsAbi = [
       },
       {
         "name": "grantee",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "initialize",
+    "inputs": [
+      {
+        "name": "_usdc",
+        "type": "address",
+        "internalType": "contract IERC20"
+      },
+      {
+        "name": "_treasury",
         "type": "address",
         "internalType": "address"
       }
@@ -374,6 +381,19 @@ export const cachePaymentsAbi = [
   },
   {
     "type": "event",
+    "name": "Initialized",
+    "inputs": [
+      {
+        "name": "version",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "PricesUpdated",
     "inputs": [
       {
@@ -415,5 +435,15 @@ export const cachePaymentsAbi = [
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "InvalidInitialization",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotInitializing",
+    "inputs": []
   }
 ] as const;

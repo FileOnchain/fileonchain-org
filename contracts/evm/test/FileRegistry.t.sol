@@ -20,15 +20,38 @@ contract FileRegistryTest is ProtocolBase {
     assertEq(registry.owner(), address(this));
   }
 
-  function test_RevertWhen_ConstructorZeroArgs() public {
+  function test_RevertWhen_InitializeZeroArgs() public {
+    address implementation = address(new FileRegistry());
     vm.expectRevert(bytes("FileRegistry: zero token"));
-    new FileRegistry(IERC20(address(0)), staking, platforms, protocolTreasury);
+    deployProxy(
+      implementation,
+      abi.encodeCall(
+        FileRegistry.initialize, (IERC20(address(0)), staking, platforms, protocolTreasury, address(this))
+      )
+    );
     vm.expectRevert(bytes("FileRegistry: zero staking"));
-    new FileRegistry(IERC20(address(token)), ValidatorStaking(address(0)), platforms, protocolTreasury);
+    deployProxy(
+      implementation,
+      abi.encodeCall(
+        FileRegistry.initialize,
+        (IERC20(address(token)), ValidatorStaking(address(0)), platforms, protocolTreasury, address(this))
+      )
+    );
     vm.expectRevert(bytes("FileRegistry: zero platform registry"));
-    new FileRegistry(IERC20(address(token)), staking, PlatformRegistry(address(0)), protocolTreasury);
+    deployProxy(
+      implementation,
+      abi.encodeCall(
+        FileRegistry.initialize,
+        (IERC20(address(token)), staking, PlatformRegistry(address(0)), protocolTreasury, address(this))
+      )
+    );
     vm.expectRevert(bytes("FileRegistry: zero treasury"));
-    new FileRegistry(IERC20(address(token)), staking, platforms, address(0));
+    deployProxy(
+      implementation,
+      abi.encodeCall(
+        FileRegistry.initialize, (IERC20(address(token)), staking, platforms, address(0), address(this))
+      )
+    );
   }
 
   // ---------------------------------------------------------------------

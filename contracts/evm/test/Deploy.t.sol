@@ -3,6 +3,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../script/Deploy.s.sol";
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
 
 contract DeployTest is Test {
   // anvil default key #1 — test-only, never funded anywhere real
@@ -30,6 +32,23 @@ contract DeployTest is Test {
     FileRegistry registry = deploy.registry();
 
     assertEq(token.balanceOf(deployer), 1_000_000_000e18);
+    assertEq(token.owner(), address(timelock));
+
+    // Every protocol proxy's ProxyAdmin is owned by the timelock, so
+    // upgrades are governance proposals.
+    address[6] memory proxies = [
+      address(token),
+      address(staking),
+      address(platforms),
+      address(registry),
+      address(deploy.cache()),
+      address(deploy.escrow())
+    ];
+    for (uint256 i = 0; i < proxies.length; i++) {
+      address proxyAdmin =
+        address(uint160(uint256(vm.load(proxies[i], ERC1967Utils.ADMIN_SLOT))));
+      assertEq(ProxyAdmin(proxyAdmin).owner(), address(timelock));
+    }
     assertEq(staking.registry(), address(registry));
     assertEq(registry.protocolTreasury(), address(timelock));
     assertEq(staking.owner(), address(timelock));

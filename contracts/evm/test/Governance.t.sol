@@ -11,8 +11,11 @@ import "../src/PlatformRegistry.sol";
 import "../src/FileRegistry.sol";
 import "../src/governance/FileOnChainTimelock.sol";
 import "../src/governance/FileOnChainGovernor.sol";
+import {ProxyDeployer} from "./utils/ProxyDeployer.sol";
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
-contract GovernanceTest is Test {
+contract GovernanceTest is Test, ProxyDeployer {
   FileOnChainAttestationToken internal token;
   FileOnChainTimelock internal timelock;
   FileOnChainGovernor internal governor;
@@ -29,8 +32,9 @@ contract GovernanceTest is Test {
   uint256 internal constant PROPOSAL_THRESHOLD = 100_000e18;
 
   function setUp() public {
-    token = new FileOnChainAttestationToken(voter, SUPPLY);
     timelock = new FileOnChainTimelock(MIN_DELAY, new address[](0), new address[](0), address(this));
+    proxyAdminOwner = address(timelock); // production wiring: timelock owns every ProxyAdmin
+    token = deployToken(voter, SUPPLY, address(timelock));
     governor = new FileOnChainGovernor(
       IVotes(address(token)), timelock, VOTING_DELAY, VOTING_PERIOD, PROPOSAL_THRESHOLD
     );
@@ -38,9 +42,9 @@ contract GovernanceTest is Test {
     timelock.grantRole(timelock.CANCELLER_ROLE(), address(governor));
     timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0));
 
-    staking = new ValidatorStaking(IERC20(address(token)), 1_000e18, 7 days);
-    platforms = new PlatformRegistry(2_500);
-    registry = new FileRegistry(IERC20(address(token)), staking, platforms, address(timelock));
+    staking = deployStaking(IERC20(address(token)), 1_000e18, 7 days, address(this));
+    platforms = deployPlatforms(2_500, address(this));
+    registry = deployRegistry(IERC20(address(token)), staking, platforms, address(timelock), address(this));
     staking.setRegistry(address(registry));
     staking.transferOwnership(address(timelock));
     platforms.transferOwnership(address(timelock));
@@ -125,6 +129,48 @@ contract GovernanceTest is Test {
     staking.setMinStake(1);
     vm.expectRevert();
     platforms.setMaxPlatformFeeBps(1);
+  }
+
+  function test_GovernanceUpgradesRegistryProxy() public {
+    // Upgrades are governance proposals: the timelock owns each ProxyAdmin.
+    address registryAdmin = address(uint160(uint256(vm.load(address(registry), adminSlot()))));
+    assertEq(ProxyAdmin(registryAdmin).owner(), address(timelock));
+
+    address newImplementation = address(new FileRegistry());
+    address[] memory targets = new address[](1);
+    targets[0] = registryAdmin;
+    uint256[] memory values = new uint256[](1);
+    bytes[] memory calldatas = new bytes[](1);
+    calldatas[0] = abi.encodeCall(
+      ProxyAdmin.upgradeAndCall,
+      (ITransparentUpgradeableProxy(payable(address(registry))), newImplementation, "")
+    );
+
+    vm.prank(voter);
+    uint256 id = governor.propose(targets, values, calldatas, "upgrade registry");
+    vm.roll(vm.getBlockNumber() + VOTING_DELAY + 1);
+    vm.prank(voter);
+    governor.castVote(id, 1);
+    vm.roll(vm.getBlockNumber() + VOTING_PERIOD + 1);
+    governor.queue(targets, values, calldatas, keccak256(bytes("upgrade registry")));
+    vm.warp(vm.getBlockTimestamp() + MIN_DELAY + 1);
+    governor.execute(targets, values, calldatas, keccak256(bytes("upgrade registry")));
+
+    // New implementation live, proxy state preserved.
+    assertEq(
+      address(uint160(uint256(vm.load(address(registry), implementationSlot())))), newImplementation
+    );
+    assertEq(registry.minTip(), 1e18);
+    assertEq(registry.protocolTreasury(), address(timelock));
+  }
+
+  function test_RevertWhen_NonTimelockUpgrades() public {
+    address registryAdmin = address(uint160(uint256(vm.load(address(registry), adminSlot()))));
+    address newImplementation = address(new FileRegistry());
+    vm.expectRevert();
+    ProxyAdmin(registryAdmin).upgradeAndCall(
+      ITransparentUpgradeableProxy(payable(address(registry))), newImplementation, ""
+    );
   }
 
   function test_GovernorSettings() public view {

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /// @title PlatformRegistry
 /// @notice Registered integrators (the FileOnChain app, partner APIs, MCP
@@ -10,7 +11,9 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 /// platform's cut of every verified anchor tip to its treasury. Registration
 /// is governance-gated in v1 (owner = timelock); permissionless registration
 /// with bonds is a documented follow-up.
-contract PlatformRegistry is Ownable {
+/// Deployed behind an OZ TransparentUpgradeableProxy; the ProxyAdmin is
+/// owned by the timelock.
+contract PlatformRegistry is Initializable, OwnableUpgradeable {
   // ---------------------------------------------------------------------
   // Types
   // ---------------------------------------------------------------------
@@ -37,17 +40,24 @@ contract PlatformRegistry is Ownable {
   // Storage
   // ---------------------------------------------------------------------
 
-  uint256 public nextPlatformId = 1;
+  uint256 public nextPlatformId;
   mapping(uint256 => Platform) private _platforms;
   uint16 public maxPlatformFeeBps; // governance param
 
   // ---------------------------------------------------------------------
-  // Constructor
+  // Initialization
   // ---------------------------------------------------------------------
 
-  constructor(uint16 _maxPlatformFeeBps) Ownable(msg.sender) {
+  /// @custom:oz-upgrades-unsafe-allow constructor
+  constructor() {
+    _disableInitializers();
+  }
+
+  function initialize(uint16 _maxPlatformFeeBps, address initialOwner) external initializer {
     require(_maxPlatformFeeBps <= 10_000, "PlatformRegistry: bps > 100%");
+    __Ownable_init(initialOwner);
     maxPlatformFeeBps = _maxPlatformFeeBps;
+    nextPlatformId = 1;
   }
 
   // ---------------------------------------------------------------------
@@ -112,4 +122,7 @@ contract PlatformRegistry is Ownable {
   function isActivePlatform(uint256 platformId) external view returns (bool) {
     return _platforms[platformId].active;
   }
+
+  /// @dev Reserved storage to keep future upgrades layout-safe.
+  uint256[48] private __gap;
 }

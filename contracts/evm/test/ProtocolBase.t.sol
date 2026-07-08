@@ -7,10 +7,11 @@ import "../src/FileOnChainAttestationToken.sol";
 import "../src/ValidatorStaking.sol";
 import "../src/PlatformRegistry.sol";
 import "../src/FileRegistry.sol";
+import {ProxyDeployer} from "./utils/ProxyDeployer.sol";
 
 /// @notice Shared fixture for the anchor-protocol tests: token, staking with
 /// six active validators, a registered platform, and a wired FileRegistry.
-abstract contract ProtocolBase is Test {
+abstract contract ProtocolBase is Test, ProxyDeployer {
   FileOnChainAttestationToken internal token;
   ValidatorStaking internal staking;
   PlatformRegistry internal platforms;
@@ -37,10 +38,10 @@ abstract contract ProtocolBase is Test {
   address[6] internal validators;
 
   function setUp() public virtual {
-    token = new FileOnChainAttestationToken(address(this), 1_000_000_000e18);
-    staking = new ValidatorStaking(IERC20(address(token)), MIN_STAKE, 7 days);
-    platforms = new PlatformRegistry(2_500);
-    registry = new FileRegistry(IERC20(address(token)), staking, platforms, protocolTreasury);
+    token = deployToken(address(this), 1_000_000_000e18, address(this));
+    staking = deployStaking(IERC20(address(token)), MIN_STAKE, 7 days, address(this));
+    platforms = deployPlatforms(2_500, address(this));
+    registry = deployRegistry(IERC20(address(token)), staking, platforms, protocolTreasury, address(this));
     staking.setRegistry(address(registry));
     platforms.registerPlatform(platformOwner, platformTreasury, 2_500);
 

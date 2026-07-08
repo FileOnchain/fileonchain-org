@@ -3,7 +3,8 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /// @title ValidatorStaking
 /// @notice Validators opt into the FileOnChain verification market by staking
@@ -12,7 +13,9 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 /// (MasterChef-style accumulator), and are slashed by the registry when they
 /// vote with the losing side of a dispute. Unbonding stake remains slashable
 /// until withdrawn. Delegation is out of scope for v1.
-contract ValidatorStaking is Ownable {
+/// Deployed behind an OZ TransparentUpgradeableProxy; the ProxyAdmin is
+/// owned by the timelock.
+contract ValidatorStaking is Initializable, OwnableUpgradeable {
   using SafeERC20 for IERC20;
 
   // ---------------------------------------------------------------------
@@ -49,7 +52,7 @@ contract ValidatorStaking is Ownable {
 
   uint256 private constant PRECISION = 1e12;
 
-  IERC20 public immutable token;
+  IERC20 public token;
   address public registry; // FileRegistry — only rewarder/slasher; set once
   uint256 public minStake; // governance param
   uint64 public unbondingSeconds; // governance param; should exceed challenge + vote windows
@@ -70,12 +73,23 @@ contract ValidatorStaking is Ownable {
   }
 
   // ---------------------------------------------------------------------
-  // Constructor
+  // Initialization
   // ---------------------------------------------------------------------
 
-  constructor(IERC20 _token, uint256 _minStake, uint64 _unbondingSeconds) Ownable(msg.sender) {
+  /// @custom:oz-upgrades-unsafe-allow constructor
+  constructor() {
+    _disableInitializers();
+  }
+
+  function initialize(
+    IERC20 _token,
+    uint256 _minStake,
+    uint64 _unbondingSeconds,
+    address initialOwner
+  ) external initializer {
     require(address(_token) != address(0), "ValidatorStaking: zero token");
     require(_minStake > 0, "ValidatorStaking: zero min stake");
+    __Ownable_init(initialOwner);
     token = _token;
     minStake = _minStake;
     unbondingSeconds = _unbondingSeconds;
@@ -261,4 +275,7 @@ contract ValidatorStaking is Ownable {
       emit ValidatorDeactivated(who);
     }
   }
+
+  /// @dev Reserved storage to keep future upgrades layout-safe.
+  uint256[48] private __gap;
 }

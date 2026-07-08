@@ -3,8 +3,9 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/PlatformRegistry.sol";
+import {ProxyDeployer} from "./utils/ProxyDeployer.sol";
 
-contract PlatformRegistryTest is Test {
+contract PlatformRegistryTest is Test, ProxyDeployer {
   PlatformRegistry internal platforms;
 
   address internal alice = makeAddr("alice");
@@ -12,17 +13,18 @@ contract PlatformRegistryTest is Test {
   address internal treasury = makeAddr("treasury");
 
   function setUp() public {
-    platforms = new PlatformRegistry(2_500);
+    platforms = deployPlatforms(2_500, address(this));
   }
 
-  function test_ConstructorSetsCap() public view {
+  function test_InitializeSetsCap() public view {
     assertEq(platforms.maxPlatformFeeBps(), 2_500);
     assertEq(platforms.nextPlatformId(), 1);
   }
 
-  function test_RevertWhen_ConstructorCapTooHigh() public {
+  function test_RevertWhen_InitializeCapTooHigh() public {
+    address implementation = address(new PlatformRegistry());
     vm.expectRevert(bytes("PlatformRegistry: bps > 100%"));
-    new PlatformRegistry(10_001);
+    deployProxy(implementation, abi.encodeCall(PlatformRegistry.initialize, (10_001, address(this))));
   }
 
   // ---------------------------------------------------------------------

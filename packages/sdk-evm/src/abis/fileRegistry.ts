@@ -6,28 +6,7 @@
 export const fileRegistryAbi = [
   {
     "type": "constructor",
-    "inputs": [
-      {
-        "name": "_token",
-        "type": "address",
-        "internalType": "contract IERC20"
-      },
-      {
-        "name": "_staking",
-        "type": "address",
-        "internalType": "contract ValidatorStaking"
-      },
-      {
-        "name": "_platformRegistry",
-        "type": "address",
-        "internalType": "contract PlatformRegistry"
-      },
-      {
-        "name": "_protocolTreasury",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
+    "inputs": [],
     "stateMutability": "nonpayable"
   },
   {
@@ -375,6 +354,39 @@ export const fileRegistryAbi = [
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "initialize",
+    "inputs": [
+      {
+        "name": "_token",
+        "type": "address",
+        "internalType": "contract IERC20"
+      },
+      {
+        "name": "_staking",
+        "type": "address",
+        "internalType": "contract ValidatorStaking"
+      },
+      {
+        "name": "_platformRegistry",
+        "type": "address",
+        "internalType": "contract PlatformRegistry"
+      },
+      {
+        "name": "_protocolTreasury",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "initialOwner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -1097,6 +1109,19 @@ export const fileRegistryAbi = [
   },
   {
     "type": "event",
+    "name": "Initialized",
+    "inputs": [
+      {
+        "name": "version",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "JurorVoted",
     "inputs": [
       {
@@ -1246,6 +1271,16 @@ export const fileRegistryAbi = [
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "InvalidInitialization",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotInitializing",
+    "inputs": []
   },
   {
     "type": "error",

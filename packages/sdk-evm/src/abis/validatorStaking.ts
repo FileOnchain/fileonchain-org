@@ -6,23 +6,7 @@
 export const validatorStakingAbi = [
   {
     "type": "constructor",
-    "inputs": [
-      {
-        "name": "_token",
-        "type": "address",
-        "internalType": "contract IERC20"
-      },
-      {
-        "name": "_minStake",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "_unbondingSeconds",
-        "type": "uint64",
-        "internalType": "uint64"
-      }
-    ],
+    "inputs": [],
     "stateMutability": "nonpayable"
   },
   {
@@ -55,6 +39,34 @@ export const validatorStakingAbi = [
     "type": "function",
     "name": "claimRewards",
     "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "initialize",
+    "inputs": [
+      {
+        "name": "_token",
+        "type": "address",
+        "internalType": "contract IERC20"
+      },
+      {
+        "name": "_minStake",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_unbondingSeconds",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "initialOwner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
@@ -394,6 +406,19 @@ export const validatorStakingAbi = [
   },
   {
     "type": "event",
+    "name": "Initialized",
+    "inputs": [
+      {
+        "name": "version",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "MinStakeUpdated",
     "inputs": [
       {
@@ -613,6 +638,16 @@ export const validatorStakingAbi = [
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "InvalidInitialization",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotInitializing",
+    "inputs": []
   },
   {
     "type": "error",

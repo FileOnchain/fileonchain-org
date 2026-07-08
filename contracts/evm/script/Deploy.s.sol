@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import "forge-std/Script.sol";
 import {IERC20 as OZIERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
+import {TransparentUpgradeableProxy} from
+  "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {FileOnChainAttestationToken} from "../src/FileOnChainAttestationToken.sol";
 import {ValidatorStaking} from "../src/ValidatorStaking.sol";
 import {PlatformRegistry} from "../src/PlatformRegistry.sol";
@@ -18,11 +20,19 @@ import {MockUSDC} from "../src/mocks/MockUSDC.sol";
 /// governor, ValidatorStaking, PlatformRegistry, FileRegistry — plus
 /// MockUSDC, CachePayments, and DonationEscrow, then hands every protocol
 /// contract to the timelock (the governor is its only proposer and the
-/// protocol treasury). Env vars:
+/// protocol treasury).
+///
+/// Every protocol contract deploys behind an OZ TransparentUpgradeableProxy
+/// whose auto-created ProxyAdmin is owned by the timelock, so upgrades are
+/// governance proposals. Governor and Timelock themselves stay immutable —
+/// a governor migration is a proposer-role rotation on the timelock.
+///
+/// Env vars:
 ///   PRIVATE_KEY                 required deployer key
 ///   TREASURY_ADDRESS            required; CachePayments/DonationEscrow treasury
 ///   PLATFORM_TREASURY_ADDRESS   optional; FileOnChain platform treasury (default: TREASURY_ADDRESS)
-///   TOKEN_INITIAL_SUPPLY        optional; FOCAT supply minted to deployer (default 1e27)
+///   TOKEN_INITIAL_SUPPLY        optional; FOCAT minted to deployer (default 1e27).
+///                               Set 0 on remote chains — supply arrives via bridges.
 ///   TIMELOCK_MIN_DELAY          optional; seconds (default 2 days)
 ///   GOVERNOR_VOTING_DELAY       optional; blocks (default 7200 ~ 1 day)
 ///   GOVERNOR_VOTING_PERIOD      optional; blocks (default 50400 ~ 1 week)
@@ -30,7 +40,7 @@ import {MockUSDC} from "../src/mocks/MockUSDC.sol";
 ///   USDC_ADDRESS                optional; deploys MockUSDC when unset
 /// Run with: `forge script script/Deploy.s.sol --rpc-url $RPC --broadcast`
 contract Deploy is Script {
-  // Exposed for wiring assertions in Deploy.t.sol.
+  // Exposed for wiring assertions in Deploy.t.sol (proxy addresses).
   FileOnChainAttestationToken public token;
   FileOnChainTimelock public timelock;
   FileOnChainGovernor public governor;
@@ -39,6 +49,19 @@ contract Deploy is Script {
   FileRegistry public registry;
   CachePayments public cache;
   DonationEscrow public escrow;
+
+  /// @dev Deploy `implementation` behind a transparent proxy whose
+  /// ProxyAdmin is owned by `proxyAdminOwner`, running `initData`.
+  function _proxy(
+    string memory name,
+    address implementation,
+    address proxyAdminOwner,
+    bytes memory initData
+  ) internal returns (address proxyAddress) {
+    proxyAddress = address(new TransparentUpgradeableProxy(implementation, proxyAdminOwner, initData));
+    console.log(string.concat(name, " proxy deployed at:"), proxyAddress);
+    console.log(string.concat(name, " implementation at:"), implementation);
+  }
 
   function run() external {
     uint256 pk = vm.envUint("PRIVATE_KEY");
@@ -54,11 +77,20 @@ contract Deploy is Script {
 
     vm.startBroadcast(pk);
 
-    token = new FileOnChainAttestationToken(deployer, initialSupply);
-    console.log("FileOnChainAttestationToken deployed at:", address(token));
-
+    // Governance first: the timelock owns every ProxyAdmin from birth.
     timelock = new FileOnChainTimelock(timelockMinDelay, new address[](0), new address[](0), deployer);
     console.log("FileOnChainTimelock deployed at:", address(timelock));
+
+    token = FileOnChainAttestationToken(
+      _proxy(
+        "FileOnChainAttestationToken",
+        address(new FileOnChainAttestationToken()),
+        address(timelock),
+        abi.encodeCall(
+          FileOnChainAttestationToken.initialize, (deployer, initialSupply, address(timelock))
+        )
+      )
+    );
 
     governor = new FileOnChainGovernor(
       IVotes(address(token)), timelock, votingDelay, votingPeriod, proposalThreshold
@@ -70,16 +102,41 @@ contract Deploy is Script {
     timelock.grantRole(timelock.CANCELLER_ROLE(), address(governor));
     timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0));
 
-    staking = new ValidatorStaking(OZIERC20(address(token)), 1_000e18, 7 days);
-    console.log("ValidatorStaking deployed at:", address(staking));
+    // Protocol contracts initialize owned by the deployer for wiring, then
+    // hand over to the timelock below.
+    staking = ValidatorStaking(
+      _proxy(
+        "ValidatorStaking",
+        address(new ValidatorStaking()),
+        address(timelock),
+        abi.encodeCall(
+          ValidatorStaking.initialize, (OZIERC20(address(token)), 1_000e18, 7 days, deployer)
+        )
+      )
+    );
 
-    platforms = new PlatformRegistry(2_500);
-    console.log("PlatformRegistry deployed at:", address(platforms));
+    platforms = PlatformRegistry(
+      _proxy(
+        "PlatformRegistry",
+        address(new PlatformRegistry()),
+        address(timelock),
+        abi.encodeCall(PlatformRegistry.initialize, (2_500, deployer))
+      )
+    );
 
     // The timelock is the protocol treasury: tip shares accrue to it and
     // spending them is a governance proposal.
-    registry = new FileRegistry(OZIERC20(address(token)), staking, platforms, address(timelock));
-    console.log("FileRegistry deployed at:", address(registry));
+    registry = FileRegistry(
+      _proxy(
+        "FileRegistry",
+        address(new FileRegistry()),
+        address(timelock),
+        abi.encodeCall(
+          FileRegistry.initialize,
+          (OZIERC20(address(token)), staking, platforms, address(timelock), deployer)
+        )
+      )
+    );
 
     staking.setRegistry(address(registry));
     uint256 fileOnChainPlatformId = platforms.registerPlatform(deployer, platformTreasury, 2_500);
@@ -98,11 +155,23 @@ contract Deploy is Script {
       console.log("MockUSDC deployed at:", usdc);
     }
 
-    cache = new CachePayments(IERC20(usdc), treasury);
-    console.log("CachePayments deployed at:", address(cache));
+    cache = CachePayments(
+      _proxy(
+        "CachePayments",
+        address(new CachePayments()),
+        address(timelock),
+        abi.encodeCall(CachePayments.initialize, (IERC20(usdc), treasury))
+      )
+    );
 
-    escrow = new DonationEscrow(treasury);
-    console.log("DonationEscrow deployed at:", address(escrow));
+    escrow = DonationEscrow(
+      _proxy(
+        "DonationEscrow",
+        address(new DonationEscrow()),
+        address(timelock),
+        abi.encodeCall(DonationEscrow.initialize, (treasury))
+      )
+    );
 
     vm.stopBroadcast();
   }

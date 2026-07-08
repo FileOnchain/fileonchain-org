@@ -3,8 +3,9 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/DonationEscrow.sol";
+import {ProxyDeployer} from "./utils/ProxyDeployer.sol";
 
-contract DonationEscrowTest is Test {
+contract DonationEscrowTest is Test, ProxyDeployer {
   DonationEscrow internal escrow;
   address internal treasury = makeAddr("treasury");
   address internal alice = makeAddr("alice");
@@ -13,7 +14,7 @@ contract DonationEscrowTest is Test {
   bytes32 internal constant CHAIN_TARGET = bytes32("evm:1");
 
   function setUp() public {
-    escrow = new DonationEscrow(treasury);
+    escrow = deployEscrow(treasury);
   }
 
   function test_Donate_Platform() public {
@@ -55,7 +56,7 @@ contract DonationEscrowTest is Test {
   function test_RevertWhen_TreasuryRejects() public {
     // Use a contract that always reverts on receive
     BadReceiver bad = new BadReceiver();
-    DonationEscrow badEscrow = new DonationEscrow(address(bad));
+    DonationEscrow badEscrow = deployEscrow(address(bad));
 
     vm.deal(alice, 1 ether);
     vm.prank(alice);
@@ -63,9 +64,10 @@ contract DonationEscrowTest is Test {
     badEscrow.donate{value: 0.1 ether}(DonationEscrow.Recipient.Platform, bytes32(0), "");
   }
 
-  function test_RevertWhen_ConstructorZeroTreasury() public {
+  function test_RevertWhen_InitializeZeroTreasury() public {
+    address implementation = address(new DonationEscrow());
     vm.expectRevert(bytes("DonationEscrow: zero treasury"));
-    new DonationEscrow(address(0));
+    deployProxy(implementation, abi.encodeCall(DonationEscrow.initialize, (address(0))));
   }
 
   function test_DonationTotalViews() public {

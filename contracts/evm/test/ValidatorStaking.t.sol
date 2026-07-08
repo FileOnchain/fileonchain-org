@@ -5,8 +5,9 @@ import "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../src/FileOnChainAttestationToken.sol";
 import "../src/ValidatorStaking.sol";
+import {ProxyDeployer} from "./utils/ProxyDeployer.sol";
 
-contract ValidatorStakingTest is Test {
+contract ValidatorStakingTest is Test, ProxyDeployer {
   FileOnChainAttestationToken internal token;
   ValidatorStaking internal staking;
 
@@ -19,8 +20,8 @@ contract ValidatorStakingTest is Test {
   uint64 internal constant UNBONDING = 7 days;
 
   function setUp() public {
-    token = new FileOnChainAttestationToken(address(this), 1_000_000_000e18);
-    staking = new ValidatorStaking(IERC20(address(token)), MIN_STAKE, UNBONDING);
+    token = deployToken(address(this), 1_000_000_000e18, address(this));
+    staking = deployStaking(IERC20(address(token)), MIN_STAKE, UNBONDING, address(this));
     staking.setRegistry(registry);
 
     token.transfer(alice, 100_000e18);
@@ -41,15 +42,22 @@ contract ValidatorStakingTest is Test {
   // Constructor / wiring
   // ---------------------------------------------------------------------
 
-  function test_RevertWhen_ConstructorInvalid() public {
+  function test_RevertWhen_InitializeInvalid() public {
+    address implementation = address(new ValidatorStaking());
     vm.expectRevert(bytes("ValidatorStaking: zero token"));
-    new ValidatorStaking(IERC20(address(0)), MIN_STAKE, UNBONDING);
+    deployProxy(
+      implementation,
+      abi.encodeCall(ValidatorStaking.initialize, (IERC20(address(0)), MIN_STAKE, UNBONDING, address(this)))
+    );
     vm.expectRevert(bytes("ValidatorStaking: zero min stake"));
-    new ValidatorStaking(IERC20(address(token)), 0, UNBONDING);
+    deployProxy(
+      implementation,
+      abi.encodeCall(ValidatorStaking.initialize, (IERC20(address(token)), 0, UNBONDING, address(this)))
+    );
   }
 
   function test_SetRegistryOnceOnly() public {
-    ValidatorStaking fresh = new ValidatorStaking(IERC20(address(token)), MIN_STAKE, UNBONDING);
+    ValidatorStaking fresh = deployStaking(IERC20(address(token)), MIN_STAKE, UNBONDING, address(this));
     vm.expectRevert(bytes("ValidatorStaking: zero registry"));
     fresh.setRegistry(address(0));
     fresh.setRegistry(registry);
@@ -58,7 +66,7 @@ contract ValidatorStakingTest is Test {
   }
 
   function test_RevertWhen_SetRegistryNotOwner() public {
-    ValidatorStaking fresh = new ValidatorStaking(IERC20(address(token)), MIN_STAKE, UNBONDING);
+    ValidatorStaking fresh = deployStaking(IERC20(address(token)), MIN_STAKE, UNBONDING, address(this));
     vm.prank(alice);
     vm.expectRevert();
     fresh.setRegistry(registry);

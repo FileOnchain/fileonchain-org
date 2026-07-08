@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
 interface IERC20 {
   function transferFrom(address from, address to, uint256 amount) external returns (bool);
   function balanceOf(address account) external view returns (uint256);
@@ -10,7 +12,9 @@ interface IERC20 {
 /// @notice Paid private cache layer for files and folders. Charges USDC for
 /// single file, folder, and permanent tiers. Owners can grant and revoke
 /// address-based access to their cached entries.
-contract CachePayments {
+/// Deployed behind an OZ TransparentUpgradeableProxy; the ProxyAdmin is
+/// owned by the timelock.
+contract CachePayments is Initializable {
   // ---------------------------------------------------------------------
   // Types
   // ---------------------------------------------------------------------
@@ -43,7 +47,7 @@ contract CachePayments {
   // Storage
   // ---------------------------------------------------------------------
 
-  IERC20 public immutable usdc;
+  IERC20 public usdc;
   uint256 public priceSingle; // 1 USDC
   uint256 public priceFolder; // 5 USDC
   uint256 public pricePermanent; // 50 USDC
@@ -52,10 +56,15 @@ contract CachePayments {
   mapping(bytes32 => CacheEntry) public entries;
 
   // ---------------------------------------------------------------------
-  // Constructor
+  // Initialization
   // ---------------------------------------------------------------------
 
-  constructor(IERC20 _usdc, address _treasury) {
+  /// @custom:oz-upgrades-unsafe-allow constructor
+  constructor() {
+    _disableInitializers();
+  }
+
+  function initialize(IERC20 _usdc, address _treasury) external initializer {
     require(address(_usdc) != address(0), "CachePayments: zero usdc");
     require(_treasury != address(0), "CachePayments: zero treasury");
     usdc = _usdc;
@@ -161,4 +170,7 @@ contract CachePayments {
     if (tier == Tier.Folder) return priceFolder;
     return pricePermanent;
   }
+
+  /// @dev Reserved storage to keep future upgrades layout-safe.
+  uint256[48] private __gap;
 }

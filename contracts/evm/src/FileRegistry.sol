@@ -3,8 +3,10 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from
+  "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {ValidatorStaking} from "./ValidatorStaking.sol";
 import {PlatformRegistry} from "./PlatformRegistry.sol";
 
@@ -32,7 +34,11 @@ import {PlatformRegistry} from "./PlatformRegistry.sol";
 /// prevrandao/blockhash-based (sequencer-influenceable on some L2s), voting
 /// is public (no commit-reveal), non-voting jurors are not slashed, and
 /// stake-weighted juries/delegation are follow-ups.
-contract FileRegistry is Ownable, ReentrancyGuard {
+///
+/// Deployed behind an OZ TransparentUpgradeableProxy (initializer style);
+/// the ProxyAdmin is owned by the timelock, so upgrades are governance
+/// proposals like any other parameter change.
+contract FileRegistry is Initializable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
   using SafeERC20 for IERC20;
 
   // ---------------------------------------------------------------------
@@ -112,9 +118,9 @@ contract FileRegistry is Ownable, ReentrancyGuard {
   // Storage
   // ---------------------------------------------------------------------
 
-  IERC20 public immutable token;
-  ValidatorStaking public immutable staking;
-  PlatformRegistry public immutable platformRegistry;
+  IERC20 public token;
+  ValidatorStaking public staking;
+  PlatformRegistry public platformRegistry;
 
   address public protocolTreasury;
 
@@ -130,7 +136,7 @@ contract FileRegistry is Ownable, ReentrancyGuard {
   uint16 public platformBps;
   uint16 public protocolBps;
 
-  uint256 public nextProposalId = 1;
+  uint256 public nextProposalId;
   mapping(uint256 => Proposal) private _proposals;
   mapping(uint256 => Dispute) private _disputes;
   mapping(bytes32 => uint256[]) private _proposalsByCid;
@@ -138,23 +144,32 @@ contract FileRegistry is Ownable, ReentrancyGuard {
   mapping(address => uint256) public withdrawable; // pull payments
 
   // ---------------------------------------------------------------------
-  // Constructor
+  // Initialization
   // ---------------------------------------------------------------------
 
-  constructor(
+  /// @custom:oz-upgrades-unsafe-allow constructor
+  constructor() {
+    _disableInitializers();
+  }
+
+  function initialize(
     IERC20 _token,
     ValidatorStaking _staking,
     PlatformRegistry _platformRegistry,
-    address _protocolTreasury
-  ) Ownable(msg.sender) {
+    address _protocolTreasury,
+    address initialOwner
+  ) external initializer {
     require(address(_token) != address(0), "FileRegistry: zero token");
     require(address(_staking) != address(0), "FileRegistry: zero staking");
     require(address(_platformRegistry) != address(0), "FileRegistry: zero platform registry");
     require(_protocolTreasury != address(0), "FileRegistry: zero treasury");
+    __Ownable_init(initialOwner);
+    __ReentrancyGuard_init();
     token = _token;
     staking = _staking;
     platformRegistry = _platformRegistry;
     protocolTreasury = _protocolTreasury;
+    nextProposalId = 1;
 
     // Defaults; all governance-settable.
     proposeBond = 100e18;
@@ -574,4 +589,7 @@ contract FileRegistry is Ownable, ReentrancyGuard {
     }
     return false;
   }
+
+  /// @dev Reserved storage to keep future upgrades layout-safe.
+  uint256[48] private __gap;
 }
