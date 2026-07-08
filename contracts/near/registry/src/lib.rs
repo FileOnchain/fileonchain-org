@@ -8,7 +8,7 @@
 //! File-level anchors are paid proposals (the optimistic propose/verify
 //! protocol, ported from the EVM FileRegistry + ValidatorStaking +
 //! PlatformRegistry suite). NEAR has no token allowances, so every paid
-//! action arrives as a NEP-141 `ft_transfer_call` on the FOC token with a
+//! action arrives as a NEP-141 `ft_transfer_call` on the FOCAT token with a
 //! JSON `msg` that `ft_on_transfer` routes:
 //!
 //!   {"action":"propose","cid":"bafy...","content_hash":"...","uri":"...",
@@ -58,7 +58,7 @@ const VOTE_UPHOLD: u8 = 1;
 const VOTE_REJECT: u8 = 2;
 
 /// `amount * acc / ACC_PRECISION` without overflowing u128 for realistic
-/// FOC magnitudes (split multiplication).
+/// FOCAT magnitudes (split multiplication).
 fn mul_acc(amount: u128, acc: u128) -> u128 {
     (amount / ACC_PRECISION) * acc + (amount % ACC_PRECISION) * acc / ACC_PRECISION
 }
@@ -203,7 +203,7 @@ fn log_event(event: &str, data: near_sdk::serde_json::Value) {
 
 #[near]
 impl FileRegistry {
-    /// Deploy with the FOC token account and treasuries. The deployer
+    /// Deploy with the FOCAT token account and treasuries. The deployer
     /// becomes the admin and owner of platform 1 (FileOnChain).
     #[init]
     pub fn new(
@@ -271,14 +271,14 @@ impl FileRegistry {
     // NEP-141 receiver — all paid actions arrive here
     // ---------------------------------------------------------------
 
-    /// Handle `ft_transfer_call` from the FOC token. Panics refund the
+    /// Handle `ft_transfer_call` from the FOCAT token. Panics refund the
     /// transfer through the token's resolve step; returning "0" keeps the
     /// full amount escrowed.
     pub fn ft_on_transfer(&mut self, sender_id: AccountId, amount: U128, msg: String) -> U128 {
         assert_eq!(
             env::predecessor_account_id(),
             self.token,
-            "FileRegistry: only the FOC token may call ft_on_transfer"
+            "FileRegistry: only the FOCAT token may call ft_on_transfer"
         );
         let parsed: TransferMsg =
             near_sdk::serde_json::from_str(&msg).expect("FileRegistry: unparseable msg");
@@ -379,8 +379,8 @@ impl FileRegistry {
     // Payouts (pull payments; ft_transfer promises)
     // ---------------------------------------------------------------
 
-    /// Pull any FOC credited to the caller (fees, refunds, juror rewards).
-    /// The caller must be storage-registered on the FOC token.
+    /// Pull any FOCAT credited to the caller (fees, refunds, juror rewards).
+    /// The caller must be storage-registered on the FOCAT token.
     pub fn withdraw(&mut self) -> Promise {
         let to = env::predecessor_account_id();
         let amount = self.withdrawable.get(&to).copied().unwrap_or(0);
@@ -1052,7 +1052,7 @@ mod tests {
         testing_env!(context);
     }
 
-    /// Registry deployed by admin.near with six staked validators. The FOC
+    /// Registry deployed by admin.near with six staked validators. The FOCAT
     /// escrow itself lives on the token contract; these tests exercise the
     /// registry's internal ledgers.
     fn setup() -> FileRegistry {
@@ -1177,7 +1177,7 @@ mod tests {
         );
         assert_eq!(contract.withdrawable_of(account("treasury.near")).0, 15 * ONE_FOC);
         assert_eq!(contract.withdrawable_of(account("alice.near")).0, BOND);
-        // 60% across six equal validators = 10 FOC each.
+        // 60% across six equal validators = 10 FOCAT each.
         assert_eq!(contract.pending_rewards(account("validator0.near")).0, 10 * ONE_FOC);
     }
 
@@ -1206,7 +1206,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "only the FOC token may call ft_on_transfer")]
+    #[should_panic(expected = "only the FOCAT token may call ft_on_transfer")]
     fn ft_on_transfer_rejects_other_tokens() {
         let mut contract = setup();
         set_context("evil-token.near", 0);

@@ -1,6 +1,6 @@
 # Governance
 
-FileOnChain's anchor protocol is governed by the FOC token through an
+FileOnChain's anchor protocol is governed by the FOCAT token through an
 on-chain Governor on EVM; the other contract runtimes mirror those
 decisions through admin accounts. This document is the seam between the
 two.
@@ -24,7 +24,7 @@ token votes.
 ## The EVM hub
 
 `contracts/evm/src/governance/` holds `FileOnChainGovernor` (OZ Governor:
-1-day voting delay, 1-week voting period, 100k FOC proposal threshold, 4%
+1-day voting delay, 1-week voting period, 100k FOCAT proposal threshold, 4%
 quorum, all deploy-time configurable) and `FileOnChainTimelock` (2-day min
 delay). The deploy script wires the handoff completely:
 
@@ -35,7 +35,7 @@ delay). The deploy script wires the handoff completely:
   every verified tip accrues to it, and spending it is a proposal
 - the deployer renounces its timelock admin role at the end of the run
 
-So on EVM, a parameter change is: delegate FOC → propose the setter call →
+So on EVM, a parameter change is: delegate FOCAT → propose the setter call →
 vote → queue → wait out the timelock → execute.
 
 ## The non-EVM seam
@@ -65,11 +65,11 @@ the manual replay with a cross-chain message executor is a follow-up.
 
 ## Token notes
 
-FOC exists natively on every contract runtime (ERC-20 with ERC20Votes on
-EVM, a Fungible Asset on Aptos, `Coin<FOC>` on Sui, a minimal ERC-20 in
+FOCAT exists natively on every contract runtime (ERC-20 with ERC20Votes on
+EVM, a Fungible Asset on Aptos, `Coin<FOCAT>` on Sui, a minimal ERC-20 in
 Cairo on Starknet, NEP-141 on NEAR). The supplies are **disjoint** — there
 is no bridge — and only the EVM token carries governance voting power.
-Non-EVM FOC is a utility asset: tips, bonds, and validator stakes on that
+Non-EVM FOCAT is a utility asset: tips, bonds, and validator stakes on that
 runtime.
 
 ## Known v1 limitations

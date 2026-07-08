@@ -148,7 +148,7 @@ fn propose_escrows_and_finalize_splits_fees() {
     assert_eq!(registry.withdrawable_of(admin()), 40_000000000000000000);
     // Bond returned to the proposer; withdraw pays it out.
     assert_eq!(registry.withdrawable_of(alice()), BOND);
-    // 60% across six equal validators = 10 FOC each.
+    // 60% across six equal validators = 10 FOCAT each.
     assert_eq!(registry.pending_rewards(validator(0)), 10_000000000000000000);
 
     as_caller(alice());

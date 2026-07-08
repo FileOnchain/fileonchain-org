@@ -75,7 +75,7 @@ const walletClient = createWalletClient({
   transport: custom(window.ethereum),
 });
 
-// Escrows a FOC tip + bond; verifies after the challenge window.
+// Escrows a FOCAT tip + bond; verifies after the challenge window.
 const receipt = await proposeAnchor(walletClient, {
   chainId: "evm:8453",
   cid: "bafybeig...",

@@ -43,17 +43,17 @@ SUI for gas on each network it serves.
 
 ## Anchor protocol (propose/verify)
 
-The package now also publishes `fileonchain::foc` (`Coin<FOC>`, the
+The package now also publishes `fileonchain::focat` (`Coin<FOCAT>`, the
 `TreasuryCap` goes to the publisher — mint supply with
 `sui client call ... coin::mint_and_transfer`) and
 `fileonchain::anchor_registry`, whose `init` shares one `AnchorRegistry`
 object and sends the `AdminCap` to the publisher. Sui has no allowances:
-propose/challenge/stake take an exact `Coin<FOC>` split in the PTB, and
+propose/challenge/stake take an exact `Coin<FOCAT>` split in the PTB, and
 jury draws use `sui::random` (real secure randomness).
 
 Record on the chain entry: `moduleAddress` (package id), `tokenContract`
-(the FOC package id — usually the same package), and `registryContract`
+(the FOCAT package id — usually the same package), and `registryContract`
 (the **shared AnchorRegistry object id** — the SDK passes it as the first
-call argument). Fund the `ANCHOR_SUI_PRIVATE_KEY` account with FOC and
+call argument). Fund the `ANCHOR_SUI_PRIVATE_KEY` account with FOCAT and
 stake at least 5 validators before enabling challenges. The `AdminCap`
 holder executes EVM governance decisions (see docs/governance.md).

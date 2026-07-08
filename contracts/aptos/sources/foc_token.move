@@ -1,4 +1,4 @@
-/// FOC — the FileOnChain protocol token on Aptos, as a Fungible Asset with
+/// FOCAT — the FileOnChain protocol token on Aptos, as a Fungible Asset with
 /// primary stores. Denominates anchor tips, propose/challenge bonds, and
 /// validator stakes for `fileonchain::anchor_registry`.
 ///
@@ -14,10 +14,10 @@ module fileonchain::foc_token {
     use aptos_framework::object::{Self, Object};
     use aptos_framework::primary_fungible_store;
 
-    const ASSET_SYMBOL: vector<u8> = b"FOC";
-    /// 8 decimals; 1 FOC = 100_000_000 base units.
+    const ASSET_SYMBOL: vector<u8> = b"FOCAT";
+    /// 8 decimals; 1 FOCAT = 100_000_000 base units.
     const DECIMALS: u8 = 8;
-    /// 1B FOC minted to the publisher.
+    /// 1B FOCAT minted to the publisher.
     const INITIAL_SUPPLY: u64 = 100_000_000_000_000_000;
 
     /// Caller is not the token admin.
@@ -33,7 +33,7 @@ module fileonchain::foc_token {
         primary_fungible_store::create_primary_store_enabled_fungible_asset(
             constructor_ref,
             option::none(),
-            string::utf8(b"FileOnChain"),
+            string::utf8(b"File On Chain Attestation Token"),
             string::utf8(ASSET_SYMBOL),
             DECIMALS,
             string::utf8(b""),

@@ -26,7 +26,7 @@ export interface ChainConfig {
   /**
    * Anchor-protocol contracts (propose/verify economics). Optional and only
    * meaningful on contract families (EVM, Aptos, Sui, Starknet, NEAR):
-   * `tokenContract` is the FOC token that denominates tips, bonds, and
+   * `tokenContract` is the FOCAT token that denominates tips, bonds, and
    * validator stakes — the propose path provisions only when it is set (see
    * `isProposeProvisioned`). `stakingContract` / `platformRegistryContract`
    * are ValidatorStaking and PlatformRegistry; `governorContract` /

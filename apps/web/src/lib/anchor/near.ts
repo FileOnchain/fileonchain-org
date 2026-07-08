@@ -6,7 +6,7 @@ import type { AnchorRequest } from "./types";
 /**
  * NEAR sender — sequential free `anchor_cid` contract calls through the
  * injected `window.near` provider (Sender / Meteor), then a paid
- * `ft_transfer_call` on the FOC token for the file CID (tip + bond
+ * `ft_transfer_call` on the FOCAT token for the file CID (tip + bond
  * escrowed via the registry's ft_on_transfer) when the chain is
  * propose-provisioned. Until a registry contract account lands in the SDK
  * chain registry, anchorChunkedFile throws ChainNotProvisionedError and

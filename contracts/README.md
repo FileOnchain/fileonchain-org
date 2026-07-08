@@ -6,7 +6,7 @@ artifact writes the same `fileonchain` v1 JSON payload (see
 
 The five contract runtimes run the **optimistic anchor protocol**: chunk
 anchors stay free event emitters, while file-level anchors are paid
-proposals — `propose_anchor` escrows a FOC tip + bond, an unchallenged
+proposals — `propose_anchor` escrows a FOCAT tip + bond, an unchallenged
 proposal finalizes after a 24h window and the tip splits 60/25/15 between
 staked validators, the originating platform, and the protocol treasury;
 challenges go to a jury drawn from the staked validator set. Governance is
@@ -17,7 +17,7 @@ admin accounts — see [`docs/governance.md`](../docs/governance.md).
 | --- | --- | --- | --- |
 | `evm/` | EVM (Ethereum, Base, BSC, …) | Foundry | `FileRegistry` (propose/verify), `FileOnChainToken`, `ValidatorStaking`, `PlatformRegistry`, `FileOnChainGovernor` + `Timelock`, `CachePayments`, `DonationEscrow` |
 | `aptos/` | Aptos | Aptos CLI (Move) | `foc_token` (Fungible Asset), `anchor_registry` (protocol), `file_registry` (free chunk anchors) |
-| `sui/` | Sui | Sui CLI (Move) | `foc` (`Coin<FOC>`), `anchor_registry` (shared object), `file_registry` (free chunk anchors) |
+| `sui/` | Sui | Sui CLI (Move) | `focat` (`Coin<FOCAT>`), `anchor_registry` (shared object), `file_registry` (free chunk anchors) |
 | `starknet/` | Starknet | Scarb (Cairo) | `FocToken` (ERC-20), `AnchorRegistry` (protocol), `FileRegistry` (free chunk anchors) |
 | `near/` | NEAR | cargo workspace (Rust) | `foc-token/` (NEP-141), `registry/` (protocol via `ft_transfer_call` + free `anchor_cid`) |
 

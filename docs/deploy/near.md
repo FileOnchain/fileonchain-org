@@ -76,5 +76,5 @@ storage-registered on the token (`storage_deposit`).
 
 Record on the chain entry: `moduleAddress` = the registry account,
 `tokenContract` = the token account. Fund `ANCHOR_NEAR_ACCOUNT_ID` with
-FOC and storage-register it on the token; stake at least 5 validators.
+FOCAT and storage-register it on the token; stake at least 5 validators.
 The admin executes EVM governance decisions (see docs/governance.md).

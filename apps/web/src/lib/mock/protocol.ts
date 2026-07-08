@@ -7,9 +7,9 @@ import { keccak256, stringToBytes } from "viem";
 
 export interface MockValidator {
   address: string;
-  /** FOC, whole tokens (display values). */
+  /** FOCAT, whole tokens (display values). */
   stake: number;
-  /** Lifetime tip rewards earned, FOC. */
+  /** Lifetime tip rewards earned, FOCAT. */
   rewardsEarned: number;
   /** Disputes the validator sat on as a juror. */
   juryDuties: number;
@@ -26,7 +26,7 @@ export interface MockPlatform {
   active: boolean;
   /** Anchors attributed to this platform (mock lifetime count). */
   anchorsOriginated: number;
-  /** Lifetime platform-share revenue, FOC. */
+  /** Lifetime platform-share revenue, FOCAT. */
   revenueFoc: number;
 }
 
@@ -38,7 +38,7 @@ export interface MockProtocolStats {
   disputesResolved: number;
   /** Current fee split in bps. */
   feeSplit: { validatorBps: number; platformBps: number; protocolBps: number };
-  /** Protocol treasury balance, FOC. */
+  /** Protocol treasury balance, FOCAT. */
   treasuryFoc: number;
 }
 

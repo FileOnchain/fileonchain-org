@@ -4,7 +4,7 @@ import type { UploadJobTx } from "@/lib/db/schema";
 
 /** Sui server signer: a keypair (bech32 `suiprivkey…` export form) executes
  * the anchor move call in one programmable transaction block. File-level
- * anchors go through `anchor_registry::propose_anchor` (exact FOC coin
+ * anchors go through `anchor_registry::propose_anchor` (exact FOCAT coin
  * split, tip + bond escrowed) when the chain is propose-provisioned. */
 export const anchorOnSui = async (
   chain: ChainConfig,

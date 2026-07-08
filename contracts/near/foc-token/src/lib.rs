@@ -1,4 +1,4 @@
-//! FOC — the FileOnChain protocol token on NEAR, a standard NEP-141
+//! FOCAT — the FileOnChain protocol token on NEAR, a standard NEP-141
 //! fungible token (with NEP-145 storage management and NEP-148 metadata)
 //! built on near-contract-standards. Denominates anchor tips,
 //! propose/challenge bonds, and validator stakes for the FileOnChain
@@ -45,8 +45,8 @@ impl FocToken {
     pub fn new(owner_id: AccountId, total_supply: U128) -> Self {
         let metadata = FungibleTokenMetadata {
             spec: FT_METADATA_SPEC.to_string(),
-            name: "FileOnChain".to_string(),
-            symbol: "FOC".to_string(),
+            name: "File On Chain Attestation Token".to_string(),
+            symbol: "FOCAT".to_string(),
             icon: None,
             reference: None,
             reference_hash: None,
@@ -118,7 +118,7 @@ mod tests {
     use near_sdk::test_utils::{accounts, VMContextBuilder};
     use near_sdk::{testing_env, NearToken};
 
-    const SUPPLY: u128 = 1_000_000_000_000_000_000_000_000_000; // 1B FOC, 18 decimals
+    const SUPPLY: u128 = 1_000_000_000_000_000_000_000_000_000; // 1B FOCAT, 18 decimals
 
     fn context(predecessor: AccountId) -> VMContextBuilder {
         let mut builder = VMContextBuilder::new();
@@ -132,7 +132,7 @@ mod tests {
         let contract = FocToken::new(accounts(0), U128(SUPPLY));
         assert_eq!(contract.ft_total_supply().0, SUPPLY);
         assert_eq!(contract.ft_balance_of(accounts(0)).0, SUPPLY);
-        assert_eq!(contract.ft_metadata().symbol, "FOC");
+        assert_eq!(contract.ft_metadata().symbol, "FOCAT");
         assert_eq!(contract.ft_metadata().decimals, 18);
     }
 

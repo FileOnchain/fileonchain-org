@@ -5,7 +5,7 @@ import type { AnchorRequest } from "./types";
 
 /**
  * EVM sender — free `FileRegistry.anchorChunk` transactions per chunk, then
- * a paid `proposeAnchor` for the file CID (FOC tip + bond escrowed, with an
+ * a paid `proposeAnchor` for the file CID (FOCAT tip + bond escrowed, with an
  * automatic approve when the allowance is short), all through the injected
  * wallet. Provisioning is checked before any wallet interaction so
  * unprovisioned chains fall back to the simulated flow without a pop-up.

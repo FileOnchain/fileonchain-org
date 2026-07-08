@@ -45,7 +45,7 @@ export interface StarknetAnchorCall {
 export interface StarknetProposeCall {
   tokenContract: string;
   anchorRegistryContract: string;
-  /** tip + propose bond, FOC base units (stringified). */
+  /** tip + propose bond, FOCAT base units (stringified). */
   approveAmount: string;
   cid: string;
   /** SHA-256 of the raw content as 0x-hex (u256); "0x0" when unknown. */
@@ -110,7 +110,7 @@ export const resolveStarknetProposeChain = (
   if (!chain.tokenContract || chain.tokenContract === ZERO_ADDRESS || !chain.stakingContract) {
     throw new ChainNotProvisionedError(
       chainId,
-      "the FOC token / AnchorRegistry contract is not deployed yet."
+      "the FOCAT token / AnchorRegistry contract is not deployed yet."
     );
   }
   return chain as ChainConfig & {
@@ -155,7 +155,7 @@ export const DEFAULT_MAX_CALLS_PER_TX = 64;
 export interface StarknetAnchorParams extends BuildFileAnchorParams {
   /** A `starknet:*` chain id, e.g. "starknet:mainnet". */
   chainId: ChainId;
-  /** FOC tip in base units; defaults to the on-chain min tip (needs `callContract`). */
+  /** FOCAT tip in base units; defaults to the on-chain min tip (needs `callContract`). */
   tip?: bigint;
 }
 
@@ -191,7 +191,7 @@ const executePropose = async (
 
 /**
  * Anchor a single file-level CID: through the AnchorRegistry's
- * `propose_anchor` (approve + propose in one multicall; FOC tip + bond
+ * `propose_anchor` (approve + propose in one multicall; FOCAT tip + bond
  * escrowed, optimistic verification) when the chain is propose-provisioned
  * and the signer supports it, or as a plain event anchor otherwise.
  */
@@ -230,7 +230,7 @@ export interface StarknetChunkedAnchorParams {
   uri?: string;
   /** Originating platform id; defaults to FileOnChain's platform 1. */
   platformId?: string;
-  /** FOC tip in base units; defaults to the on-chain min tip. */
+  /** FOCAT tip in base units; defaults to the on-chain min tip. */
   tip?: bigint;
   /** Override the calls-per-multicall budget. */
   maxCallsPerTx?: number;

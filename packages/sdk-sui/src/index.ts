@@ -39,7 +39,7 @@ export interface SuiAnchorCall {
 
 /**
  * One `propose_anchor` move call. The implementation must fund `payment`
- * with exactly `paymentAmount` FOC of `coinType` (split from the sender's
+ * with exactly `paymentAmount` FOCAT of `coinType` (split from the sender's
  * coins in the PTB — Sui has no allowances) and pass the shared registry
  * object plus the system clock (`SUI_CLOCK_OBJECT_ID`).
  */
@@ -48,7 +48,7 @@ export interface SuiProposeCall {
   target: string;
   /** The shared AnchorRegistry object id (chain `registryContract`). */
   registryObjectId: string;
-  /** FOC coin type: `` `${tokenContract}::foc::FOC` ``. */
+  /** FOCAT coin type: `` `${tokenContract}::focat::FOCAT` ``. */
   coinType: string;
   /** tip + propose bond, base units (stringified). */
   paymentAmount: string;
@@ -104,7 +104,7 @@ export const resolveSuiChain = (
 
 /**
  * Resolve a `sui:*` chain where the propose/verify protocol is live —
- * `moduleAddress` (package), `tokenContract` (FOC package), and
+ * `moduleAddress` (package), `tokenContract` (FOCAT package), and
  * `registryContract` (the shared AnchorRegistry object id) all set.
  */
 export const resolveSuiProposeChain = (
@@ -114,7 +114,7 @@ export const resolveSuiProposeChain = (
   if (!chain.tokenContract || !chain.registryContract) {
     throw new ChainNotProvisionedError(
       chainId,
-      "the FOC token / AnchorRegistry shared object is not deployed yet."
+      "the FOCAT token / AnchorRegistry shared object is not deployed yet."
     );
   }
   return chain as ChainConfig & {
@@ -162,13 +162,13 @@ export const DEFAULT_MAX_CALLS_PER_TX = 128;
 export interface SuiAnchorParams extends BuildFileAnchorParams {
   /** A `sui:*` chain id, e.g. "sui:mainnet". */
   chainId: ChainId;
-  /** FOC tip in base units; defaults to the registry's on-chain min tip. */
+  /** FOCAT tip in base units; defaults to the registry's on-chain min tip. */
   tip?: bigint;
 }
 
 /**
  * Anchor a single file-level CID: through
- * `anchor_registry::propose_anchor` (FOC tip + bond escrowed, optimistic
+ * `anchor_registry::propose_anchor` (FOCAT tip + bond escrowed, optimistic
  * verification) when the chain is propose-provisioned and the signer
  * implements `executeProposeCall`, or as a plain one-call event PTB
  * otherwise.
@@ -186,7 +186,7 @@ export const anchorCID = async (
     const { digest } = await signer.executeProposeCall({
       target: `${proposeChain.moduleAddress}::${PROPOSE_FUNCTION}`,
       registryObjectId: proposeChain.registryContract,
-      coinType: `${proposeChain.tokenContract}::foc::FOC`,
+      coinType: `${proposeChain.tokenContract}::focat::FOCAT`,
       paymentAmount: (effectiveTip + params.proposeBond).toString(),
       cid: payload.cid,
       contentHash: payload.sha256 ? hexToBytes(payload.sha256) : [],
@@ -216,7 +216,7 @@ export interface SuiChunkedAnchorParams {
   uri?: string;
   /** Originating platform id; defaults to FileOnChain's platform 1. */
   platformId?: string;
-  /** FOC tip in base units; defaults to the registry's on-chain min tip. */
+  /** FOCAT tip in base units; defaults to the registry's on-chain min tip. */
   tip?: bigint;
   /** Override how many move calls share one PTB. */
   maxCallsPerTx?: number;
@@ -233,7 +233,7 @@ const hexToBytes = (hex: string): number[] => {
 /**
  * Anchor every chunk as free `file_registry::anchor_cid` calls batched into
  * as few PTBs as possible, then the file CID — through
- * `anchor_registry::propose_anchor` (FOC tip + bond escrowed as an exact
+ * `anchor_registry::propose_anchor` (FOCAT tip + bond escrowed as an exact
  * coin split, optimistic verification) when the chain is propose-provisioned
  * and the signer implements `executeProposeCall`, or as a plain event anchor
  * otherwise.
@@ -294,7 +294,7 @@ export const anchorChunkedFile = async (
     const result = await signer.executeProposeCall!({
       target: `${proposeChain.moduleAddress}::${PROPOSE_FUNCTION}`,
       registryObjectId: proposeChain.registryContract,
-      coinType: `${proposeChain.tokenContract}::foc::FOC`,
+      coinType: `${proposeChain.tokenContract}::focat::FOCAT`,
       paymentAmount: (effectiveTip + params.proposeBond).toString(),
       cid: fileCid,
       contentHash: sha256 ? hexToBytes(sha256) : [],

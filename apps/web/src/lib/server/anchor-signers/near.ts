@@ -4,7 +4,7 @@ import type { UploadJobTx } from "@/lib/db/schema";
 
 /** NEAR server signer: a full-access key on the configured account calls
  * `anchor_cid` on the registry contract account; file-level anchors go
- * through `ft_transfer_call` on the FOC token (tip + bond escrowed via
+ * through `ft_transfer_call` on the FOCAT token (tip + bond escrowed via
  * the registry's ft_on_transfer) when the chain is propose-provisioned. */
 export const anchorOnNear = async (
   chain: ChainConfig,

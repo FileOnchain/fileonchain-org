@@ -1,8 +1,8 @@
 //! Optimistic anchor protocol for file CIDs — the Cairo port of the EVM
 //! FileRegistry + ValidatorStaking + PlatformRegistry suite, folded into one
-//! contract escrowing FOC via standard ERC-20 approve/transfer_from.
+//! contract escrowing FOCAT via standard ERC-20 approve/transfer_from.
 //!
-//! File-level anchors are paid proposals: `propose_anchor` escrows a FOC
+//! File-level anchors are paid proposals: `propose_anchor` escrows a FOCAT
 //! tip + bond and names the originating platform. Unchallenged proposals
 //! `finalize` after the challenge window — the tip splits
 //! validator/platform/protocol (60/25/15 default, pull payments via
@@ -319,7 +319,7 @@ pub mod AnchorRegistry {
         self.admin.write(admin);
         self.protocol_treasury.write(protocol_treasury);
         self.token.write(token);
-        // 18-decimal FOC defaults, mirroring the EVM contract.
+        // 18-decimal FOCAT defaults, mirroring the EVM contract.
         self.propose_bond.write(100_000000000000000000);
         self.challenge_bond.write(100_000000000000000000);
         self.min_tip.write(1_000000000000000000);

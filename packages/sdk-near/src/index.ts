@@ -19,7 +19,7 @@ import {
  * payload)` on the WASM registry contract (contracts/near), whose
  * **account id** lives in `moduleAddress` on the chain entry (e.g.
  * "registry.fileonchain.near"). File-level anchors go through the
- * propose/verify protocol when the FOC token is provisioned: NEAR has no
+ * propose/verify protocol when the FOCAT token is provisioned: NEAR has no
  * allowances, so a propose is one `ft_transfer_call` on the **token**
  * account carrying `tip + bond` and a JSON msg the registry's
  * `ft_on_transfer` routes. Built against a minimal signer surface so the
@@ -37,7 +37,7 @@ export const PROPOSE_METHOD = "ft_transfer_call" as const;
  * The transport surface the client needs. Implementations invoke
  * `anchor_cid` on `contractId` with the given arguments, and resolve once
  * the transaction is final. `callMethod` is optional — signers that provide
- * it unlock the paid propose/verify path (an `ft_transfer_call` on the FOC
+ * it unlock the paid propose/verify path (an `ft_transfer_call` on the FOCAT
  * token with 1 yoctoNEAR attached).
  */
 export interface NearAnchorSigner {
@@ -71,14 +71,14 @@ export const resolveNearChain = (
 
 /**
  * Resolve a `near:*` chain where the propose/verify protocol is live —
- * the registry account plus the FOC token account (`tokenContract`).
+ * the registry account plus the FOCAT token account (`tokenContract`).
  */
 export const resolveNearProposeChain = (
   chainId: ChainId
 ): ChainConfig & { moduleAddress: string; tokenContract: string } => {
   const chain = resolveNearChain(chainId);
   if (!chain.tokenContract) {
-    throw new ChainNotProvisionedError(chainId, "the FOC token account is not deployed yet.");
+    throw new ChainNotProvisionedError(chainId, "the FOCAT token account is not deployed yet.");
   }
   return chain as ChainConfig & { moduleAddress: string; tokenContract: string };
 };
@@ -182,7 +182,7 @@ export const getProposalStatus = async (chainId: ChainId, cid: string): Promise<
 export interface NearAnchorParams extends BuildFileAnchorParams {
   /** A `near:*` chain id, e.g. "near:mainnet". */
   chainId: ChainId;
-  /** FOC tip in base units; defaults to the registry's on-chain min tip. */
+  /** FOCAT tip in base units; defaults to the registry's on-chain min tip. */
   tip?: bigint;
 }
 
@@ -190,7 +190,7 @@ export interface NearAnchorParams extends BuildFileAnchorParams {
 export const PROPOSE_GAS = "100000000000000";
 
 /**
- * Propose a file-level anchor: one `ft_transfer_call` on the FOC token
+ * Propose a file-level anchor: one `ft_transfer_call` on the FOCAT token
  * carrying `tip + propose_bond` with the propose msg (1 yoctoNEAR
  * attached). The signer must implement `callMethod`.
  */
@@ -227,7 +227,7 @@ export const proposeAnchor = async (
 
 /**
  * Anchor a single file-level CID: through the propose/verify protocol
- * (`ft_transfer_call` escrowing the FOC tip + bond) when the chain is
+ * (`ft_transfer_call` escrowing the FOCAT tip + bond) when the chain is
  * propose-provisioned and the signer implements `callMethod`, or as a
  * plain event anchor otherwise.
  */
@@ -258,14 +258,14 @@ export interface NearChunkedAnchorParams {
   uri?: string;
   /** Originating platform id; defaults to FileOnChain's platform 1. */
   platformId?: string;
-  /** FOC tip in base units; defaults to the registry's on-chain min tip. */
+  /** FOCAT tip in base units; defaults to the registry's on-chain min tip. */
   tip?: bigint;
   onProgress?: AnchorProgressHandler;
 }
 
 /**
  * Anchor every chunk as free `anchor_cid` contract calls, then the file CID
- * — through the propose/verify protocol (`ft_transfer_call` on the FOC
+ * — through the propose/verify protocol (`ft_transfer_call` on the FOCAT
  * token escrowing tip + bond) when the chain is propose-provisioned and the
  * signer implements `callMethod`, or as a plain event anchor otherwise. One
  * wallet confirmation per transaction; the last one carries the file anchor.

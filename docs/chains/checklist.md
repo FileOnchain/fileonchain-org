@@ -26,7 +26,7 @@ when every box is checked.
   `platformRegistryContract` / `governorContract` / `timelockContract` on
   EVM, the AnchorRegistry shared-object id in `registryContract` on Sui,
   and the AnchorRegistry contract in `stakingContract` on Starknet. The
-  server signer holds FOC (tips + bonds), and at least `jurySize` (5)
+  server signer holds FOCAT (tips + bonds), and at least `jurySize` (5)
   validators are staked so challenges can draw a jury.
 - [ ] **PAYG anchor is real on testnet** — a browser-wallet upload on the
   chain's testnet sends real transactions through `apps/web/src/lib/anchor/*`

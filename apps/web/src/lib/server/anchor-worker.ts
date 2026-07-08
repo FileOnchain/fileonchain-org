@@ -53,7 +53,7 @@ const anchorOnEvm = async (
     chain: viemChain,
     transport: http(chain.rpcUrl),
   });
-  // proposeAnchor escrows the FOC tip + bond from the server signer
+  // proposeAnchor escrows the FOCAT tip + bond from the server signer
   // (auto-approves when short) and waits for its own receipt. The anchor
   // enters its challenge window here and verifies via permissionless
   // finalize once the window closes.

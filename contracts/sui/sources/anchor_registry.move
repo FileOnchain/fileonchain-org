@@ -1,10 +1,10 @@
 /// Optimistic anchor protocol for file CIDs — the Sui port of the EVM
 /// FileRegistry + ValidatorStaking + PlatformRegistry suite, folded into one
-/// shared `AnchorRegistry` object holding a single `Balance<FOC>` escrow
+/// shared `AnchorRegistry` object holding a single `Balance<FOCAT>` escrow
 /// with internal ledgers.
 ///
-/// File-level anchors are paid proposals: `propose_anchor` escrows a FOC
-/// tip + bond (passed as an exact `Coin<FOC>` — Sui has no allowances; the
+/// File-level anchors are paid proposals: `propose_anchor` escrows a FOCAT
+/// tip + bond (passed as an exact `Coin<FOCAT>` — Sui has no allowances; the
 /// PTB splits the coin) and names the originating platform. Unchallenged
 /// proposals `finalize` after the challenge window and the tip splits
 /// validator/platform/protocol (60/25/15 default). A `challenge` escrows a
@@ -29,7 +29,7 @@ module fileonchain::anchor_registry {
     use sui::event;
     use sui::random::{Self, Random};
     use sui::table::{Self, Table};
-    use fileonchain::foc::FOC;
+    use fileonchain::focat::FOCAT;
 
     // ---------------------------------------------------------------------
     // Errors
@@ -77,15 +77,15 @@ module fileonchain::anchor_registry {
     const BPS_DENOM: u64 = 10_000;
     const ACC_PRECISION: u128 = 1_000_000_000_000;
 
-    // Defaults (8-decimal FOC base units / milliseconds); all admin-settable.
-    const DEFAULT_PROPOSE_BOND: u64 = 10_000_000_000; // 100 FOC
-    const DEFAULT_CHALLENGE_BOND: u64 = 10_000_000_000; // 100 FOC
-    const DEFAULT_MIN_TIP: u64 = 100_000_000; // 1 FOC
+    // Defaults (8-decimal FOCAT base units / milliseconds); all admin-settable.
+    const DEFAULT_PROPOSE_BOND: u64 = 10_000_000_000; // 100 FOCAT
+    const DEFAULT_CHALLENGE_BOND: u64 = 10_000_000_000; // 100 FOCAT
+    const DEFAULT_MIN_TIP: u64 = 100_000_000; // 1 FOCAT
     const DEFAULT_CHALLENGE_WINDOW_MS: u64 = 86_400_000; // 24h
     const DEFAULT_VOTE_WINDOW_MS: u64 = 172_800_000; // 48h
     const DEFAULT_JURY_SIZE: u64 = 5;
-    const DEFAULT_JUROR_SLASH: u64 = 5_000_000_000; // 50 FOC
-    const DEFAULT_MIN_STAKE: u64 = 100_000_000_000; // 1000 FOC
+    const DEFAULT_JUROR_SLASH: u64 = 5_000_000_000; // 50 FOCAT
+    const DEFAULT_MIN_STAKE: u64 = 100_000_000_000; // 1000 FOCAT
     const DEFAULT_UNBONDING_MS: u64 = 604_800_000; // 7 days
 
     // ---------------------------------------------------------------------
@@ -139,7 +139,7 @@ module fileonchain::anchor_registry {
     public struct AnchorRegistry has key {
         id: UID,
         protocol_treasury: address,
-        escrow: Balance<FOC>,
+        escrow: Balance<FOCAT>,
         // params
         propose_bond: u64,
         challenge_bond: u64,
@@ -314,10 +314,10 @@ module fileonchain::anchor_registry {
     // ---------------------------------------------------------------------
 
     /// Propose a file-level anchor. `payment` must be exactly
-    /// `tip + propose_bond` FOC (split it in the PTB).
+    /// `tip + propose_bond` FOCAT (split it in the PTB).
     public entry fun propose_anchor(
         registry: &mut AnchorRegistry,
-        payment: Coin<FOC>,
+        payment: Coin<FOCAT>,
         cid: String,
         content_hash: vector<u8>,
         uri: String,
@@ -443,7 +443,7 @@ module fileonchain::anchor_registry {
     /// entry, as the Random API requires).
     entry fun challenge(
         registry: &mut AnchorRegistry,
-        payment: Coin<FOC>,
+        payment: Coin<FOCAT>,
         proposal_id: u64,
         r: &Random,
         clock: &Clock,
@@ -651,7 +651,7 @@ module fileonchain::anchor_registry {
     // Withdrawals
     // ---------------------------------------------------------------------
 
-    /// Pull any FOC credited to the caller (fees, refunds, juror rewards).
+    /// Pull any FOCAT credited to the caller (fees, refunds, juror rewards).
     public entry fun withdraw(registry: &mut AnchorRegistry, ctx: &mut TxContext) {
         let to = ctx.sender();
         assert!(registry.withdrawable.contains(to), E_NOTHING_TO_WITHDRAW);
@@ -666,7 +666,7 @@ module fileonchain::anchor_registry {
     // ---------------------------------------------------------------------
 
     /// Stake the whole `payment` coin toward the validator minimum.
-    public entry fun stake(registry: &mut AnchorRegistry, payment: Coin<FOC>, ctx: &TxContext) {
+    public entry fun stake(registry: &mut AnchorRegistry, payment: Coin<FOCAT>, ctx: &TxContext) {
         let amount = payment.value();
         assert!(amount > 0, E_BAD_AMOUNT);
         let validator = ctx.sender();
@@ -951,7 +951,7 @@ module fileonchain::anchor_registry {
     #[test_only]
     public fun challenge_for_test(
         registry: &mut AnchorRegistry,
-        payment: Coin<FOC>,
+        payment: Coin<FOCAT>,
         proposal_id: u64,
         r: &Random,
         clock: &Clock,

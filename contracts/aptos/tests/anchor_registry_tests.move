@@ -9,7 +9,7 @@ module fileonchain::anchor_registry_tests {
     use fileonchain::anchor_registry;
     use fileonchain::foc_token;
 
-    const FOC: u64 = 100_000_000; // 1 FOC, 8 decimals
+    const FOCAT: u64 = 100_000_000; // 1 FOCAT, 8 decimals
     const TIP: u64 = 100 * 100_000_000;
     const BOND: u64 = 100 * 100_000_000;
     const STAKE: u64 = 1_000 * 100_000_000;
@@ -35,8 +35,8 @@ module fileonchain::anchor_registry_tests {
 
         let alice = account::create_signer_for_test(@0xA11CE);
         let bob = account::create_signer_for_test(@0xB0B);
-        foc_token::mint(admin, @0xA11CE, 10_000 * FOC);
-        foc_token::mint(admin, @0xB0B, 10_000 * FOC);
+        foc_token::mint(admin, @0xA11CE, 10_000 * FOCAT);
+        foc_token::mint(admin, @0xB0B, 10_000 * FOCAT);
 
         // Six staked validators so a jury of five can always be drawn.
         let validators = vector::empty<signer>();
@@ -45,7 +45,7 @@ module fileonchain::anchor_registry_tests {
         while (i < vector::length(&addrs)) {
             let addr = *vector::borrow(&addrs, i);
             let validator = account::create_signer_for_test(addr);
-            foc_token::mint(admin, addr, 10_000 * FOC);
+            foc_token::mint(admin, addr, 10_000 * FOCAT);
             anchor_registry::stake(&validator, STAKE);
             vector::push_back(&mut validators, validator);
             i = i + 1;
@@ -116,7 +116,7 @@ module fileonchain::anchor_registry_tests {
     #[expected_failure(abort_code = 3, location = fileonchain::anchor_registry)]
     fun propose_rejects_low_tip(fx: &signer, admin: &signer) {
         let (alice, _bob, _validators) = setup(fx, admin);
-        anchor_registry::propose_anchor(&alice, cid_a(), b"", string::utf8(b""), 1, FOC - 1);
+        anchor_registry::propose_anchor(&alice, cid_a(), b"", string::utf8(b""), 1, FOCAT - 1);
     }
 
     #[test(fx = @aptos_framework, admin = @fileonchain)]
@@ -156,12 +156,12 @@ module fileonchain::anchor_registry_tests {
         assert!(verified_at == timestamp::now_seconds(), 1);
         assert!(anchor_registry::verified_proposal_id(cid_a()) == 1, 2);
 
-        // 60/25/15 of a 100 FOC tip; platform 1's treasury is the admin.
-        assert!(anchor_registry::withdrawable_of(@fileonchain) == 25 * FOC + 15 * FOC, 3);
+        // 60/25/15 of a 100 FOCAT tip; platform 1's treasury is the admin.
+        assert!(anchor_registry::withdrawable_of(@fileonchain) == 25 * FOCAT + 15 * FOCAT, 3);
         // Bond returned to the proposer.
         assert!(anchor_registry::withdrawable_of(@0xA11CE) == BOND, 4);
-        // 60 FOC across six equal validators = 10 FOC each.
-        assert!(anchor_registry::pending_rewards(@0x101) == 10 * FOC, 5);
+        // 60 FOCAT across six equal validators = 10 FOCAT each.
+        assert!(anchor_registry::pending_rewards(@0x101) == 10 * FOCAT, 5);
 
         // Pull flows actually pay out.
         let alice_before = foc_token::balance(@0xA11CE);
@@ -170,7 +170,7 @@ module fileonchain::anchor_registry_tests {
         let validator = account::create_signer_for_test(@0x101);
         let validator_before = foc_token::balance(@0x101);
         anchor_registry::claim_rewards(&validator);
-        assert!(foc_token::balance(@0x101) == validator_before + 10 * FOC, 7);
+        assert!(foc_token::balance(@0x101) == validator_before + 10 * FOCAT, 7);
     }
 
     #[test(fx = @aptos_framework, admin = @fileonchain)]
@@ -186,7 +186,7 @@ module fileonchain::anchor_registry_tests {
         anchor_registry::finalize(&alice, 1);
         // validator 60 + protocol 15 roll together; platform 25 also credits
         // the admin treasury here (platform 1 treasury == admin).
-        assert!(anchor_registry::withdrawable_of(@fileonchain) == 100 * FOC, 0);
+        assert!(anchor_registry::withdrawable_of(@fileonchain) == 100 * FOCAT, 0);
     }
 
     #[test(fx = @aptos_framework, admin = @fileonchain)]
@@ -329,7 +329,7 @@ module fileonchain::anchor_registry_tests {
         anchor_registry::challenge_for_test(&bob, 1);
         // A parallel proposal verifies while the dispute runs.
         let carol = account::create_signer_for_test(@0xCA401);
-        foc_token::mint(admin, @0xCA401, 10_000 * FOC);
+        foc_token::mint(admin, @0xCA401, 10_000 * FOCAT);
         anchor_registry::propose_anchor(&carol, cid_a(), b"", string::utf8(b""), 1, TIP);
         vote_split(1, 3, 2);
         warp_past_challenge_window();
@@ -385,7 +385,7 @@ module fileonchain::anchor_registry_tests {
 
         // Below-min top-ups activate once the threshold is crossed.
         let dave = account::create_signer_for_test(@0xDA4E);
-        foc_token::mint(admin, @0xDA4E, 10_000 * FOC);
+        foc_token::mint(admin, @0xDA4E, 10_000 * FOCAT);
         anchor_registry::stake(&dave, STAKE - 1);
         assert!(anchor_registry::active_validator_count() == 6, 1);
         anchor_registry::stake(&dave, 1);
@@ -418,7 +418,7 @@ module fileonchain::anchor_registry_tests {
         warp_past_challenge_window();
         anchor_registry::finalize(&alice, 1);
 
-        // 60 FOC over 7000 staked: 2000/7000 vs 1000/7000.
+        // 60 FOCAT over 7000 staked: 2000/7000 vs 1000/7000.
         let heavy = anchor_registry::pending_rewards(@0x101);
         let light = anchor_registry::pending_rewards(@0x102);
         assert!(heavy == 2 * light, 0);

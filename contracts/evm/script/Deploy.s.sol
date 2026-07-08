@@ -14,7 +14,7 @@ import {CachePayments, IERC20} from "../src/CachePayments.sol";
 import {DonationEscrow} from "../src/DonationEscrow.sol";
 import {MockUSDC} from "../src/mocks/MockUSDC.sol";
 
-/// @notice Deploys the anchor protocol suite — FOC token, timelock +
+/// @notice Deploys the anchor protocol suite — FOCAT token, timelock +
 /// governor, ValidatorStaking, PlatformRegistry, FileRegistry — plus
 /// MockUSDC, CachePayments, and DonationEscrow, then hands every protocol
 /// contract to the timelock (the governor is its only proposer and the
@@ -22,11 +22,11 @@ import {MockUSDC} from "../src/mocks/MockUSDC.sol";
 ///   PRIVATE_KEY                 required deployer key
 ///   TREASURY_ADDRESS            required; CachePayments/DonationEscrow treasury
 ///   PLATFORM_TREASURY_ADDRESS   optional; FileOnChain platform treasury (default: TREASURY_ADDRESS)
-///   TOKEN_INITIAL_SUPPLY        optional; FOC supply minted to deployer (default 1e27)
+///   TOKEN_INITIAL_SUPPLY        optional; FOCAT supply minted to deployer (default 1e27)
 ///   TIMELOCK_MIN_DELAY          optional; seconds (default 2 days)
 ///   GOVERNOR_VOTING_DELAY       optional; blocks (default 7200 ~ 1 day)
 ///   GOVERNOR_VOTING_PERIOD      optional; blocks (default 50400 ~ 1 week)
-///   GOVERNOR_PROPOSAL_THRESHOLD optional; FOC base units (default 100k FOC)
+///   GOVERNOR_PROPOSAL_THRESHOLD optional; FOCAT base units (default 100k FOCAT)
 ///   USDC_ADDRESS                optional; deploys MockUSDC when unset
 /// Run with: `forge script script/Deploy.s.sol --rpc-url $RPC --broadcast`
 contract Deploy is Script {

@@ -30,13 +30,13 @@ FileOnChain — a pnpm workspace monorepo:
   `contracts/README.md`; per-chain deploy runbooks live in `docs/deploy/`.
   All five run the **optimistic anchor protocol**: chunk anchors are free
   event emitters; the file-level anchor is a paid `proposeAnchor` that
-  escrows a FOC tip + bond, verifies after a 24h challenge window
+  escrows a FOCAT tip + bond, verifies after a 24h challenge window
   (permissionless `finalize`; "first verified wins" per CID), and splits
   the tip 60/25/15 between staked validators, the originating platform
   (`PlatformRegistry`, FileOnChain = platform 1), and the protocol
   treasury. Disputes draw a 5-member jury from `ValidatorStaking`'s active
   set; losing bonds and losing jurors are slashed. Governance is EVM-hubbed
-  (FOC ERC20Votes + OZ Governor + Timelock own every parameter); non-EVM
+  (FOCAT ERC20Votes + OZ Governor + Timelock own every parameter); non-EVM
   runtimes mirror decisions via admin accounts — see `docs/governance.md`.
 
 **Anchoring is real where a chain is provisioned; everything else is mock.**

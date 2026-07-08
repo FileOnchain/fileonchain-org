@@ -6,14 +6,14 @@ module fileonchain::anchor_registry_tests {
     use sui::random::{Self, Random};
     use sui::test_scenario::{Self as ts, Scenario};
     use fileonchain::anchor_registry::{Self as reg, AnchorRegistry, AdminCap};
-    use fileonchain::foc::FOC;
+    use fileonchain::focat::FOCAT;
 
     const ADMIN: address = @0xAD;
     const ALICE: address = @0xA11CE;
     const BOB: address = @0xB0B;
     const CAROL: address = @0xCA401;
 
-    const FOC_UNIT: u64 = 100_000_000;
+    const FOCAT_UNIT: u64 = 100_000_000;
     const TIP: u64 = 100 * 100_000_000;
     const BOND: u64 = 100 * 100_000_000;
     const STAKE: u64 = 1_000 * 100_000_000;
@@ -41,7 +41,7 @@ module fileonchain::anchor_registry_tests {
             let validator = VALIDATORS[i];
             scenario.next_tx(validator);
             let mut registry = scenario.take_shared<AnchorRegistry>();
-            reg::stake(&mut registry, coin::mint_for_testing<FOC>(STAKE, scenario.ctx()), scenario.ctx());
+            reg::stake(&mut registry, coin::mint_for_testing<FOCAT>(STAKE, scenario.ctx()), scenario.ctx());
             ts::return_shared(registry);
             i = i + 1;
         };
@@ -53,7 +53,7 @@ module fileonchain::anchor_registry_tests {
         let mut registry = scenario.take_shared<AnchorRegistry>();
         reg::propose_anchor(
             &mut registry,
-            coin::mint_for_testing<FOC>(tip + BOND, scenario.ctx()),
+            coin::mint_for_testing<FOCAT>(tip + BOND, scenario.ctx()),
             cid_a(),
             b"contenthash",
             string::utf8(b"ipfs://bafy.../file"),
@@ -71,7 +71,7 @@ module fileonchain::anchor_registry_tests {
         let r = scenario.take_shared<Random>();
         reg::challenge_for_test(
             &mut registry,
-            coin::mint_for_testing<FOC>(BOND, scenario.ctx()),
+            coin::mint_for_testing<FOCAT>(BOND, scenario.ctx()),
             proposal_id,
             &r,
             clock,
@@ -166,22 +166,22 @@ module fileonchain::anchor_registry_tests {
 
         assert!(status_of(&mut scenario, 1) == 3); // Verified
         // 25 platform + 15 protocol both credit ADMIN (platform 1 treasury).
-        assert!(withdrawable_of(&mut scenario, ADMIN) == 40 * FOC_UNIT);
+        assert!(withdrawable_of(&mut scenario, ADMIN) == 40 * FOCAT_UNIT);
         // Bond returned to the proposer.
         assert!(withdrawable_of(&mut scenario, ALICE) == BOND);
 
-        // 60 FOC over six equal validators = 10 FOC each; claim pays out.
+        // 60 FOCAT over six equal validators = 10 FOCAT each; claim pays out.
         scenario.next_tx(@0x101);
         {
             let mut registry = scenario.take_shared<AnchorRegistry>();
-            assert!(reg::pending_rewards(&registry, @0x101) == 10 * FOC_UNIT);
+            assert!(reg::pending_rewards(&registry, @0x101) == 10 * FOCAT_UNIT);
             reg::claim_rewards(&mut registry, scenario.ctx());
             ts::return_shared(registry);
         };
         scenario.next_tx(@0x101);
         {
-            let reward = scenario.take_from_sender<coin::Coin<FOC>>();
-            assert!(reward.value() == 10 * FOC_UNIT);
+            let reward = scenario.take_from_sender<coin::Coin<FOCAT>>();
+            assert!(reward.value() == 10 * FOCAT_UNIT);
             scenario.return_to_sender(reward);
         };
 
@@ -194,7 +194,7 @@ module fileonchain::anchor_registry_tests {
         };
         scenario.next_tx(ALICE);
         {
-            let refund = scenario.take_from_sender<coin::Coin<FOC>>();
+            let refund = scenario.take_from_sender<coin::Coin<FOCAT>>();
             assert!(refund.value() == BOND);
             scenario.return_to_sender(refund);
         };
@@ -205,7 +205,7 @@ module fileonchain::anchor_registry_tests {
     #[expected_failure(abort_code = 3, location = fileonchain::anchor_registry)]
     fun propose_rejects_low_tip() {
         let (mut scenario, clock) = setup();
-        propose_as(&mut scenario, &clock, ALICE, FOC_UNIT - 1);
+        propose_as(&mut scenario, &clock, ALICE, FOCAT_UNIT - 1);
         finish(scenario, clock);
     }
 
@@ -217,7 +217,7 @@ module fileonchain::anchor_registry_tests {
         let mut registry = scenario.take_shared<AnchorRegistry>();
         reg::propose_anchor(
             &mut registry,
-            coin::mint_for_testing<FOC>(TIP, scenario.ctx()), // missing the bond
+            coin::mint_for_testing<FOCAT>(TIP, scenario.ctx()), // missing the bond
             cid_a(),
             b"",
             string::utf8(b""),
@@ -388,9 +388,9 @@ module fileonchain::anchor_registry_tests {
         scenario.next_tx(CAROL);
         {
             let mut registry = scenario.take_shared<AnchorRegistry>();
-            reg::stake(&mut registry, coin::mint_for_testing<FOC>(STAKE - 1, scenario.ctx()), scenario.ctx());
+            reg::stake(&mut registry, coin::mint_for_testing<FOCAT>(STAKE - 1, scenario.ctx()), scenario.ctx());
             assert!(reg::active_validator_count(&registry) == 6);
-            reg::stake(&mut registry, coin::mint_for_testing<FOC>(1, scenario.ctx()), scenario.ctx());
+            reg::stake(&mut registry, coin::mint_for_testing<FOCAT>(1, scenario.ctx()), scenario.ctx());
             assert!(reg::active_validator_count(&registry) == 7);
             // Unstaking below the minimum deactivates.
             reg::request_unstake(&mut registry, STAKE, &clock, scenario.ctx());
@@ -407,7 +407,7 @@ module fileonchain::anchor_registry_tests {
         };
         scenario.next_tx(CAROL);
         {
-            let unstaked = scenario.take_from_sender<coin::Coin<FOC>>();
+            let unstaked = scenario.take_from_sender<coin::Coin<FOCAT>>();
             assert!(unstaked.value() == STAKE);
             scenario.return_to_sender(unstaked);
         };

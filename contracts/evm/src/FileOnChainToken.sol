@@ -7,7 +7,7 @@ import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Vo
 import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 
 /// @title FileOnChainToken
-/// @notice FOC — the FileOnChain protocol token. Denominates anchor tips,
+/// @notice FOCAT — the FileOnChain protocol token. Denominates anchor tips,
 /// propose/challenge bonds, and validator stakes, and carries governance
 /// voting power (ERC20Votes) for the FileOnChainGovernor. Fixed supply,
 /// minted once to the initial holder.
@@ -15,8 +15,8 @@ contract FileOnChainToken is ERC20, ERC20Permit, ERC20Votes {
   constructor(
     address initialHolder,
     uint256 initialSupply
-  ) ERC20("FileOnChain", "FOC") ERC20Permit("FileOnChain") {
-    require(initialHolder != address(0), "FOCToken: zero holder");
+  ) ERC20("File On Chain Attestation Token", "FOCAT") ERC20Permit("File On Chain Attestation Token") {
+    require(initialHolder != address(0), "FOCAT: zero holder");
     _mint(initialHolder, initialSupply);
   }
 

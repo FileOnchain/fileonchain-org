@@ -4,7 +4,7 @@ import type { AnchorRequest } from "./types";
 
 /**
  * Aptos sender — free `file_registry::anchor_cid` calls per chunk, then a
- * paid `anchor_registry::propose_anchor` for the file CID (FOC tip + bond
+ * paid `anchor_registry::propose_anchor` for the file CID (FOCAT tip + bond
  * escrowed) when the chain is propose-provisioned, through Petra / Martian.
  * Provisioning is checked before any wallet interaction, so until a module
  * address lands in the SDK chain registry this throws

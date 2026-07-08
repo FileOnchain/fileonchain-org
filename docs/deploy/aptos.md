@@ -50,7 +50,7 @@ publishing account or a separate one — `anchor_cid` is permissionless.
 
 ## Anchor protocol (propose/verify)
 
-The package now also publishes `fileonchain::foc_token` (the FOC Fungible
+The package now also publishes `fileonchain::foc_token` (the FOCAT Fungible
 Asset, supply minted to the publisher) and `fileonchain::anchor_registry`
 (proposals, staking, platforms, disputes — one escrow store with internal
 ledgers; jury draws use Aptos native randomness). Both publish in the same
@@ -61,9 +61,9 @@ After publishing, additionally set `tokenContract` on the chain entry to
 the publishing account address — `isProposeProvisioned` gates the paid
 file-anchor path on it. Then:
 
-- fund the `ANCHOR_APTOS_PRIVATE_KEY` account with FOC (tips + bonds), not
+- fund the `ANCHOR_APTOS_PRIVATE_KEY` account with FOCAT (tips + bonds), not
   just APT gas (`foc_token::mint` is admin-gated for testnets)
 - stake at least `jury_size` (5) validators (`anchor_registry::stake`,
-  min 1000 FOC) so challenges can draw a jury
+  min 1000 FOCAT) so challenges can draw a jury
 - the publisher account is the parameter admin — it executes EVM
   governance decisions (see docs/governance.md)

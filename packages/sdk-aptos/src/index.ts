@@ -17,7 +17,7 @@ import {
  * Aptos client. Chunk anchors call the free event-only
  * `<moduleAddress>::file_registry::anchor_cid` with the versioned JSON
  * payloads from `@fileonchain/utils`; the file-level anchor goes through
- * `<moduleAddress>::anchor_registry::propose_anchor` when the FOC token is
+ * `<moduleAddress>::anchor_registry::propose_anchor` when the FOCAT token is
  * provisioned (`tokenContract` set on the chain entry), escrowing a tip +
  * bond that verify optimistically after the challenge window. Built against
  * the wallet-standard provider surface (Petra, Martian) plus the fullnode
@@ -65,14 +65,14 @@ export const resolveAptosChain = (
 
 /**
  * Resolve an `aptos:*` chain where the propose/verify protocol is live —
- * a deployed module plus the FOC token that denominates tips and bonds.
+ * a deployed module plus the FOCAT token that denominates tips and bonds.
  */
 export const resolveAptosProposeChain = (
   chainId: ChainId
 ): ChainConfig & { moduleAddress: string; tokenContract: string } => {
   const chain = resolveAptosChain(chainId);
   if (!chain.tokenContract) {
-    throw new ChainNotProvisionedError(chainId, "the FOC token is not deployed yet.");
+    throw new ChainNotProvisionedError(chainId, "the FOCAT token is not deployed yet.");
   }
   return chain as ChainConfig & { moduleAddress: string; tokenContract: string };
 };
@@ -167,13 +167,13 @@ export const getProposalStatus = async (chainId: ChainId, cid: string): Promise<
 export interface AptosAnchorParams extends BuildFileAnchorParams {
   /** An `aptos:*` chain id, e.g. "aptos:mainnet". */
   chainId: ChainId;
-  /** FOC tip in base units; defaults to the registry's on-chain min tip. */
+  /** FOCAT tip in base units; defaults to the registry's on-chain min tip. */
   tip?: bigint;
 }
 
 /**
  * Anchor a single file-level CID: through `anchor_registry::propose_anchor`
- * (FOC tip + bond escrowed, optimistic verification) when the chain is
+ * (FOCAT tip + bond escrowed, optimistic verification) when the chain is
  * propose-provisioned, or as a plain `file_registry::anchor_cid` event
  * otherwise.
  */
@@ -196,13 +196,13 @@ export const anchorCID = async (
 export interface AptosProposeParams extends BuildFileAnchorParams {
   /** An `aptos:*` chain id, e.g. "aptos:mainnet". */
   chainId: ChainId;
-  /** FOC tip in base units; defaults to the registry's on-chain min tip. */
+  /** FOCAT tip in base units; defaults to the registry's on-chain min tip. */
   tip?: bigint;
 }
 
 /**
  * Propose a file-level anchor via `anchor_registry::propose_anchor`,
- * escrowing `tip + propose_bond` FOC from the signer. Returns the proposal
+ * escrowing `tip + propose_bond` FOCAT from the signer. Returns the proposal
  * as read back from the registry (id, tip, bond, challenge deadline).
  */
 export const proposeAnchor = async (
@@ -258,14 +258,14 @@ export interface AptosChunkedAnchorParams {
   uri?: string;
   /** Originating platform id; defaults to FileOnChain's platform 1. */
   platformId?: string;
-  /** FOC tip in base units; defaults to the registry's on-chain min tip. */
+  /** FOCAT tip in base units; defaults to the registry's on-chain min tip. */
   tip?: bigint;
   onProgress?: AnchorProgressHandler;
 }
 
 /**
  * Anchor every chunk as a free `file_registry::anchor_cid` call, then the
- * file CID — through `anchor_registry::propose_anchor` (FOC tip + bond
+ * file CID — through `anchor_registry::propose_anchor` (FOCAT tip + bond
  * escrowed, optimistic verification) when the chain is propose-provisioned,
  * or as a plain event anchor otherwise. One wallet confirmation per
  * transaction; the last one carries the file anchor.

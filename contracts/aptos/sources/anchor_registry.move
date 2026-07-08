@@ -2,7 +2,7 @@
 /// FileRegistry + ValidatorStaking + PlatformRegistry suite, folded into one
 /// module around a single escrow pot with internal ledgers.
 ///
-/// File-level anchors are paid proposals: `propose_anchor` escrows a FOC
+/// File-level anchors are paid proposals: `propose_anchor` escrows a FOCAT
 /// tip + bond and names the originating platform. Unchallenged proposals
 /// `finalize` after the challenge window — the tip splits
 /// validator/platform/protocol (60/25/15 default). A `challenge` escrows a
@@ -76,15 +76,15 @@ module fileonchain::anchor_registry {
     const BPS_DENOM: u64 = 10_000;
     const ACC_PRECISION: u128 = 1_000_000_000_000;
 
-    // Defaults (8-decimal FOC base units); all admin-settable.
-    const DEFAULT_PROPOSE_BOND: u64 = 10_000_000_000; // 100 FOC
-    const DEFAULT_CHALLENGE_BOND: u64 = 10_000_000_000; // 100 FOC
-    const DEFAULT_MIN_TIP: u64 = 100_000_000; // 1 FOC
+    // Defaults (8-decimal FOCAT base units); all admin-settable.
+    const DEFAULT_PROPOSE_BOND: u64 = 10_000_000_000; // 100 FOCAT
+    const DEFAULT_CHALLENGE_BOND: u64 = 10_000_000_000; // 100 FOCAT
+    const DEFAULT_MIN_TIP: u64 = 100_000_000; // 1 FOCAT
     const DEFAULT_CHALLENGE_WINDOW_SECS: u64 = 86_400; // 24h
     const DEFAULT_VOTE_WINDOW_SECS: u64 = 172_800; // 48h
     const DEFAULT_JURY_SIZE: u64 = 5;
-    const DEFAULT_JUROR_SLASH: u64 = 5_000_000_000; // 50 FOC
-    const DEFAULT_MIN_STAKE: u64 = 100_000_000_000; // 1000 FOC
+    const DEFAULT_JUROR_SLASH: u64 = 5_000_000_000; // 50 FOCAT
+    const DEFAULT_MIN_STAKE: u64 = 100_000_000_000; // 1000 FOCAT
     const DEFAULT_UNBONDING_SECS: u64 = 604_800; // 7 days
 
     // ---------------------------------------------------------------------
@@ -333,7 +333,7 @@ module fileonchain::anchor_registry {
     // Propose / finalize
     // ---------------------------------------------------------------------
 
-    /// Propose a file-level anchor, escrowing `tip + propose_bond` FOC.
+    /// Propose a file-level anchor, escrowing `tip + propose_bond` FOCAT.
     public entry fun propose_anchor(
         caller: &signer,
         cid: String,
@@ -675,7 +675,7 @@ module fileonchain::anchor_registry {
     // Withdrawals
     // ---------------------------------------------------------------------
 
-    /// Pull any FOC credited to the caller (fees, refunds, juror rewards).
+    /// Pull any FOCAT credited to the caller (fees, refunds, juror rewards).
     public entry fun withdraw(caller: &signer) acquires Registry {
         let registry = borrow_global_mut<Registry>(@fileonchain);
         let to = signer::address_of(caller);

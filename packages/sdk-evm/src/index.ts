@@ -34,7 +34,7 @@ import { validatorStakingAbi } from "./abis/validatorStaking";
  * identical to anchoring a file — pass the CID of the folder's DAG root.
  *
  * Chunk anchors are free event-only `anchorChunk` transactions; the
- * file-level anchor is a paid `proposeAnchor` that escrows a FOC tip + bond,
+ * file-level anchor is a paid `proposeAnchor` that escrows a FOCAT tip + bond,
  * opens a challenge window, and verifies optimistically (anyone can call
  * `finalize` once the window closes; disputes go to a staked-validator
  * jury). The tip splits between validators, the originating platform, and
@@ -67,12 +67,12 @@ export const resolveEvmChain = (chainId: ChainId): ProvisionedEvmChain =>
 
 /**
  * Resolve an `evm:*` chain where the propose/verify protocol is live: a
- * deployed FileRegistry plus the FOC token that denominates tips and bonds.
+ * deployed FileRegistry plus the FOCAT token that denominates tips and bonds.
  */
 export const resolveEvmProposeChain = (chainId: ChainId): ProposeEvmChain => {
   const chain = resolveEvmChain(chainId);
   if (!chain.tokenContract || chain.tokenContract === ZERO_ADDRESS) {
-    throw new ChainNotProvisionedError(chainId, "The FOC token is not deployed yet.");
+    throw new ChainNotProvisionedError(chainId, "The FOCAT token is not deployed yet.");
   }
   return chain as ProposeEvmChain;
 };
@@ -162,7 +162,7 @@ export interface ProposeAnchorParams {
   uri?: string;
   /** Originating platform id; defaults to FileOnChain's platform 1. */
   platformId?: string;
-  /** FOC tip in base units; defaults to the registry's on-chain `minTip`. */
+  /** FOCAT tip in base units; defaults to the registry's on-chain `minTip`. */
   tip?: bigint;
   publicClient?: PublicClient;
   onProgress?: AnchorProgressHandler;
@@ -172,9 +172,9 @@ export interface ProposeAnchorReceipt {
   txHash: Hex;
   proposalId: string;
   platformId: string;
-  /** Escrowed tip, FOC base units. */
+  /** Escrowed tip, FOCAT base units. */
   tip: bigint;
-  /** Escrowed propose bond, FOC base units. */
+  /** Escrowed propose bond, FOCAT base units. */
   bond: bigint;
   /** Unix seconds when the challenge window closes. */
   challengeDeadline: number;
@@ -212,7 +212,7 @@ const ensureRegistryAllowance = async (
 
 /**
  * Propose a file-level anchor via `FileRegistry.proposeAnchor`, escrowing
- * `tip + proposeBond` FOC (an `approve` transaction is sent first when the
+ * `tip + proposeBond` FOCAT (an `approve` transaction is sent first when the
  * allowance is short). The proposal verifies after the challenge window
  * unless challenged; the receipt carries the window deadline.
  */
@@ -344,7 +344,7 @@ export const castVote = async (
   });
 };
 
-/** Pull any FOC credited to the caller by the registry (fees, refunds, juror rewards). */
+/** Pull any FOCAT credited to the caller by the registry (fees, refunds, juror rewards). */
 export const withdrawPayouts = async (
   walletClient: WalletClient,
   { chainId }: { chainId: ChainId }
@@ -502,7 +502,7 @@ export const isCIDAnchored = async (
 // Token / staking helpers (SDK-level; no UI yet)
 // ---------------------------------------------------------------------------
 
-/** FOC balance of an address. */
+/** FOCAT balance of an address. */
 export const getTokenBalance = async (
   chainId: ChainId,
   address: `0x${string}`,
@@ -518,7 +518,7 @@ export const getTokenBalance = async (
   });
 };
 
-/** Approve a spender (registry, staking, ...) for FOC. */
+/** Approve a spender (registry, staking, ...) for FOCAT. */
 export const approveToken = async (
   walletClient: WalletClient,
   { chainId, spender, amount }: { chainId: ChainId; spender: `0x${string}`; amount: bigint }
@@ -543,7 +543,7 @@ const resolveStakingChain = (chainId: ChainId): ProposeEvmChain & { stakingContr
   return chain as ProposeEvmChain & { stakingContract: `0x${string}` };
 };
 
-/** Stake FOC to join (or grow) the validator set. Requires prior approval. */
+/** Stake FOCAT to join (or grow) the validator set. Requires prior approval. */
 export const stake = async (
   walletClient: WalletClient,
   { chainId, amount }: { chainId: ChainId; amount: bigint }
@@ -626,7 +626,7 @@ export interface EvmChunkedAnchorParams {
   uri?: string;
   /** Originating platform id; defaults to FileOnChain's platform 1. */
   platformId?: string;
-  /** FOC tip in base units; defaults to the registry's on-chain `minTip`. */
+  /** FOCAT tip in base units; defaults to the registry's on-chain `minTip`. */
   tip?: bigint;
   /** Reused for reads and receipt waits; created from the chain RPC otherwise. */
   publicClient?: PublicClient;
@@ -635,7 +635,7 @@ export interface EvmChunkedAnchorParams {
 
 /**
  * Anchor every chunk CID as a free `anchorChunk` event, then propose the
- * file-level anchor via `proposeAnchor` (escrowing the FOC tip + bond, with
+ * file-level anchor via `proposeAnchor` (escrowing the FOCAT tip + bond, with
  * an automatic `approve` when the allowance is short). Each chunk's `uri`
  * carries the versioned chunk payload; the returned receipt includes the
  * proposal id and challenge-window deadline. One wallet confirmation per

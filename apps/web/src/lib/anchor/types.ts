@@ -16,7 +16,7 @@ export interface AnchorRequest {
    * `defaultPlatformId`, then platform 1 (FileOnChain).
    */
   platformId?: string;
-  /** FOC tip in base units; contract families default to the on-chain minTip. */
+  /** FOCAT tip in base units; contract families default to the on-chain minTip. */
   tip?: bigint;
   onProgress?: AnchorProgressHandler;
 }

@@ -1,4 +1,4 @@
-/// FOC — the FileOnChain protocol token on Sui, a `Coin<FOC>` created via
+/// FOCAT — the FileOnChain protocol token on Sui, a `Coin<FOCAT>` created via
 /// the one-time witness. Denominates anchor tips, propose/challenge bonds,
 /// and validator stakes for `fileonchain::anchor_registry`.
 ///
@@ -6,21 +6,21 @@
 /// EVM governance decisions — see docs/governance.md); supply is minted
 /// from it (`sui client call ... coin::mint_and_transfer`) rather than at
 /// init, since `init` cannot know the distribution.
-module fileonchain::foc {
+module fileonchain::focat {
     use sui::coin;
 
-    public struct FOC has drop {}
+    public struct FOCAT has drop {}
 
     // create_currency is deprecated in favor of coin_registry, but remains
     // the API wallets and explorers index today; revisit when coin_registry
     // is the ecosystem default.
     #[allow(deprecated_usage)]
-    fun init(witness: FOC, ctx: &mut TxContext) {
+    fun init(witness: FOCAT, ctx: &mut TxContext) {
         let (treasury, metadata) = coin::create_currency(
             witness,
-            8, // 1 FOC = 100_000_000 base units
-            b"FOC",
-            b"FileOnChain",
+            8, // 1 FOCAT = 100_000_000 base units
+            b"FOCAT",
+            b"File On Chain Attestation Token",
             b"FileOnChain protocol token: anchor tips, bonds, and validator stakes.",
             option::none(),
             ctx,
@@ -31,6 +31,6 @@ module fileonchain::foc {
 
     #[test_only]
     public fun init_for_test(ctx: &mut TxContext) {
-        init(FOC {}, ctx);
+        init(FOCAT {}, ctx);
     }
 }

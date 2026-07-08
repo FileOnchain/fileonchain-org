@@ -69,5 +69,5 @@ Record on the chain entry: `registryContract` stays the stateless
 chunk-anchor FileRegistry, `tokenContract` = FocToken, and
 `stakingContract` = the AnchorRegistry address (it carries proposals,
 staking, and platforms in one deployment). Fund the
-`ANCHOR_STARKNET_ACCOUNT` with FOC and stake at least 5 validators. The
+`ANCHOR_STARKNET_ACCOUNT` with FOCAT and stake at least 5 validators. The
 admin executes EVM governance decisions (see docs/governance.md).

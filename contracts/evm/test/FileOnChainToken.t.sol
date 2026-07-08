@@ -19,8 +19,8 @@ contract FileOnChainTokenTest is Test {
   }
 
   function test_Metadata() public view {
-    assertEq(token.name(), "FileOnChain");
-    assertEq(token.symbol(), "FOC");
+    assertEq(token.name(), "File On Chain Attestation Token");
+    assertEq(token.symbol(), "FOCAT");
     assertEq(token.decimals(), 18);
   }
 
@@ -30,7 +30,7 @@ contract FileOnChainTokenTest is Test {
   }
 
   function test_RevertWhen_ZeroHolder() public {
-    vm.expectRevert(bytes("FOCToken: zero holder"));
+    vm.expectRevert(bytes("FOCAT: zero holder"));
     new FileOnChainToken(address(0), SUPPLY);
   }
 

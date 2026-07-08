@@ -381,7 +381,7 @@ export const uploadJobs = pgTable(
     txHashes: jsonb("tx_hashes").$type<UploadJobTx[]>().notNull().default([]),
     /** Originating platform id for the propose/verify fee split. */
     platformId: text("platform_id"),
-    /** FOC tip escrowed for the file anchor, token base units. */
+    /** FOCAT tip escrowed for the file anchor, token base units. */
     tipBaseUnits: bigint("tip_base_units", { mode: "bigint" }),
     verificationStatus: text("verification_status")
       .$type<UploadVerificationStatus>()

@@ -14,7 +14,7 @@ import {TimelockController} from "@openzeppelin/contracts/governance/TimelockCon
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 
 /// @title FileOnChainGovernor
-/// @notice FOC-token governance over every protocol parameter: fee split
+/// @notice FOCAT-token governance over every protocol parameter: fee split
 /// bps, platform fee caps and platform add/remove, bonds, minimum tip,
 /// challenge/vote windows, jury size and slash amounts, validator minimum
 /// stake, and treasury spends (the timelock holds the protocol treasury).

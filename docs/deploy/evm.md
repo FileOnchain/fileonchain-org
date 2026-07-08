@@ -25,11 +25,11 @@ parameters change only through governance proposals.
 export PRIVATE_KEY=0x...                # deployer key (required)
 export TREASURY_ADDRESS=0x...           # CachePayments/DonationEscrow treasury (required)
 export PLATFORM_TREASURY_ADDRESS=0x...  # FileOnChain platform-fee treasury (optional, default: TREASURY_ADDRESS)
-export TOKEN_INITIAL_SUPPLY=...         # FOC minted to deployer (optional, default 1e27 = 1B FOC)
+export TOKEN_INITIAL_SUPPLY=...         # FOCAT minted to deployer (optional, default 1e27 = 1B FOCAT)
 export TIMELOCK_MIN_DELAY=...           # seconds (optional, default 172800 = 2 days)
 export GOVERNOR_VOTING_DELAY=...        # blocks (optional, default 7200 ≈ 1 day)
 export GOVERNOR_VOTING_PERIOD=...       # blocks (optional, default 50400 ≈ 1 week)
-export GOVERNOR_PROPOSAL_THRESHOLD=...  # FOC base units (optional, default 100k FOC)
+export GOVERNOR_PROPOSAL_THRESHOLD=...  # FOCAT base units (optional, default 100k FOCAT)
 export USDC_ADDRESS=0x...               # the chain's canonical USDC (optional)
 ```
 
@@ -110,10 +110,10 @@ Record the result in `packages/utils/src/chains.ts` on the chain's
 path additionally needs `tokenContract` (see `isProposeProvisioned`).
 
 Fund the server signer: the account behind `ANCHOR_EVM_PRIVATE_KEY` needs
-native gas on every EVM chain it serves, **and FOC** for tips and propose
+native gas on every EVM chain it serves, **and FOCAT** for tips and propose
 bonds (plus a one-time ERC-20 approval to the registry, which the SDK
 handles automatically on first propose).
 
 Bootstrap the validator set: challenges revert while fewer than `jurySize`
 (default 5) validators are staked. Stake FileOnChain-operated validators
-(`ValidatorStaking.stake`, min 1000 FOC each) right after deploying.
+(`ValidatorStaking.stake`, min 1000 FOCAT each) right after deploying.

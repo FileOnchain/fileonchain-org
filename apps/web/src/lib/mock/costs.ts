@@ -118,9 +118,9 @@ export const perChunkCost = (est: ChainCostEstimate) => {
 
 /**
  * Per-file verification tip on propose/verify chains: the file-level anchor
- * escrows a FOC tip that splits 60/25/15 between validators, the
+ * escrows a FOCAT tip that splits 60/25/15 between validators, the
  * originating platform, and the protocol treasury once the anchor verifies.
- * TODO: replace the mock FOC→USD rate with a price feed.
+ * TODO: replace the mock FOCAT→USD rate with a price feed.
  */
 const PROTOCOL_FAMILY_PREFIXES = ["evm:", "aptos:", "sui:", "starknet:", "near:"];
 export const verificationTipUsd = (chainId: ChainId): number =>

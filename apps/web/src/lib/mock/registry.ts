@@ -60,7 +60,7 @@ export interface MockProposal {
   status: "proposed" | "challenged" | "verified" | "rejected";
   proposer: string;
   platformId: string;
-  /** FOC base units, stringified. */
+  /** FOCAT base units, stringified. */
   tip: string;
   bond: string;
   /** Unix seconds when the challenge window closes. */
@@ -88,8 +88,8 @@ export const getMockProposal = (cid: string, chainId: ChainId): MockProposal | n
     status: verified ? "verified" : "proposed",
     proposer: `0x${seed.slice(2, 42)}`,
     platformId: "1",
-    tip: "1000000000000000000", // 1 FOC
-    bond: "100000000000000000000", // 100 FOC
+    tip: "1000000000000000000", // 1 FOCAT
+    bond: "100000000000000000000", // 100 FOCAT
     challengeDeadline: verified ? now - 3_600 : now + 86_400,
     verifiedAt: verified ? now - 3_600 : 0,
   };

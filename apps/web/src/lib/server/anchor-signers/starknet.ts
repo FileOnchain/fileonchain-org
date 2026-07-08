@@ -5,7 +5,7 @@ import type { UploadJobTx } from "@/lib/db/schema";
 /** Starknet server signer: a deployed account contract (address + key)
  * executes the anchor multicall against the Cairo registry. File-level
  * anchors go through the AnchorRegistry's approve + propose_anchor
- * multicall (FOC tip + bond escrowed) when the chain is
+ * multicall (FOCAT tip + bond escrowed) when the chain is
  * propose-provisioned. */
 export const anchorOnStarknet = async (
   chain: ChainConfig,

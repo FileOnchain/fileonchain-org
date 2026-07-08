@@ -217,7 +217,7 @@ export const isChainProvisioned = (chain: ChainConfig): boolean => {
 
 /**
  * Whether the optimistic propose/verify protocol is live on this chain —
- * a stricter gate than `isChainProvisioned`: it additionally needs the FOC
+ * a stricter gate than `isChainProvisioned`: it additionally needs the FOCAT
  * token (tips/bonds are token-denominated). Memo-only families never
  * provision the propose path; their file anchors stay plain memos.
  */

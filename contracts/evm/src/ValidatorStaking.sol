@@ -7,7 +7,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title ValidatorStaking
 /// @notice Validators opt into the FileOnChain verification market by staking
-/// FOC above `minStake`. Active validators are eligible for jury duty on
+/// FOCAT above `minStake`. Active validators are eligible for jury duty on
 /// disputed anchors, earn the validator share of anchor tips pro-rata
 /// (MasterChef-style accumulator), and are slashed by the registry when they
 /// vote with the losing side of a dispute. Unbonding stake remains slashable

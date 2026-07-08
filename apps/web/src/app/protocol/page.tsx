@@ -13,7 +13,7 @@ import {
 export const metadata: Metadata = {
   title: "Protocol",
   description:
-    "How FileOnChain's optimistic anchor protocol works: propose with a FOC tip and bond, a challenge window, staked validator juries, and a 60/25/15 fee split between validators, platforms, and the protocol treasury.",
+    "How FileOnChain's optimistic anchor protocol works: propose with a FOCAT tip and bond, a challenge window, staked validator juries, and a 60/25/15 fee split between validators, platforms, and the protocol treasury.",
   alternates: { canonical: `${siteConfig.url}/protocol` },
 };
 
@@ -22,7 +22,7 @@ const shortAddress = (address: string): string => `${address.slice(0, 8)}…${ad
 const STEPS = [
   {
     title: "1 · Propose",
-    body: "A file-level anchor escrows a FOC tip plus a propose bond and names the originating platform (the app, a partner API, an MCP client). Chunk anchors stay free — only the file CID enters the protocol.",
+    body: "A file-level anchor escrows a FOCAT tip plus a propose bond and names the originating platform (the app, a partner API, an MCP client). Chunk anchors stay free — only the file CID enters the protocol.",
   },
   {
     title: "2 · Challenge window",
@@ -39,7 +39,7 @@ const STEPS = [
 ] as const;
 
 const GOVERNANCE_POINTS = [
-  "The FOC token votes through an on-chain Governor + timelock on EVM: fee split, platform caps and registration, bonds, tip minimums, windows, jury parameters, validator stake minimums, and treasury spends.",
+  "The FOCAT token votes through an on-chain Governor + timelock on EVM: fee split, platform caps and registration, bonds, tip minimums, windows, jury parameters, validator stake minimums, and treasury spends.",
   "The timelock is the protocol treasury — spending tip revenue is itself a governance proposal.",
   "Aptos, Sui, Starknet, and NEAR run the same protocol with parameters held by an admin account that executes EVM governance decisions.",
   "Governance decides protocol rules, never per-file outcomes — individual anchors are settled by the optimistic window and staked juries.",
@@ -60,12 +60,12 @@ const ProtocolPage = () => {
         index="07"
         kicker="Verification market"
         title="The anchor protocol"
-        lede="Anchors are verified claims, not just transactions: every file anchor posts a FOC tip and a bond, survives a challenge window policed by staked validators, and pays the network that verified it."
+        lede="Anchors are verified claims, not just transactions: every file anchor posts a FOCAT tip and a bond, survives a challenge window policed by staked validators, and pays the network that verified it."
       />
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "FOC staked", value: stats.totalStakedFoc.toLocaleString() },
+          { label: "FOCAT staked", value: stats.totalStakedFoc.toLocaleString() },
           { label: "Active validators", value: String(stats.activeValidators) },
           { label: "Anchors verified", value: stats.proposalsVerified.toLocaleString() },
           { label: "Disputes resolved", value: String(stats.disputesResolved) },
@@ -108,7 +108,7 @@ const ProtocolPage = () => {
             </p>
             <p>
               <span className="font-medium">{split.protocolBps / 100}% protocol</span>
-              <span className="block text-muted">treasury governed by FOC holders</span>
+              <span className="block text-muted">treasury governed by FOCAT holders</span>
             </p>
           </div>
         </Card>
@@ -129,7 +129,7 @@ const ProtocolPage = () => {
       <section className="mt-10">
         <h2 className="text-lg font-semibold">Validators</h2>
         <p className="mt-1 text-sm text-muted">
-          Validators stake FOC to join the verification market: they earn the validator share of
+          Validators stake FOCAT to join the verification market: they earn the validator share of
           every tip and sit on dispute juries, where voting with the losing side is slashed.
           Mock data until deployments land; staking UI ships separately.
         </p>
@@ -138,8 +138,8 @@ const ProtocolPage = () => {
             <thead className="border-b border-border text-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">Validator</th>
-                <th className="px-4 py-3 font-medium">Stake (FOC)</th>
-                <th className="px-4 py-3 font-medium">Rewards (FOC)</th>
+                <th className="px-4 py-3 font-medium">Stake (FOCAT)</th>
+                <th className="px-4 py-3 font-medium">Rewards (FOCAT)</th>
                 <th className="px-4 py-3 font-medium">Jury duties</th>
                 <th className="px-4 py-3 font-medium">Slashes</th>
                 <th className="px-4 py-3 font-medium">Status</th>
@@ -180,7 +180,7 @@ const ProtocolPage = () => {
                 <th className="px-4 py-3 font-medium">Platform</th>
                 <th className="px-4 py-3 font-medium">Fee share</th>
                 <th className="px-4 py-3 font-medium">Anchors originated</th>
-                <th className="px-4 py-3 font-medium">Revenue (FOC)</th>
+                <th className="px-4 py-3 font-medium">Revenue (FOCAT)</th>
                 <th className="px-4 py-3 font-medium">Status</th>
               </tr>
             </thead>

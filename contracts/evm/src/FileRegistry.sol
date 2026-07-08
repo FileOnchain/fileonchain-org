@@ -11,7 +11,7 @@ import {PlatformRegistry} from "./PlatformRegistry.sol";
 /// @title FileRegistry
 /// @notice Optimistic anchor registry for file CIDs.
 ///
-/// File-level anchors are paid *proposals*: the proposer escrows a FOC tip
+/// File-level anchors are paid *proposals*: the proposer escrows a FOCAT tip
 /// plus a bond and names the originating platform. An unchallenged proposal
 /// can be finalized by anyone after the challenge window — it becomes
 /// Verified and the tip splits `validatorBps`/`platformBps`/`protocolBps`
@@ -53,8 +53,8 @@ contract FileRegistry is Ownable, ReentrancyGuard {
     string uri; // optional IPFS / Arweave pointer
     address proposer;
     uint256 platformId; // originating integrator (PlatformRegistry id)
-    uint256 tip; // escrowed FOC, split on verification
-    uint256 bond; // escrowed FOC, returned on verification / slashed on rejection
+    uint256 tip; // escrowed FOCAT, split on verification
+    uint256 bond; // escrowed FOCAT, returned on verification / slashed on rejection
     uint64 proposedAt;
     uint64 challengeDeadline;
     uint64 verifiedAt; // 0 until Verified
@@ -183,7 +183,7 @@ contract FileRegistry is Ownable, ReentrancyGuard {
   // Propose / finalize
   // ---------------------------------------------------------------------
 
-  /// @notice Propose a file-level anchor. Escrows `tip + proposeBond` FOC
+  /// @notice Propose a file-level anchor. Escrows `tip + proposeBond` FOCAT
   /// (requires prior approval). The proposal verifies after the challenge
   /// window unless challenged.
   function proposeAnchor(
@@ -309,7 +309,7 @@ contract FileRegistry is Ownable, ReentrancyGuard {
   // Withdrawals
   // ---------------------------------------------------------------------
 
-  /// @notice Pull any FOC credited to the caller (fee shares, refunds,
+  /// @notice Pull any FOCAT credited to the caller (fee shares, refunds,
   /// bond returns, juror rewards).
   function withdraw() external nonReentrant {
     uint256 amount = withdrawable[msg.sender];

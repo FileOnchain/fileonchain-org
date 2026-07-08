@@ -1,4 +1,4 @@
-//! FOC — the FileOnChain protocol token on Starknet. A deliberately minimal
+//! FOCAT — the FileOnChain protocol token on Starknet. A deliberately minimal
 //! ERC-20 (no external dependencies, matching this package's cairo-test
 //! setup): fixed supply minted to the initial holder, standard
 //! transfer/approve surface, 18 decimals like the EVM FileOnChainToken.
@@ -67,7 +67,7 @@ pub mod FocToken {
 
     #[constructor]
     fn constructor(ref self: ContractState, initial_holder: ContractAddress, initial_supply: u256) {
-        assert!(!initial_holder.is_zero(), "FOC: zero holder");
+        assert!(!initial_holder.is_zero(), "FOCAT: zero holder");
         self.total_supply.write(initial_supply);
         self.balances.entry(initial_holder).write(initial_supply);
         self
@@ -81,11 +81,11 @@ pub mod FocToken {
     #[abi(embed_v0)]
     impl ERC20Impl of super::IERC20<ContractState> {
         fn name(self: @ContractState) -> ByteArray {
-            "FileOnChain"
+            "File On Chain Attestation Token"
         }
 
         fn symbol(self: @ContractState) -> ByteArray {
-            "FOC"
+            "FOCAT"
         }
 
         fn decimals(self: @ContractState) -> u8 {
@@ -119,7 +119,7 @@ pub mod FocToken {
         ) -> bool {
             let caller = get_caller_address();
             let allowed = self.allowances.entry((sender, caller)).read();
-            assert!(allowed >= amount, "FOC: insufficient allowance");
+            assert!(allowed >= amount, "FOCAT: insufficient allowance");
             self.allowances.entry((sender, caller)).write(allowed - amount);
             self._transfer(sender, recipient, amount);
             true
@@ -141,9 +141,9 @@ pub mod FocToken {
             recipient: ContractAddress,
             amount: u256,
         ) {
-            assert!(!recipient.is_zero(), "FOC: transfer to zero");
+            assert!(!recipient.is_zero(), "FOCAT: transfer to zero");
             let sender_balance = self.balances.entry(sender).read();
-            assert!(sender_balance >= amount, "FOC: insufficient balance");
+            assert!(sender_balance >= amount, "FOCAT: insufficient balance");
             self.balances.entry(sender).write(sender_balance - amount);
             self.balances.entry(recipient).write(self.balances.entry(recipient).read() + amount);
             self.emit(Event::Transfer(Transfer { from: sender, to: recipient, value: amount }));

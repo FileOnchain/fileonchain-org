@@ -14,7 +14,7 @@ interface SuiSignAndExecuteTransactionFeature {
 /**
  * Sui sender — free `file_registry::anchor_cid` move calls batched into
  * programmable transaction blocks, then a paid
- * `anchor_registry::propose_anchor` for the file CID (an exact FOC coin
+ * `anchor_registry::propose_anchor` for the file CID (an exact FOCAT coin
  * split in the PTB — Sui has no allowances) when the chain is
  * propose-provisioned, signed by the wallet-standard wallet the user
  * connected via useSuiWallet. Our chain ids ("sui:mainnet" / "sui:testnet")
