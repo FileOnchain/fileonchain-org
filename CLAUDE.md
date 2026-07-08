@@ -26,8 +26,18 @@ FileOnChain — a pnpm workspace monorepo:
   - `mcp/` — `@fileonchain/mcp`, stdio MCP server for AI agents (registry
     lookups + API-backed anchoring; see `packages/mcp/README.md`).
 - **`contracts/`** — one directory per runtime (`evm/` Foundry, `aptos/` +
-  `sui/` Move, `starknet/` Cairo, `near/` Rust) — see `contracts/README.md`;
-  per-chain deploy runbooks live in `docs/deploy/`.
+  `sui/` Move, `starknet/` Cairo, `near/` Rust cargo workspace) — see
+  `contracts/README.md`; per-chain deploy runbooks live in `docs/deploy/`.
+  All five run the **optimistic anchor protocol**: chunk anchors are free
+  event emitters; the file-level anchor is a paid `proposeAnchor` that
+  escrows a FOC tip + bond, verifies after a 24h challenge window
+  (permissionless `finalize`; "first verified wins" per CID), and splits
+  the tip 60/25/15 between staked validators, the originating platform
+  (`PlatformRegistry`, FileOnChain = platform 1), and the protocol
+  treasury. Disputes draw a 5-member jury from `ValidatorStaking`'s active
+  set; losing bonds and losing jurors are slashed. Governance is EVM-hubbed
+  (FOC ERC20Votes + OZ Governor + Timelock own every parameter); non-EVM
+  runtimes mirror decisions via admin accounts — see `docs/governance.md`.
 
 **Anchoring is real where a chain is provisioned; everything else is mock.**
 The pay-as-you-go upload flow sends real transactions through
@@ -97,8 +107,13 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
   provisioning fields are optional and appear only where relevant:
   `memoAnchoring` (the deliberate on-switch for memo/metadata/comment
   anchoring — Cosmos, TRON, Cardano, TON; true on their testnets, flipped on
-  mainnets after QA), `bech32Prefix` (Cosmos), `hcsTopicId` (Hedera), and
-  `embedsChunkData` (chunk bytes ride along only on Autonomys). Every family
+  mainnets after QA), `bech32Prefix` (Cosmos), `hcsTopicId` (Hedera),
+  `embedsChunkData` (chunk bytes ride along only on Autonomys), and the
+  anchor-protocol addresses on contract families (`tokenContract`,
+  `stakingContract`, `platformRegistryContract`, `governorContract`,
+  `timelockContract`, `defaultPlatformId`) — `isProposeProvisioned` gates
+  the paid propose path on `tokenContract`, a stricter check than
+  `isChainProvisioned`. Every family
   has mainnet **and testnet** entries (`testnet: true`); `MAINNET_CHAINS` /
   `TESTNET_CHAINS` / `getVisibleChains(showTestnets)` split them — webapp
   pickers use `useVisibleChains()` (preference-driven), static marketing copy
@@ -111,9 +126,12 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
   payloads (`buildFileAnchorPayload` / `buildChunkAnchorPayload` /
   `parseAnchorPayload`) written identically on every family, the
   `AnchorChunk` / `ChunkedAnchorReceipt` / `AnchorProgress` types, and the
-  provisioning seam (`isChainProvisioned`, `ChainNotProvisionedError` —
-  thrown by family clients when a chain has nothing deployed, so callers can
-  fall back to a simulated flow).
+  provisioning seam (`isChainProvisioned`, `isProposeProvisioned`,
+  `ChainNotProvisionedError` — thrown by family clients when a chain has
+  nothing deployed, so callers can fall back to a simulated flow), and the
+  verification vocabulary (`ProposalStatus`, `AnchorProposal`, the
+  `proposal` block on `ChunkedAnchorReceipt`, the `"approving"`
+  `AnchorStage` for token-allowance steps).
 - `src/helpers.ts` — the orchestration the family clients share:
   `resolveFamilyChain` (behind every `resolve<Family>Chain` guard),
   `assertPayloadFits` (memo/comment/message size pre-flight),
@@ -164,7 +182,8 @@ semver ranges. Repo-level Claude Code skills live in `.claude/skills/`
 - **`@/*` path alias** → `apps/web/src/*`. Shared chain types/metadata import
   from `@fileonchain/sdk`; only web-specific code uses `@/...`.
 - **`src/app/`** — App Router. Routes: `/` (upload), `/explorer` (+ `/explorer/[cid]`),
-  `/cache`, `/donations`, `/leaderboard`, `/profile/[address]`, `/login`, and
+  `/cache`, `/donations`, `/protocol` (anchor-protocol explainer +
+  read-only validator/platform tables), `/leaderboard`, `/profile/[address]`, `/login`, and
   the auth-guarded `/dashboard` (+ `logs`, `credits`, `keys`, `byok`,
   `preferences` subroutes). API routes under `app/api/`: the mock trio (`cid`,
   `search-file`, `upload-fallback`) plus the account backend (`auth`,
