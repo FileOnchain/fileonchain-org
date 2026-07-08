@@ -1,16 +1,10 @@
-[package]
-name = "fileonchain-registry"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+resolver = "2"
+members = ["registry", "foc-token"]
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
-[dependencies]
+[workspace.dependencies]
 near-sdk = "5"
-
-[dev-dependencies]
-near-sdk = { version = "5", features = ["unit-testing"] }
+near-contract-standards = "5"
 
 [profile.release]
 codegen-units = 1

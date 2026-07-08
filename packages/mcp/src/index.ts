@@ -164,9 +164,16 @@ server.registerTool(
       chainIds: z.array(chainIdSchema).nonempty(),
       paymentMethod: z.enum(["credits", "byok"]).default("credits"),
       byokKeyId: z.string().optional().describe('Required when paymentMethod is "byok"'),
+      platformId: z
+        .string()
+        .regex(/^[0-9]+$/)
+        .optional()
+        .describe(
+          "Registered platform id to attribute the anchor to (fee-split rev share); defaults to FileOnChain's platform",
+        ),
     },
   },
-  async ({ cid, fileName, fileSizeBytes, chunkCount, chainIds, paymentMethod, byokKeyId }) =>
+  async ({ cid, fileName, fileSizeBytes, chunkCount, chainIds, paymentMethod, byokKeyId, platformId }) =>
     runApiTool((client) =>
       client.anchor({
         cid,
@@ -176,6 +183,7 @@ server.registerTool(
         chainIds: chainIds as ChainId[],
         paymentMethod,
         byokKeyId,
+        platformId,
       }),
     ),
 );
@@ -185,7 +193,7 @@ server.registerTool(
   {
     title: "Get an anchor job",
     description:
-      "Fetch an anchor job by id (status, cost, per-chain transaction hashes). Requires FILEONCHAIN_API_KEY.",
+      "Fetch an anchor job by id (status, cost, per-chain transaction hashes, and the propose/verify verification state with its challenge-window deadline). Requires FILEONCHAIN_API_KEY.",
     inputSchema: {
       jobId: z.string(),
       wait: z.boolean().optional().describe("Poll until the job completes or fails (up to 2 minutes)"),

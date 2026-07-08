@@ -3,6 +3,7 @@ import { keccak256, stringToBytes } from "viem";
 import {
   getChain,
   isChainProvisioned,
+  isProposeProvisioned,
   ChainNotProvisionedError,
   type ChainConfig,
   type ChainId,
@@ -39,23 +40,36 @@ const anchorOnEvm = async (
   chain: ChainConfig,
   cid: string,
   privateKey: string,
-): Promise<UploadJobTx> => {
-  const [{ createPublicClient, createWalletClient, http }, { privateKeyToAccount }, evm] =
-    await Promise.all([
-      import("viem"),
-      import("viem/accounts"),
-      import("@fileonchain/sdk/evm"),
-    ]);
+  platformId: string,
+): Promise<UploadJobTx & { challengeDeadline?: number }> => {
+  const [{ createWalletClient, http }, { privateKeyToAccount }, evm] = await Promise.all([
+    import("viem"),
+    import("viem/accounts"),
+    import("@fileonchain/sdk/evm"),
+  ]);
   const viemChain = evm.toViemChain(chain);
   const walletClient = createWalletClient({
     account: privateKeyToAccount(privateKey as `0x${string}`),
     chain: viemChain,
     transport: http(chain.rpcUrl),
   });
-  const txHash = await evm.anchorCID(walletClient, { chainId: chain.id, cid });
-  const publicClient = createPublicClient({ chain: viemChain, transport: http(chain.rpcUrl) });
-  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-  return { chainId: chain.id, txHash, blockNumber: Number(receipt.blockNumber) };
+  // proposeAnchor escrows the FOCAT tip + bond from the server signer
+  // (auto-approves when short) and waits for its own receipt. The anchor
+  // enters its challenge window here and verifies via permissionless
+  // finalize once the window closes.
+  const receipt = await evm.proposeAnchor(walletClient, {
+    chainId: chain.id,
+    cid,
+    platformId,
+    tip: env.anchorTipBaseUnits,
+  });
+  return {
+    chainId: chain.id,
+    txHash: receipt.txHash,
+    blockNumber: receipt.blockNumber,
+    proposalId: receipt.proposalId,
+    challengeDeadline: receipt.challengeDeadline,
+  };
 };
 
 const anchorOnSubstrate = async (
@@ -144,6 +158,7 @@ const anchorOnAptos = async (
   chain: ChainConfig,
   cid: string,
   privateKey: string,
+  platformId: string,
 ): Promise<UploadJobTx> => {
   const [{ Aptos, AptosConfig, Account, Ed25519PrivateKey }, aptos] = await Promise.all([
     import("@aptos-labs/ts-sdk"),
@@ -167,22 +182,123 @@ const anchorOnAptos = async (
         return { hash: pending.hash };
       },
     },
-    { chainId: chain.id, cid },
+    { chainId: chain.id, cid, platformId },
   );
   const committed = await client.waitForTransaction({ transactionHash: hash });
   // Aptos has no per-tx block number; the ledger version is the analog.
   return { chainId: chain.id, txHash: hash, blockNumber: Number(committed.version) };
 };
 
+/** Dispatch to the configured signer for the family; null when no signer env is set. */
+const sendWithSigner = async (
+  chain: ChainConfig,
+  cid: string,
+  platformId: string,
+): Promise<(UploadJobTx & { challengeDeadline?: number }) | null> => {
+  if (chain.family === "evm" && env.anchorEvmPrivateKey) {
+    return await anchorOnEvm(chain, cid, env.anchorEvmPrivateKey, platformId);
+  }
+  if (chain.family === "substrate" && env.anchorSubstrateSeed) {
+    return await anchorOnSubstrate(chain, cid, env.anchorSubstrateSeed);
+  }
+  if (chain.family === "solana" && env.anchorSolanaSecretKey) {
+    return await anchorOnSolana(chain, cid, env.anchorSolanaSecretKey);
+  }
+  if (chain.family === "aptos" && env.anchorAptosPrivateKey) {
+    return await anchorOnAptos(chain, cid, env.anchorAptosPrivateKey, platformId);
+  }
+  if (chain.family === "cosmos" && env.anchorCosmosMnemonic) {
+    const { anchorOnCosmos } = await import("./anchor-signers/cosmos");
+    return await anchorOnCosmos(chain, cid, env.anchorCosmosMnemonic);
+  }
+  if (chain.family === "sui" && env.anchorSuiPrivateKey) {
+    const { anchorOnSui } = await import("./anchor-signers/sui");
+    return await anchorOnSui(chain, cid, env.anchorSuiPrivateKey);
+  }
+  if (
+    chain.family === "starknet" &&
+    env.anchorStarknetAccount &&
+    env.anchorStarknetPrivateKey
+  ) {
+    const { anchorOnStarknet } = await import("./anchor-signers/starknet");
+    return await anchorOnStarknet(
+      chain,
+      cid,
+      env.anchorStarknetAccount,
+      env.anchorStarknetPrivateKey,
+    );
+  }
+  if (chain.family === "near" && env.anchorNearAccountId && env.anchorNearPrivateKey) {
+    const { anchorOnNear } = await import("./anchor-signers/near");
+    return await anchorOnNear(chain, cid, env.anchorNearAccountId, env.anchorNearPrivateKey);
+  }
+  if (chain.family === "tron" && env.anchorTronPrivateKey) {
+    const { anchorOnTron } = await import("./anchor-signers/tron");
+    return await anchorOnTron(chain, cid, env.anchorTronPrivateKey);
+  }
+  // Cardano's signer talks to Blockfrost via its project key, not
+  // chain.rpcUrl — custom RPC overrides don't apply here.
+  if (
+    chain.family === "cardano" &&
+    env.anchorCardanoSigningKey &&
+    env.anchorCardanoBlockfrostKey
+  ) {
+    const { anchorOnCardano } = await import("./anchor-signers/cardano");
+    return await anchorOnCardano(
+      chain,
+      cid,
+      env.anchorCardanoSigningKey,
+      env.anchorCardanoBlockfrostKey,
+    );
+  }
+  if (chain.family === "ton" && env.anchorTonMnemonic) {
+    const { anchorOnTon } = await import("./anchor-signers/ton");
+    return await anchorOnTon(chain, cid, env.anchorTonMnemonic, env.anchorTonApiKey);
+  }
+  // Hedera's signer uses the SDK's built-in network map
+  // (Client.forMainnet/forTestnet), not chain.rpcUrl — overrides don't apply.
+  if (
+    chain.family === "hedera" &&
+    env.anchorHederaOperatorId &&
+    env.anchorHederaPrivateKey
+  ) {
+    const { anchorOnHedera } = await import("./anchor-signers/hedera");
+    return await anchorOnHedera(
+      chain,
+      cid,
+      env.anchorHederaOperatorId,
+      env.anchorHederaPrivateKey,
+    );
+  }
+  return null;
+};
+
+interface AnchorSendResult {
+  tx: UploadJobTx;
+  /** True when the send was the deterministic mock, not a real transaction. */
+  simulated: boolean;
+  /** True when the file anchor went through the propose/verify protocol. */
+  proposed: boolean;
+  /** Unix seconds when the propose challenge window closes, when known. */
+  challengeDeadline?: number;
+}
+
 const anchorOnChain = async (
   jobId: string,
   cid: string,
   chainId: ChainId,
+  platformId: string,
   rpcOverrides: CustomRpcMap = {},
-): Promise<UploadJobTx> => {
+): Promise<AnchorSendResult> => {
+  const simulated = (): AnchorSendResult => ({
+    tx: mockTx(jobId, cid, chainId),
+    simulated: true,
+    proposed: false,
+  });
+
   const registryChain = getChain(chainId);
   if (!registryChain || !isChainProvisioned(registryChain)) {
-    return mockTx(jobId, cid, chainId);
+    return simulated();
   }
 
   // Provisioning is judged on the registry entry; only the endpoint we dial
@@ -194,98 +310,67 @@ const anchorOnChain = async (
   }
 
   try {
-    if (chain.family === "evm" && env.anchorEvmPrivateKey) {
-      return await anchorOnEvm(chain, cid, env.anchorEvmPrivateKey);
-    }
-    if (chain.family === "substrate" && env.anchorSubstrateSeed) {
-      return await anchorOnSubstrate(chain, cid, env.anchorSubstrateSeed);
-    }
-    if (chain.family === "solana" && env.anchorSolanaSecretKey) {
-      return await anchorOnSolana(chain, cid, env.anchorSolanaSecretKey);
-    }
-    if (chain.family === "aptos" && env.anchorAptosPrivateKey) {
-      return await anchorOnAptos(chain, cid, env.anchorAptosPrivateKey);
-    }
-    if (chain.family === "cosmos" && env.anchorCosmosMnemonic) {
-      const { anchorOnCosmos } = await import("./anchor-signers/cosmos");
-      return await anchorOnCosmos(chain, cid, env.anchorCosmosMnemonic);
-    }
-    if (chain.family === "sui" && env.anchorSuiPrivateKey) {
-      const { anchorOnSui } = await import("./anchor-signers/sui");
-      return await anchorOnSui(chain, cid, env.anchorSuiPrivateKey);
-    }
-    if (
-      chain.family === "starknet" &&
-      env.anchorStarknetAccount &&
-      env.anchorStarknetPrivateKey
-    ) {
-      const { anchorOnStarknet } = await import("./anchor-signers/starknet");
-      return await anchorOnStarknet(
-        chain,
-        cid,
-        env.anchorStarknetAccount,
-        env.anchorStarknetPrivateKey,
-      );
-    }
-    if (chain.family === "near" && env.anchorNearAccountId && env.anchorNearPrivateKey) {
-      const { anchorOnNear } = await import("./anchor-signers/near");
-      return await anchorOnNear(chain, cid, env.anchorNearAccountId, env.anchorNearPrivateKey);
-    }
-    if (chain.family === "tron" && env.anchorTronPrivateKey) {
-      const { anchorOnTron } = await import("./anchor-signers/tron");
-      return await anchorOnTron(chain, cid, env.anchorTronPrivateKey);
-    }
-    // Cardano's signer talks to Blockfrost via its project key, not
-    // chain.rpcUrl — custom RPC overrides don't apply here.
-    if (
-      chain.family === "cardano" &&
-      env.anchorCardanoSigningKey &&
-      env.anchorCardanoBlockfrostKey
-    ) {
-      const { anchorOnCardano } = await import("./anchor-signers/cardano");
-      return await anchorOnCardano(
-        chain,
-        cid,
-        env.anchorCardanoSigningKey,
-        env.anchorCardanoBlockfrostKey,
-      );
-    }
-    if (chain.family === "ton" && env.anchorTonMnemonic) {
-      const { anchorOnTon } = await import("./anchor-signers/ton");
-      return await anchorOnTon(chain, cid, env.anchorTonMnemonic, env.anchorTonApiKey);
-    }
-    // Hedera's signer uses the SDK's built-in network map
-    // (Client.forMainnet/forTestnet), not chain.rpcUrl — overrides don't apply.
-    if (
-      chain.family === "hedera" &&
-      env.anchorHederaOperatorId &&
-      env.anchorHederaPrivateKey
-    ) {
-      const { anchorOnHedera } = await import("./anchor-signers/hedera");
-      return await anchorOnHedera(
-        chain,
-        cid,
-        env.anchorHederaOperatorId,
-        env.anchorHederaPrivateKey,
-      );
+    const sent = await sendWithSigner(chain, cid, platformId);
+    if (sent) {
+      const { challengeDeadline, ...tx } = sent;
+      return {
+        tx,
+        simulated: false,
+        // The family clients route file anchors through proposeAnchor
+        // exactly when the chain is propose-provisioned.
+        proposed: isProposeProvisioned(chain),
+        challengeDeadline,
+      };
     }
   } catch (error) {
-    if (error instanceof ChainNotProvisionedError) return mockTx(jobId, cid, chainId);
+    if (error instanceof ChainNotProvisionedError) return simulated();
     throw error; // a configured signer failing is a real failure — surface it
   }
 
-  return mockTx(jobId, cid, chainId);
+  return simulated();
 };
+
+export interface AnchorWorkerResult {
+  txs: UploadJobTx[];
+  /** Propose/verify lifecycle across the requested chains: "proposed" when
+   * at least one real anchor entered a challenge window. */
+  verification: {
+    status: "none" | "proposed";
+    /** Earliest challenge-window close across proposed chains. */
+    challengeDeadlineAt: Date | null;
+    platformId: string | null;
+  };
+}
 
 export const runAnchorWorker = async (
   jobId: string,
   cid: string,
   chainIds: ChainId[],
   rpcOverrides: CustomRpcMap = {},
-): Promise<UploadJobTx[]> => {
-  const results: UploadJobTx[] = [];
+  platformId: string = env.anchorPlatformId,
+): Promise<AnchorWorkerResult> => {
+  const txs: UploadJobTx[] = [];
+  let proposed = false;
+  let earliestDeadline: number | undefined;
   for (const chainId of chainIds) {
-    results.push(await anchorOnChain(jobId, cid, chainId, rpcOverrides));
+    const result = await anchorOnChain(jobId, cid, chainId, platformId, rpcOverrides);
+    txs.push(result.tx);
+    if (result.proposed) {
+      proposed = true;
+      if (result.challengeDeadline) {
+        earliestDeadline = Math.min(
+          earliestDeadline ?? result.challengeDeadline,
+          result.challengeDeadline,
+        );
+      }
+    }
   }
-  return results;
+  return {
+    txs,
+    verification: {
+      status: proposed ? "proposed" : "none",
+      challengeDeadlineAt: earliestDeadline ? new Date(earliestDeadline * 1000) : null,
+      platformId: proposed ? platformId : null,
+    },
+  };
 };

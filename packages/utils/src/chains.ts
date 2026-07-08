@@ -23,6 +23,25 @@ export interface ChainConfig {
   registryContract: `0x${string}` | null;
   cacheContract: `0x${string}` | null;
   donationContract: `0x${string}` | null;
+  /**
+   * Anchor-protocol contracts (propose/verify economics). Optional and only
+   * meaningful on contract families (EVM, Aptos, Sui, Starknet, NEAR):
+   * `tokenContract` is the FOCAT token that denominates tips, bonds, and
+   * validator stakes — the propose path provisions only when it is set (see
+   * `isProposeProvisioned`). `stakingContract` / `platformRegistryContract`
+   * are ValidatorStaking and PlatformRegistry; `governorContract` /
+   * `timelockContract` exist on EVM chains only (governance is EVM-hubbed,
+   * other runtimes mirror decisions via admin accounts). On Move chains the
+   * registry module address doubles for these where modules share an
+   * account. Absent means not deployed.
+   */
+  tokenContract?: string | null;
+  stakingContract?: string | null;
+  platformRegistryContract?: string | null;
+  governorContract?: string | null;
+  timelockContract?: string | null;
+  /** Platform id integrators on this chain default to (FileOnChain = "1"). */
+  defaultPlatformId?: string;
   programId: string | null;
   /**
    * Deployed on-chain code that `anchor_cid` calls: an Aptos/Sui Move

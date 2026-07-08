@@ -42,3 +42,6 @@ pub mod FileRegistry {
         }
     }
 }
+
+pub mod anchor_registry;
+pub mod foc_token;

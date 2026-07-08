@@ -30,6 +30,7 @@ import type {
   SearchHit,
 } from "@/lib/mock/cid-indexer";
 import { getChunksForFile, getFilesByUploader } from "@/lib/mock/cid-indexer";
+import { getMockProposal } from "@/lib/mock/registry";
 
 interface DetailProps {
   file: RegisteredFile;
@@ -69,8 +70,23 @@ const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
     };
   }, [file]);
 
-  const anchoredHits = hits.filter((h) => h.status === "anchored");
-  const pendingHits = hits.filter((h) => h.status === "pending");
+  // "Settled" covers both vocabularies: plain anchors on memo chains and
+  // verified propose/verify anchors on contract chains. In-flight covers
+  // pending sends plus proposals still inside their challenge window (or
+  // under dispute).
+  const anchoredHits = hits.filter((h) => h.status === "anchored" || h.status === "verified");
+  // Propose/verify lifecycle of the file anchor on the first protocol chain
+  // that carries it (mock reads until the indexer is wired).
+  const proposal = React.useMemo(() => {
+    for (const hit of hits) {
+      const candidate = getMockProposal(file.cid, hit.chainId);
+      if (candidate) return candidate;
+    }
+    return null;
+  }, [hits, file.cid]);
+  const pendingHits = hits.filter(
+    (h) => h.status === "pending" || h.status === "proposed" || h.status === "challenged",
+  );
   const runtimeSet = new Set(hits.map((h) => h.family));
 
   return (
@@ -431,6 +447,34 @@ const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
           <p className="mt-2 text-[11px] text-muted">
             All chunks hashed and committed onchain. No drift, no truncation.
           </p>
+        </div>
+        <div className="rounded-2xl border border-border bg-surface p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+            Anchor verification
+          </p>
+          {proposal ? (
+            <>
+              <p className="mt-1 inline-flex items-center gap-1.5">
+                <StatusPill status={proposal.status} size="sm" />
+              </p>
+              <p className="mt-2 text-[11px] text-muted">
+                {proposal.status === "verified"
+                  ? `Proposal #${proposal.proposalId} survived its challenge window — the tip split to validators, platform ${proposal.platformId}, and the protocol treasury.`
+                  : proposal.status === "proposed"
+                    ? `Proposal #${proposal.proposalId} is inside its challenge window (closes ${new Date(proposal.challengeDeadline * 1000).toLocaleString()}); anyone can challenge with a counter-bond.`
+                    : proposal.status === "challenged"
+                      ? `Proposal #${proposal.proposalId} is disputed — a staked-validator jury is voting.`
+                      : `Proposal #${proposal.proposalId} was rejected; the CID can be re-proposed with corrected content.`}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="mt-1 font-mono text-sm font-semibold text-muted">Memo anchor</p>
+              <p className="mt-2 text-[11px] text-muted">
+                This chain family anchors via memos — no propose/verify protocol attached.
+              </p>
+            </>
+          )}
         </div>
       </section>
     </PageShell>

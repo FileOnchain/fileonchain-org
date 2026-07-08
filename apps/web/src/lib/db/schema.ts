@@ -337,10 +337,25 @@ export const organizationMembers = pgTable(
 export type UploadJobStatus = "pending" | "anchoring" | "complete" | "failed";
 export type UploadPaymentMethod = "credits" | "byok";
 
+/**
+ * On-chain propose/verify lifecycle of the file anchor, tracked separately
+ * from the job status: the job is "complete" once the propose transaction
+ * lands, while verification settles after the challenge window ("none" on
+ * memo-only chains and mock anchors that have no protocol).
+ */
+export type UploadVerificationStatus =
+  | "none"
+  | "proposed"
+  | "challenged"
+  | "verified"
+  | "rejected";
+
 export interface UploadJobTx {
   chainId: ChainId;
   txHash: string;
   blockNumber: number;
+  /** Registry proposal id, when the anchor went through proposeAnchor. */
+  proposalId?: string;
 }
 
 /** Server-side anchoring jobs (credits or BYOK payment flows). */
@@ -364,6 +379,16 @@ export const uploadJobs = pgTable(
     status: text("status").$type<UploadJobStatus>().notNull().default("pending"),
     costMicroUsdc: bigint("cost_micro_usdc", { mode: "bigint" }).notNull(),
     txHashes: jsonb("tx_hashes").$type<UploadJobTx[]>().notNull().default([]),
+    /** Originating platform id for the propose/verify fee split. */
+    platformId: text("platform_id"),
+    /** FOCAT tip escrowed for the file anchor, token base units. */
+    tipBaseUnits: bigint("tip_base_units", { mode: "bigint" }),
+    verificationStatus: text("verification_status")
+      .$type<UploadVerificationStatus>()
+      .notNull()
+      .default("none"),
+    /** When the on-chain challenge window closes (earliest across chains). */
+    challengeDeadlineAt: timestamp("challenge_deadline_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

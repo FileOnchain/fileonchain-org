@@ -10,7 +10,30 @@ import {
  * lib/indexer/payload-extractors.ts — this mock only stands in for the
  * fetch layer that feeds them. */
 
-export type AnchorStatus = "anchored" | "pending" | "missing";
+/**
+ * On-chain state of an anchor. Memo/remark families only ever report
+ * anchored/pending/missing; contract families running the propose/verify
+ * protocol also report the proposal lifecycle — proposed (challenge window
+ * open), challenged (jury dispute), verified (finalized, fees split), and
+ * rejected (dispute or race lost).
+ */
+export type AnchorStatus =
+  | "anchored"
+  | "pending"
+  | "missing"
+  | "proposed"
+  | "challenged"
+  | "verified"
+  | "rejected";
+
+/** Families whose registries run the propose/verify protocol. */
+const PROTOCOL_FAMILIES: ReadonlySet<ChainFamily> = new Set([
+  "evm",
+  "aptos",
+  "sui",
+  "starknet",
+  "near",
+]);
 export type FileCategory = "document" | "image" | "video" | "audio" | "data" | "code" | "archive" | "other";
 
 export interface SearchHit {
@@ -205,7 +228,16 @@ const buildHit = async (file: RegisteredFile, chainId: ChainId): Promise<SearchH
     txHash,
     blockNumber,
     timestamp: Math.floor(Date.now() / 1000) - tsOffset,
-    status: chain.testnet ? "pending" : "anchored",
+    // Contract families report the propose/verify lifecycle: mock mainnet
+    // anchors as already past their challenge window, testnet anchors as
+    // still inside it. Memo families have no protocol — plain anchored.
+    status: PROTOCOL_FAMILIES.has(chain.family)
+      ? chain.testnet
+        ? "proposed"
+        : "verified"
+      : chain.testnet
+        ? "pending"
+        : "anchored",
     submitter,
     registryAddress: chain.registryContract,
   };

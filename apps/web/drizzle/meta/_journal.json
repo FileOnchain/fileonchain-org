@@ -29,6 +29,13 @@
       "when": 1783257980401,
       "tag": "0003_magical_stranger",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783525718384,
+      "tag": "0004_true_supernaut",
+      "breakpoints": true
     }
   ]
 }

@@ -37,11 +37,26 @@ export class FileOnChainApiError extends Error {
 export type AnchorJobStatus = "pending" | "anchoring" | "complete" | "failed";
 export type AnchorPaymentMethod = "credits" | "byok";
 
+/**
+ * On-chain propose/verify lifecycle of the file anchor, tracked separately
+ * from the job status: the job completes when the propose transaction
+ * lands; verification settles after the challenge window. "none" means the
+ * anchor rode a memo-only chain (or a mock) with no protocol attached.
+ */
+export type AnchorVerificationStatus =
+  | "none"
+  | "proposed"
+  | "challenged"
+  | "verified"
+  | "rejected";
+
 /** One transaction sent for a job — one entry per anchored chain. */
 export interface AnchorJobTx {
   chainId: ChainId;
   txHash: string;
   blockNumber: number;
+  /** Registry proposal id, when the anchor went through proposeAnchor. */
+  proposalId?: string;
 }
 
 /** The job shape returned by POST /api/v1/anchor and GET /api/v1/anchor/{id}. */
@@ -57,6 +72,13 @@ export interface AnchorJob {
   /** Bigint micro-USDC serialized as a string. */
   costMicroUsdc: string;
   txHashes: AnchorJobTx[];
+  verification: {
+    status: AnchorVerificationStatus;
+    /** ISO timestamp of the challenge-window close; null when not proposed. */
+    challengeDeadline: string | null;
+    /** Platform the anchor was attributed to; null when not proposed. */
+    platformId: string | null;
+  };
   /** ISO timestamp. */
   createdAt: string;
   /** ISO timestamp, null until the job finishes. */
@@ -77,6 +99,12 @@ export interface AnchorRequest {
   paymentMethod: AnchorPaymentMethod;
   /** Required when paymentMethod is "byok". */
   byokKeyId?: string;
+  /**
+   * Registered platform id to attribute the anchor to (numeric string).
+   * Registered integrators pass their own id to receive the platform share
+   * of the verification fee split; defaults to FileOnChain's platform.
+   */
+  platformId?: string;
 }
 
 export interface CreditBalance {

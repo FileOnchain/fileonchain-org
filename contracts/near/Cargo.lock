@@ -1049,6 +1049,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28dea519a9695b9977216879a3ebfddf92f1c08c05d984f8996aecd6ecdc811d"
 
 [[package]]
+name = "fileonchain-foc-token"
+version = "0.1.0"
+dependencies = [
+ "near-contract-standards",
+ "near-sdk",
+]
+
+[[package]]
 name = "fileonchain-registry"
 version = "0.1.0"
 dependencies = [
@@ -1833,6 +1841,15 @@ dependencies = [
  "json_comments",
  "thiserror 2.0.18",
  "tracing",
+]
+
+[[package]]
+name = "near-contract-standards"
+version = "5.28.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "728a3bedcd91be4ba06e7179553796a24e74acf25322d35439d9a5295bf19891"
+dependencies = [
+ "near-sdk",
 ]
 
 [[package]]

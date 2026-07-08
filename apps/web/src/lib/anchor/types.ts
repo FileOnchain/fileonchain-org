@@ -10,6 +10,14 @@ export interface AnchorRequest {
   /** CIDv1 of the whole file (the IPLD DAG root). */
   fileCid: string;
   chunks: AnchorChunk[];
+  /**
+   * Originating platform id for the propose/verify fee split. Defaults to
+   * NEXT_PUBLIC_FILEONCHAIN_PLATFORM_ID, then the chain's
+   * `defaultPlatformId`, then platform 1 (FileOnChain).
+   */
+  platformId?: string;
+  /** FOCAT tip in base units; contract families default to the on-chain minTip. */
+  tip?: bigint;
   onProgress?: AnchorProgressHandler;
 }
 

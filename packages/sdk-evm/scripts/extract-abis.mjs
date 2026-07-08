@@ -11,6 +11,10 @@ const contractsOut = resolve(sdkRoot, "../../contracts/evm/out");
 
 const CONTRACTS = [
   ["FileRegistry", "fileRegistryAbi"],
+  ["FileOnChainAttestationToken", "fileOnChainAttestationTokenAbi"],
+  ["ValidatorStaking", "validatorStakingAbi"],
+  ["PlatformRegistry", "platformRegistryAbi"],
+  ["FileOnChainGovernor", "fileOnChainGovernorAbi"],
   ["CachePayments", "cachePaymentsAbi"],
   ["DonationEscrow", "donationEscrowAbi"],
 ];
@@ -19,7 +23,7 @@ for (const [name, exportName] of CONTRACTS) {
   const artifact = JSON.parse(
     readFileSync(resolve(contractsOut, `${name}.sol/${name}.json`), "utf8")
   );
-  const moduleName = name[0].toLowerCase() + name.slice(1);
+  const moduleName = exportName.replace(/Abi$/, "");
   const source = `/**
  * ABI for contracts/evm/src/${name}.sol — generated from the Foundry build
  * output (contracts/evm/out). Regenerate after changing the contract:

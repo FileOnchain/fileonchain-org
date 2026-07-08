@@ -39,3 +39,30 @@ the package id on the `sui:testnet` entry first, then `sui:mainnet`.
 Fund the server signer: the keypair behind `ANCHOR_SUI_PRIVATE_KEY` (the
 `suiprivkey…` bech32 export of an ed25519 key — `sui keytool export`) needs
 SUI for gas on each network it serves.
+
+
+## Anchor protocol (propose/verify)
+
+The package now also publishes `fileonchain::focat` (`Coin<FOCAT>`, the
+`TreasuryCap` goes to the publisher — mint supply with
+`sui client call ... coin::mint_and_transfer`) and
+`fileonchain::anchor_registry`, whose `init` shares one `AnchorRegistry`
+object and sends the `AdminCap` to the publisher. Sui has no allowances:
+propose/challenge/stake take an exact `Coin<FOCAT>` split in the PTB, and
+jury draws use `sui::random` (real secure randomness).
+
+Record on the chain entry: `moduleAddress` (package id), `tokenContract`
+(the FOCAT package id — usually the same package), and `registryContract`
+(the **shared AnchorRegistry object id** — the SDK passes it as the first
+call argument). Fund the `ANCHOR_SUI_PRIVATE_KEY` account with FOCAT and
+stake at least 5 validators before enabling challenges. The `AdminCap`
+holder executes EVM governance decisions (see docs/governance.md).
+
+
+## Bridging & upgrades
+
+The publisher receives a `TokenAdminCap`; the `TreasuryCap` lives inside
+the shared `TokenController`. Mint home-chain supply with `admin_mint`
+(remote chains mint nothing), approve bridges with `set_bridge`, and keep
+the package `UpgradeCap` with the admin for native package upgrades.
+Record the `TokenController` object id alongside `tokenContract`.

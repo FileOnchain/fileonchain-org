@@ -34,8 +34,20 @@ export const env = {
   get authGithubSecret(): string | undefined {
     return process.env.AUTH_GITHUB_SECRET;
   },
+  /** Platform id the server worker attributes anchors to (fee split);
+   * defaults to FileOnChain's platform 1. */
+  get anchorPlatformId(): string {
+    return process.env.ANCHOR_PLATFORM_ID ?? "1";
+  },
+  /** FOCAT tip per file anchor in token base units; absent means the
+   * registry's on-chain minimum tip. */
+  get anchorTipBaseUnits(): bigint | undefined {
+    const raw = process.env.ANCHOR_TIP_BASE_UNITS;
+    return raw ? BigInt(raw) : undefined;
+  },
   /** Funded server signers for the credits/BYOK anchor worker — optional;
-   * absent keys keep the worker on the deterministic mock. */
+   * absent keys keep the worker on the deterministic mock. On propose-
+   * provisioned chains the signer also needs FOCAT for tips and bonds. */
   get anchorEvmPrivateKey(): string | undefined {
     return process.env.ANCHOR_EVM_PRIVATE_KEY;
   },

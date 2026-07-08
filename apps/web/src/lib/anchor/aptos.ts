@@ -3,15 +3,19 @@ import { useWalletStates } from "@/states/wallet";
 import type { AnchorRequest } from "./types";
 
 /**
- * Aptos sender — sequential `file_registry::anchor_cid` module calls through
- * Petra / Martian. Provisioning is checked before any wallet interaction, so
- * until a module address lands in the SDK chain registry this throws
+ * Aptos sender — free `file_registry::anchor_cid` calls per chunk, then a
+ * paid `anchor_registry::propose_anchor` for the file CID (FOCAT tip + bond
+ * escrowed) when the chain is propose-provisioned, through Petra / Martian.
+ * Provisioning is checked before any wallet interaction, so until a module
+ * address lands in the SDK chain registry this throws
  * ChainNotProvisionedError and the uploader falls back to the simulated flow.
  */
 export const sendAptosAnchor = async ({
   chain,
   fileCid,
   chunks,
+  platformId,
+  tip,
   onProgress,
 }: AnchorRequest): Promise<ChunkedAnchorReceipt> => {
   const { anchorChunkedFile, resolveAptosChain } = await import(
@@ -34,6 +38,6 @@ export const sendAptosAnchor = async ({
 
   return anchorChunkedFile(
     { address: aptosAddress, signAndSubmitTransaction },
-    { chainId: chain.id, fileCid, chunks, onProgress },
+    { chainId: chain.id, fileCid, chunks, platformId, tip, onProgress },
   );
 };

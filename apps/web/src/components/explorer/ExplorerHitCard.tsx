@@ -18,7 +18,11 @@ interface ExplorerHitCardProps {
 
 const STATUS_VARIANT = {
   anchored: "success",
+  verified: "success",
   pending: "warning",
+  proposed: "warning",
+  challenged: "danger",
+  rejected: "danger",
   missing: "danger",
 } as const;
 

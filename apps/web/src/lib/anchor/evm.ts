@@ -4,20 +4,24 @@ import { useWalletStates } from "@/states/wallet";
 import type { AnchorRequest } from "./types";
 
 /**
- * EVM sender — sequential `FileRegistry.anchorCID` transactions through the
- * injected wallet. Provisioning is checked before any wallet interaction so
+ * EVM sender — free `FileRegistry.anchorChunk` transactions per chunk, then
+ * a paid `proposeAnchor` for the file CID (FOCAT tip + bond escrowed, with an
+ * automatic approve when the allowance is short), all through the injected
+ * wallet. Provisioning is checked before any wallet interaction so
  * unprovisioned chains fall back to the simulated flow without a pop-up.
  */
 export const sendEvmAnchor = async ({
   chain,
   fileCid,
   chunks,
+  platformId,
+  tip,
   onProgress,
 }: AnchorRequest): Promise<ChunkedAnchorReceipt> => {
-  const { anchorChunkedFile, resolveEvmChain, toViemChain } = await import(
+  const { anchorChunkedFile, resolveEvmProposeChain, toViemChain } = await import(
     "@fileonchain/sdk/evm"
   );
-  resolveEvmChain(chain.id); // throws ChainNotProvisionedError pre-wallet
+  resolveEvmProposeChain(chain.id); // throws ChainNotProvisionedError pre-wallet
 
   const { evmAddress } = useWalletStates.getState();
   const provider = typeof window === "undefined" ? undefined : window.ethereum;
@@ -51,6 +55,8 @@ export const sendEvmAnchor = async ({
     chainId: chain.id,
     fileCid,
     chunks,
+    platformId,
+    tip,
     onProgress,
   });
 };

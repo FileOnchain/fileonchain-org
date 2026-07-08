@@ -3,9 +3,10 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "../src/CachePayments.sol";
+import {ProxyDeployer} from "./utils/ProxyDeployer.sol";
 import "../src/mocks/MockUSDC.sol";
 
-contract CachePaymentsTest is Test {
+contract CachePaymentsTest is Test, ProxyDeployer {
   MockUSDC internal usdc;
   CachePayments internal cache;
   address internal treasury = makeAddr("treasury");
@@ -15,7 +16,7 @@ contract CachePaymentsTest is Test {
 
   function setUp() public {
     usdc = new MockUSDC();
-    cache = new CachePayments(usdc, treasury);
+    cache = deployCache(usdc, treasury);
     usdc.mint(alice, 1_000_000_000); // 1000 USDC
     vm.prank(alice);
     usdc.approve(address(cache), type(uint256).max);
@@ -27,14 +28,18 @@ contract CachePaymentsTest is Test {
     assertEq(cache.pricePermanent(), 50_000_000);
   }
 
-  function test_RevertWhen_ConstructorZeroUSDC() public {
+  function test_RevertWhen_InitializeZeroUSDC() public {
+    address implementation = address(new CachePayments());
     vm.expectRevert(bytes("CachePayments: zero usdc"));
-    new CachePayments(IERC20(address(0)), treasury);
+    deployProxy(
+      implementation, abi.encodeCall(CachePayments.initialize, (IERC20(address(0)), treasury))
+    );
   }
 
-  function test_RevertWhen_ConstructorZeroTreasury() public {
+  function test_RevertWhen_InitializeZeroTreasury() public {
+    address implementation = address(new CachePayments());
     vm.expectRevert(bytes("CachePayments: zero treasury"));
-    new CachePayments(usdc, address(0));
+    deployProxy(implementation, abi.encodeCall(CachePayments.initialize, (usdc, address(0))));
   }
 
   function test_SetTreasury() public {
@@ -94,7 +99,7 @@ contract CachePaymentsTest is Test {
     // A token that returns false instead of reverting must still trip the
     // "USDC transfer failed" require.
     FalseUSDC falseToken = new FalseUSDC();
-    CachePayments falseCache = new CachePayments(IERC20(address(falseToken)), treasury);
+    CachePayments falseCache = deployCache(IERC20(address(falseToken)), treasury);
 
     vm.prank(alice);
     vm.expectRevert(bytes("CachePayments: USDC transfer failed"));
