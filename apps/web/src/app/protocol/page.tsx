@@ -38,6 +38,52 @@ const STEPS = [
   },
 ] as const;
 
+const CONTRACTS = [
+  {
+    name: "FileOnChainAttestationToken (FOCAT)",
+    role: "The protocol token: pays tips and bonds, is staked by validators, and votes in governance on EVM. Bridgeable — approved bridges burn it on one chain and mint it on another.",
+  },
+  {
+    name: "FileRegistry",
+    role: "The anchor protocol itself: free anchorChunk events for chunks; proposeAnchor escrows tip + bond for file CIDs, runs the challenge window, draws juries, resolves disputes, and splits fees as pull payments (withdraw).",
+  },
+  {
+    name: "ValidatorStaking",
+    role: "Validators stake FOCAT above a minimum to join the active set. Holds tip rewards (claimed pro-rata), enforces an unbonding cooldown that stays slashable, and executes the registry's slashes on losing jurors.",
+  },
+  {
+    name: "PlatformRegistry",
+    role: "Registered integrators with a fee-bps cap each. proposeAnchor names a platform id; when the anchor verifies, that platform's treasury earns the platform share of the tip.",
+  },
+  {
+    name: "Governor + Timelock",
+    role: "FOCAT holders vote; passed proposals execute through the timelock, which owns every protocol contract, holds the protocol treasury, and owns each proxy's admin — so parameter changes, treasury spends, and upgrades are all the same motion.",
+  },
+  {
+    name: "CachePayments · DonationEscrow",
+    role: "Adjacent services: USDC payments for the private cache tier and native-coin donations to public infrastructure. Same proxy + treasury pattern, outside the anchor fee split.",
+  },
+] as const;
+
+const TOKEN_POINTS = [
+  {
+    title: "One supply, every chain",
+    body: "FOCAT exists natively on each runtime the FileRegistry deploys to (ERC-20 on EVM, Fungible Asset on Aptos, Coin<FOCAT> on Sui, Cairo ERC-20 on Starknet, NEP-141 on NEAR). The initial supply mints once on the home chain; every other deployment starts at zero.",
+  },
+  {
+    title: "Bridgeable by governance, not by vendor",
+    body: "Supply moves by burning on the source chain and minting on the destination, through bridges that governance explicitly approves. On EVM each bridge gets mint/burn rate limits that refill linearly over a day — the cap on damage if a bridge is ever compromised. No bridge vendor is baked into the token.",
+  },
+  {
+    title: "What it does day to day",
+    body: "Every file anchor escrows a FOCAT tip and bond. Validators stake FOCAT to earn the 60% tip share and sit on juries; platforms earn the 25% share on anchors they originate; the remaining 15% accrues to the treasury that FOCAT holders govern.",
+  },
+  {
+    title: "Upgradeable, owned by the DAO",
+    body: "On EVM every protocol contract sits behind a transparent proxy whose admin is owned by the timelock — upgrading a contract is a governance proposal like any parameter change. The other runtimes upgrade through their native mechanisms, executed by the admin that mirrors EVM governance decisions.",
+  },
+] as const;
+
 const GOVERNANCE_POINTS = [
   "The FOCAT token votes through an on-chain Governor + timelock on EVM: fee split, platform caps and registration, bonds, tip minimums, windows, jury parameters, validator stake minimums, and treasury spends.",
   "The timelock is the protocol treasury — spending tip revenue is itself a governance proposal.",
@@ -111,6 +157,34 @@ const ProtocolPage = () => {
               <span className="block text-muted">treasury governed by FOCAT holders</span>
             </p>
           </div>
+        </Card>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold">The FOCAT token</h2>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          {TOKEN_POINTS.map((point) => (
+            <Card key={point.title} className="p-5">
+              <h3 className="font-medium">{point.title}</h3>
+              <p className="mt-2 text-sm text-muted">{point.body}</p>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold">The contracts</h2>
+        <p className="mt-1 text-sm text-muted">
+          The protocol is a small suite of contracts deployed together on every chain (module and
+          contract names vary per runtime; the roles do not).
+        </p>
+        <Card className="mt-4 divide-y divide-border/60 p-0">
+          {CONTRACTS.map((contract) => (
+            <div key={contract.name} className="p-4">
+              <h3 className="font-mono text-sm font-medium">{contract.name}</h3>
+              <p className="mt-1 text-sm text-muted">{contract.role}</p>
+            </div>
+          ))}
         </Card>
       </section>
 

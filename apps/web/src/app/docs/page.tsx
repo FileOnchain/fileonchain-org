@@ -382,7 +382,7 @@ const DocsPage = () => (
         <p className="text-sm leading-relaxed text-muted md:text-base">
           The package most apps should install. The root entry re-exports the
           entire dependency-free core (chain registry, CID validation, anchor
-          payloads) plus the three EVM ABIs. Each chain family lives on its own
+          payloads) plus the EVM contract ABIs. Each chain family lives on its own
           subpath — <code className="font-mono text-xs">@fileonchain/sdk/evm</code>,{" "}
           <code className="font-mono text-xs">…/substrate</code>,{" "}
           <code className="font-mono text-xs">…/solana</code>, and so on through
@@ -397,7 +397,14 @@ const DocsPage = () => (
           <code className="font-mono text-xs">anchorChunkedFile</code> with an
           identical progress and receipt shape — chunk anchors first, the
           file-level anchor last (indexers rely on that ordering). A folder
-          anchors exactly like a file: anchor the CID of its DAG root.
+          anchors exactly like a file: anchor the CID of its DAG root. On
+          contract chains the file-level anchor is a paid{" "}
+          <code className="font-mono text-xs">proposeAnchor</code> that escrows
+          a FOCAT tip + bond and verifies after a challenge window — the{" "}
+          <Link href="/protocol" className="text-primary underline underline-offset-2">
+            protocol page
+          </Link>{" "}
+          explains the token, the fee split, and every contract in the suite.
         </p>
         <CodeBlock title="anchor.ts" code={CHUNKED_SNIPPET} />
       </section>
