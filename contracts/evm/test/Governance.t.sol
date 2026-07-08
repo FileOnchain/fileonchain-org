@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
-import "../src/FileOnChainToken.sol";
+import "../src/FOCATToken.sol";
 import "../src/ValidatorStaking.sol";
 import "../src/PlatformRegistry.sol";
 import "../src/FileRegistry.sol";
@@ -13,7 +13,7 @@ import "../src/governance/FileOnChainTimelock.sol";
 import "../src/governance/FileOnChainGovernor.sol";
 
 contract GovernanceTest is Test {
-  FileOnChainToken internal token;
+  FOCATToken internal token;
   FileOnChainTimelock internal timelock;
   FileOnChainGovernor internal governor;
   ValidatorStaking internal staking;
@@ -29,7 +29,7 @@ contract GovernanceTest is Test {
   uint256 internal constant PROPOSAL_THRESHOLD = 100_000e18;
 
   function setUp() public {
-    token = new FileOnChainToken(voter, SUPPLY);
+    token = new FOCATToken(voter, SUPPLY);
     timelock = new FileOnChainTimelock(MIN_DELAY, new address[](0), new address[](0), address(this));
     governor = new FileOnChainGovernor(
       IVotes(address(token)), timelock, VOTING_DELAY, VOTING_PERIOD, PROPOSAL_THRESHOLD

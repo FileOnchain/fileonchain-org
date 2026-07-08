@@ -1,6 +1,6 @@
 # Deploy: EVM chains
 
-Deploys the anchor-protocol suite — `FileOnChainToken`, `FileOnChainTimelock`,
+Deploys the anchor-protocol suite — `FOCATToken`, `FileOnChainTimelock`,
 `FileOnChainGovernor`, `ValidatorStaking`, `PlatformRegistry`, `FileRegistry` —
 plus `CachePayments` / `DonationEscrow` from `contracts/evm/` with Foundry's
 `script/Deploy.s.sol`. One run per chain.
@@ -49,7 +49,7 @@ forge script script/Deploy.s.sol \
 
 Drop `--verify` if the chain's explorer isn't Etherscan-compatible and verify
 manually afterwards. The script logs the deployed addresses:
-`FileOnChainToken`, `FileOnChainTimelock`, `FileOnChainGovernor`,
+`FOCATToken`, `FileOnChainTimelock`, `FileOnChainGovernor`,
 `ValidatorStaking`, `PlatformRegistry`, `FileRegistry`, `MockUSDC`
 (testnets only), `CachePayments`, `DonationEscrow`.
 

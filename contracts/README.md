@@ -15,7 +15,7 @@ admin accounts — see [`docs/governance.md`](../docs/governance.md).
 
 | Directory | Runtime | Toolchain | Artifacts |
 | --- | --- | --- | --- |
-| `evm/` | EVM (Ethereum, Base, BSC, …) | Foundry | `FileRegistry` (propose/verify), `FileOnChainToken`, `ValidatorStaking`, `PlatformRegistry`, `FileOnChainGovernor` + `Timelock`, `CachePayments`, `DonationEscrow` |
+| `evm/` | EVM (Ethereum, Base, BSC, …) | Foundry | `FileRegistry` (propose/verify), `FOCATToken`, `ValidatorStaking`, `PlatformRegistry`, `FileOnChainGovernor` + `Timelock`, `CachePayments`, `DonationEscrow` |
 | `aptos/` | Aptos | Aptos CLI (Move) | `foc_token` (Fungible Asset), `anchor_registry` (protocol), `file_registry` (free chunk anchors) |
 | `sui/` | Sui | Sui CLI (Move) | `focat` (`Coin<FOCAT>`), `anchor_registry` (shared object), `file_registry` (free chunk anchors) |
 | `starknet/` | Starknet | Scarb (Cairo) | `FocToken` (ERC-20), `AnchorRegistry` (protocol), `FileRegistry` (free chunk anchors) |

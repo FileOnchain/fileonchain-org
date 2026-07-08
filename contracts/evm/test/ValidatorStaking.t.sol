@@ -3,11 +3,11 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../src/FileOnChainToken.sol";
+import "../src/FOCATToken.sol";
 import "../src/ValidatorStaking.sol";
 
 contract ValidatorStakingTest is Test {
-  FileOnChainToken internal token;
+  FOCATToken internal token;
   ValidatorStaking internal staking;
 
   address internal registry = makeAddr("registry");
@@ -19,7 +19,7 @@ contract ValidatorStakingTest is Test {
   uint64 internal constant UNBONDING = 7 days;
 
   function setUp() public {
-    token = new FileOnChainToken(address(this), 1_000_000_000e18);
+    token = new FOCATToken(address(this), 1_000_000_000e18);
     staking = new ValidatorStaking(IERC20(address(token)), MIN_STAKE, UNBONDING);
     staking.setRegistry(registry);
 

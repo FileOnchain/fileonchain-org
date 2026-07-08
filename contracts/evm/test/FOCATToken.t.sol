@@ -2,10 +2,10 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import "../src/FileOnChainToken.sol";
+import "../src/FOCATToken.sol";
 
-contract FileOnChainTokenTest is Test {
-  FileOnChainToken internal token;
+contract FOCATTokenTest is Test {
+  FOCATToken internal token;
 
   address internal alice;
   uint256 internal alicePk;
@@ -15,7 +15,7 @@ contract FileOnChainTokenTest is Test {
 
   function setUp() public {
     (alice, alicePk) = makeAddrAndKey("alice");
-    token = new FileOnChainToken(address(this), SUPPLY);
+    token = new FOCATToken(address(this), SUPPLY);
   }
 
   function test_Metadata() public view {
@@ -31,7 +31,7 @@ contract FileOnChainTokenTest is Test {
 
   function test_RevertWhen_ZeroHolder() public {
     vm.expectRevert(bytes("FOCAT: zero holder"));
-    new FileOnChainToken(address(0), SUPPLY);
+    new FOCATToken(address(0), SUPPLY);
   }
 
   function test_VotesTrackDelegation() public {
