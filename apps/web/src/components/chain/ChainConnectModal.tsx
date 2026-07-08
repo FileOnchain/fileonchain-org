@@ -10,7 +10,7 @@ import { Identicon } from "@/components/ui/Identicon";
 import { SearchSelect } from "@/components/ui/SearchSelect";
 import { useChain } from "@/hooks/useChain";
 import { useVisibleChains } from "@/hooks/useVisibleChains";
-import { CHAIN_FAMILY_LABELS, type ChainFamily } from "@fileonchain/sdk";
+import { CHAIN_FAMILY_LABELS, isChainActive, type ChainFamily } from "@fileonchain/sdk";
 import { useSubstrateWallet } from "@/hooks/useSubstrateWallet";
 import { useEVMWallet } from "@/hooks/useEVMWallet";
 import { useSolanaWallet } from "@/hooks/useSolanaWallet";
@@ -160,8 +160,12 @@ export const ChainConnectModal = ({ open, onOpenChange }: ChainConnectModalProps
   const tabAddress = addressFor(chainFamily);
 
   // Runtimes with at least one visible chain, in registry label order.
+  // Only runtimes with a chain that's open for anchoring — the switcher
+  // below jumps to a chain, and jumps must never land on a planned or
+  // deprecated one.
   const runtimes = (Object.keys(CHAIN_FAMILY_LABELS) as ChainFamily[]).filter(
-    (family) => visibleChains.some((chain) => chain.family === family),
+    (family) =>
+      visibleChains.some((chain) => chain.family === family && isChainActive(chain)),
   );
 
   // Connect handlers keep the modal open: the next step — signing in with
@@ -205,7 +209,9 @@ export const ChainConnectModal = ({ open, onOpenChange }: ChainConnectModalProps
           within it so the modal body swaps to the matching connect flow. */}
       <div className="mb-4 flex flex-wrap gap-2">
         {runtimes.map((runtime) => {
-          const firstOfRuntime = visibleChains.find((c) => c.family === runtime);
+          const firstOfRuntime = visibleChains.find(
+            (c) => c.family === runtime && isChainActive(c),
+          );
           return (
             <button
               key={runtime}

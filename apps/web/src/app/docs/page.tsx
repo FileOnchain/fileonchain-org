@@ -136,7 +136,7 @@ const job = await client.anchor({
   fileName: "data.bin",
   fileSizeBytes: 150_000,
   chunkCount: 3,
-  chainIds: ["substrate:autonomys-mainnet"],
+  chainIds: ["evm:8453"], // must be status: "active" chains
   paymentMethod: "credits",
 });
 

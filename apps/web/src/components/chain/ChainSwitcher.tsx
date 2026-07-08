@@ -24,6 +24,9 @@ export const ChainSwitcher = ({ variant = "full" }: ChainSwitcherProps) => {
       value={activeChain.id}
       onValueChange={setActiveChainId}
       variant={variant === "compact" ? "header-compact" : "header"}
+      // The active chain feeds the upload flow — planned/deprecated chains
+      // stay visible (with their status badge) but can't be picked.
+      restrictToActive
       ariaLabel="Switch active chain"
     />
   );

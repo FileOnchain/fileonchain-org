@@ -14,7 +14,7 @@ import {
  *     -H "Authorization: Bearer fok_…" \
  *     -H "Content-Type: application/json" \
  *     -d '{"cid":"bafy…","fileName":"data.bin","fileSizeBytes":150000,
- *          "chunkCount":3,"chainIds":["substrate:autonomys-mainnet"],
+ *          "chunkCount":3,"chainIds":["evm:8453"],
  *          "paymentMethod":"credits"}'
  */
 export async function POST(request: Request) {

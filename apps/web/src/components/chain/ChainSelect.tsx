@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Badge } from "@/components/ui/Badge";
 import { ChainBadge } from "@/components/ui/ChainBadge";
+import { ChainStatusBadge } from "@/components/chain/ChainStatusBadge";
 import {
   SearchSelect,
   type SearchSelectOption,
@@ -28,6 +29,12 @@ export interface ChainSelectProps {
    */
   variant?: "field" | "header" | "header-compact";
   disabled?: boolean;
+  /**
+   * Only `status: "active"` chains stay selectable; planned/deprecated
+   * ones render with their status badge but disabled. Set this on pickers
+   * that feed the upload flow.
+   */
+  restrictToActive?: boolean;
   id?: string;
   ariaLabel?: string;
 }
@@ -50,6 +57,7 @@ export const ChainSelect = ({
   onValueChange,
   variant = "field",
   disabled,
+  restrictToActive,
   id,
   ariaLabel = "Select a chain",
 }: ChainSelectProps) => {
@@ -66,6 +74,7 @@ export const ChainSelect = ({
               chain.shortName,
               chain.family,
               chain.id,
+              chain.status,
               ...(chain.testnet ? ["testnet"] : []),
             ],
             leading: (
@@ -76,10 +85,16 @@ export const ChainSelect = ({
                 size="sm"
               />
             ),
-            trailing: chain.testnet ? testnetBadge : undefined,
+            trailing: (
+              <span className="flex items-center gap-1">
+                <ChainStatusBadge status={chain.status} />
+                {chain.testnet && testnetBadge}
+              </span>
+            ),
+            disabled: restrictToActive ? chain.status !== "active" : false,
           })),
       ),
-    [chains],
+    [chains, restrictToActive],
   );
 
   // Render the trigger from the registry even when the selected chain isn't
@@ -121,6 +136,7 @@ export const ChainSelect = ({
             {variant !== "header-compact" && (
               <>
                 <span className="truncate font-medium">{selectedChain.name}</span>
+                <ChainStatusBadge status={selectedChain.status} />
                 {selectedChain.testnet && testnetBadge}
               </>
             )}

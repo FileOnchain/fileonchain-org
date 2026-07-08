@@ -90,7 +90,9 @@ const buildCandidates = (input: RecommendationInput): Candidate[] => {
 
   let candidates: Candidate[] = getChainCostEstimates().flatMap((estimate) => {
     const chain = getChain(estimate.chainId);
-    if (!chain) return [];
+    // Planned/deprecated chains can't be selected for upload, so the
+    // advisor must never suggest one.
+    if (!chain || chain.status !== "active") return [];
     return [
       {
         chain,

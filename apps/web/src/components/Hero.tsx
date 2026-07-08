@@ -9,6 +9,7 @@ import MagneticButton from "@/components/MagneticButton";
 import WordReveal from "@/components/WordReveal";
 import LiveLedgerTicker, { StatCounter, compactNumber } from "@/components/LiveLedgerTicker";
 import Link from "next/link";
+import { ACTIVE_CHAINS } from "@fileonchain/sdk";
 
 interface HeroProps {
   activeChain?: {
@@ -34,7 +35,11 @@ const EASE_OUT = [0.16, 1, 0.3, 1] as const;
  *   6. Animated stat row (chains supported, files anchored, % uptime)
  *   7. Right side: animated ChunkFlowVisual SVG
  */
-const Hero = ({ activeChain, chainCount = 10 }: HeroProps) => (
+const Hero = ({
+  activeChain,
+  // "Chains live" means open for anchoring — planned entries don't count.
+  chainCount = ACTIVE_CHAINS.filter((c) => !c.testnet).length,
+}: HeroProps) => (
   <section className="relative w-full">
     <div className="grid w-full items-center gap-10 md:gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
       {/* Text column ----------------------------------------------------- */}
@@ -123,7 +128,7 @@ const Hero = ({ activeChain, chainCount = 10 }: HeroProps) => (
           <StatCounter
             value={chainCount}
             label="Chains live"
-            hint="EVM · Substrate · Solana · Aptos"
+            hint="Ethereum · Base · Auto EVM"
           />
           <StatCounter
             value={4821043}

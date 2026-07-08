@@ -342,6 +342,14 @@ export const useFileUploader = () => {
    */
   const anchor = useCallback(async () => {
     if (!file || !fileCid || cids.length === 0) return;
+    // Belt-and-braces: pickers already refuse non-active chains, but the
+    // active chain can arrive from persisted state.
+    if (activeChain.status !== "active") {
+      setError(
+        `${activeChain.name} is ${activeChain.status} — anchoring isn't open on it. Switch to an active chain.`,
+      );
+      return;
+    }
     setError(null);
     setAnchorProgress(0);
 
