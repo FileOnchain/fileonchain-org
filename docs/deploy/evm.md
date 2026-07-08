@@ -14,7 +14,7 @@ parameters change only through governance proposals.
 ## Prerequisites
 
 - Foundry installed (`forge --version`); in `contracts/evm/` run
-  `forge install foundry-rs/forge-std OpenZeppelin/openzeppelin-contracts@v5.4.0`
+  `forge install foundry-rs/forge-std OpenZeppelin/openzeppelin-contracts@v5.4.0 OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0`
   (`lib/` is untracked).
 - A funded deployer key on the target chain.
 - An explorer API key if you pass `--verify` (Etherscan-family).
@@ -117,3 +117,17 @@ handles automatically on first propose).
 Bootstrap the validator set: challenges revert while fewer than `jurySize`
 (default 5) validators are staked. Stake FileOnChain-operated validators
 (`ValidatorStaking.stake`, min 1000 FOCAT each) right after deploying.
+
+
+## Proxies, bridges, remote chains
+
+Every protocol contract deploys behind a TransparentUpgradeableProxy; the
+script logs **proxy and implementation** addresses — record the *proxy*
+addresses in `chains.ts` (they never change across upgrades). Each proxy's
+ProxyAdmin is owned by the timelock: upgrades are governance proposals
+calling `ProxyAdmin.upgradeAndCall`.
+
+On every chain except the home chain, set `TOKEN_INITIAL_SUPPLY=0` — FOCAT
+arrives through bridges only. To connect a bridge, governance proposes
+`token.setBridgeLimits(bridge, mintLimit, burnLimit)`; limits replenish
+linearly over one day and are the per-bridge blast-radius cap.

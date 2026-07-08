@@ -5,7 +5,7 @@
 //! Denominates anchor tips, propose/challenge bonds, and validator stakes
 //! for the AnchorRegistry contract.
 
-use starknet::ContractAddress;
+use starknet::{ClassHash, ContractAddress};
 
 #[starknet::interface]
 pub trait IERC20<TContractState> {
@@ -25,19 +25,36 @@ pub trait IERC20<TContractState> {
     fn approve(ref self: TContractState, spender: ContractAddress, amount: u256) -> bool;
 }
 
+/// Bridge + admin surface: the same FOCAT exists on every runtime, so
+/// admin-approved bridges burn departing supply and mint arriving supply.
+/// The admin executes EVM governance decisions (docs/governance.md) and
+/// upgrades the contract in place via replace_class.
+#[starknet::interface]
+pub trait ITokenAdmin<TContractState> {
+    fn set_bridge(ref self: TContractState, bridge: ContractAddress, enabled: bool);
+    fn is_bridge(self: @TContractState, bridge: ContractAddress) -> bool;
+    fn bridge_mint(ref self: TContractState, to: ContractAddress, amount: u256);
+    fn bridge_burn(ref self: TContractState, amount: u256);
+    fn set_admin(ref self: TContractState, new_admin: ContractAddress);
+    fn upgrade(ref self: TContractState, new_class_hash: ClassHash);
+}
+
 #[starknet::contract]
 pub mod FocToken {
     use core::num::traits::Zero;
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
-    use starknet::{ContractAddress, get_caller_address};
+    use starknet::syscalls::replace_class_syscall;
+    use starknet::{ClassHash, ContractAddress, SyscallResultTrait, get_caller_address};
 
     #[storage]
     struct Storage {
         total_supply: u256,
         balances: Map<ContractAddress, u256>,
         allowances: Map<(ContractAddress, ContractAddress), u256>,
+        admin: ContractAddress,
+        bridges: Map<ContractAddress, bool>,
     }
 
     #[event]
@@ -45,6 +62,20 @@ pub mod FocToken {
     pub enum Event {
         Transfer: Transfer,
         Approval: Approval,
+        BridgeSet: BridgeSet,
+        Upgraded: Upgraded,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct BridgeSet {
+        #[key]
+        pub bridge: ContractAddress,
+        pub enabled: bool,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct Upgraded {
+        pub new_class_hash: ClassHash,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -65,17 +96,30 @@ pub mod FocToken {
         pub value: u256,
     }
 
+    /// `initial_supply` mints on the home chain only — pass 0 on remote
+    /// chains, where supply arrives exclusively through approved bridges.
     #[constructor]
-    fn constructor(ref self: ContractState, initial_holder: ContractAddress, initial_supply: u256) {
-        assert!(!initial_holder.is_zero(), "FOCAT: zero holder");
-        self.total_supply.write(initial_supply);
-        self.balances.entry(initial_holder).write(initial_supply);
-        self
-            .emit(
-                Event::Transfer(
-                    Transfer { from: 0.try_into().unwrap(), to: initial_holder, value: initial_supply },
-                ),
-            );
+    fn constructor(
+        ref self: ContractState,
+        initial_holder: ContractAddress,
+        initial_supply: u256,
+        admin: ContractAddress,
+    ) {
+        assert!(!admin.is_zero(), "FOCAT: zero admin");
+        self.admin.write(admin);
+        if initial_supply > 0 {
+            assert!(!initial_holder.is_zero(), "FOCAT: zero holder");
+            self.total_supply.write(initial_supply);
+            self.balances.entry(initial_holder).write(initial_supply);
+            self
+                .emit(
+                    Event::Transfer(
+                        Transfer {
+                            from: 0.try_into().unwrap(), to: initial_holder, value: initial_supply,
+                        },
+                    ),
+                );
+        }
     }
 
     #[abi(embed_v0)]
@@ -133,8 +177,68 @@ pub mod FocToken {
         }
     }
 
+    #[abi(embed_v0)]
+    impl TokenAdminImpl of super::ITokenAdmin<ContractState> {
+        fn set_bridge(ref self: ContractState, bridge: ContractAddress, enabled: bool) {
+            self._assert_admin();
+            self.bridges.entry(bridge).write(enabled);
+            self.emit(Event::BridgeSet(BridgeSet { bridge, enabled }));
+        }
+
+        fn is_bridge(self: @ContractState, bridge: ContractAddress) -> bool {
+            self.bridges.entry(bridge).read()
+        }
+
+        /// Mint arriving supply to `to` (destination side of a transfer).
+        fn bridge_mint(ref self: ContractState, to: ContractAddress, amount: u256) {
+            self._assert_bridge();
+            assert!(!to.is_zero(), "FOCAT: mint to zero");
+            self.total_supply.write(self.total_supply.read() + amount);
+            self.balances.entry(to).write(self.balances.entry(to).read() + amount);
+            self.emit(Event::Transfer(Transfer { from: 0.try_into().unwrap(), to, value: amount }));
+        }
+
+        /// Burn departing supply from the bridge's own balance (source side
+        /// — the user transfers to the bridge first).
+        fn bridge_burn(ref self: ContractState, amount: u256) {
+            self._assert_bridge();
+            let bridge = get_caller_address();
+            let balance = self.balances.entry(bridge).read();
+            assert!(balance >= amount, "FOCAT: insufficient balance");
+            self.balances.entry(bridge).write(balance - amount);
+            self.total_supply.write(self.total_supply.read() - amount);
+            self
+                .emit(
+                    Event::Transfer(
+                        Transfer { from: bridge, to: 0.try_into().unwrap(), value: amount },
+                    ),
+                );
+        }
+
+        fn set_admin(ref self: ContractState, new_admin: ContractAddress) {
+            self._assert_admin();
+            assert!(!new_admin.is_zero(), "FOCAT: zero admin");
+            self.admin.write(new_admin);
+        }
+
+        /// Starknet-native upgrade: swap this contract's class in place.
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self._assert_admin();
+            replace_class_syscall(new_class_hash).unwrap_syscall();
+            self.emit(Event::Upgraded(Upgraded { new_class_hash }));
+        }
+    }
+
     #[generate_trait]
     impl Internal of InternalTrait {
+        fn _assert_admin(self: @ContractState) {
+            assert!(get_caller_address() == self.admin.read(), "FOCAT: not admin");
+        }
+
+        fn _assert_bridge(self: @ContractState) {
+            assert!(self.bridges.entry(get_caller_address()).read(), "FOCAT: not a bridge");
+        }
+
         fn _transfer(
             ref self: ContractState,
             sender: ContractAddress,

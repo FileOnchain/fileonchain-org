@@ -46,6 +46,7 @@ fn setup() -> (IERC20Dispatcher, IAnchorRegistryDispatcher) {
     admin().serialize(ref token_args);
     let supply: u256 = 1_000_000_000_000000000000000000;
     supply.serialize(ref token_args);
+    admin().serialize(ref token_args); // token admin (bridge management / upgrades)
     let (token_address, _) = deploy_syscall(
         fileonchain::foc_token::FocToken::TEST_CLASS_HASH.try_into().unwrap(),
         0,

@@ -10,7 +10,7 @@ module fileonchain::foc_token {
     use std::option;
     use std::signer;
     use std::string;
-    use aptos_framework::fungible_asset::{Self, MintRef, Metadata};
+    use aptos_framework::fungible_asset::{Self, BurnRef, MintRef, Metadata};
     use aptos_framework::object::{Self, Object};
     use aptos_framework::primary_fungible_store;
 
@@ -22,10 +22,21 @@ module fileonchain::foc_token {
 
     /// Caller is not the token admin.
     const E_NOT_ADMIN: u64 = 1;
+    /// Caller is not an approved bridge.
+    const E_NOT_BRIDGE: u64 = 2;
 
     /// Held under the metadata object; `mint` survives for testnet faucets.
     struct Managed has key {
         mint_ref: MintRef,
+        burn_ref: BurnRef,
+    }
+
+    /// Bridge allowlist under @fileonchain. The same FOCAT exists on every
+    /// runtime; approved bridges move supply by burning here and minting on
+    /// the destination (and vice versa). Admin-managed — the admin executes
+    /// EVM governance decisions (docs/governance.md).
+    struct Bridges has key {
+        approved: aptos_std::smart_table::SmartTable<address, bool>,
     }
 
     fun init_module(admin: &signer) {
@@ -40,8 +51,10 @@ module fileonchain::foc_token {
             string::utf8(b"https://fileonchain.org"),
         );
         let mint_ref = fungible_asset::generate_mint_ref(constructor_ref);
+        let burn_ref = fungible_asset::generate_burn_ref(constructor_ref);
         primary_fungible_store::mint(&mint_ref, signer::address_of(admin), INITIAL_SUPPLY);
-        move_to(&object::generate_signer(constructor_ref), Managed { mint_ref });
+        move_to(&object::generate_signer(constructor_ref), Managed { mint_ref, burn_ref });
+        move_to(admin, Bridges { approved: aptos_std::smart_table::new() });
     }
 
     #[view]
@@ -61,6 +74,41 @@ module fileonchain::foc_token {
         assert!(signer::address_of(admin) == @fileonchain, E_NOT_ADMIN);
         let managed = borrow_global<Managed>(object::object_address(&metadata()));
         primary_fungible_store::mint(&managed.mint_ref, to, amount);
+    }
+
+    // ------------------------------------------------------------------
+    // Bridging (admin-approved bridges move supply between chains)
+    // ------------------------------------------------------------------
+
+    public entry fun set_bridge(admin: &signer, bridge: address, enabled: bool) acquires Bridges {
+        assert!(signer::address_of(admin) == @fileonchain, E_NOT_ADMIN);
+        let bridges = borrow_global_mut<Bridges>(@fileonchain);
+        aptos_std::smart_table::upsert(&mut bridges.approved, bridge, enabled);
+    }
+
+    #[view]
+    public fun is_bridge(bridge: address): bool acquires Bridges {
+        let bridges = borrow_global<Bridges>(@fileonchain);
+        *aptos_std::smart_table::borrow_with_default(&bridges.approved, bridge, &false)
+    }
+
+    fun assert_bridge(caller: &signer) acquires Bridges {
+        assert!(is_bridge(signer::address_of(caller)), E_NOT_BRIDGE);
+    }
+
+    /// Mint arriving supply to `to` (destination side of a transfer).
+    public entry fun bridge_mint(bridge: &signer, to: address, amount: u64) acquires Bridges, Managed {
+        assert_bridge(bridge);
+        let managed = borrow_global<Managed>(object::object_address(&metadata()));
+        primary_fungible_store::mint(&managed.mint_ref, to, amount);
+    }
+
+    /// Burn departing supply from the bridge's own store (source side —
+    /// the user transfers to the bridge first).
+    public entry fun bridge_burn(bridge: &signer, amount: u64) acquires Bridges, Managed {
+        assert_bridge(bridge);
+        let managed = borrow_global<Managed>(object::object_address(&metadata()));
+        primary_fungible_store::burn(&managed.burn_ref, signer::address_of(bridge), amount);
     }
 
     #[test_only]

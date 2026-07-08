@@ -37,7 +37,12 @@ FileOnChain — a pnpm workspace monorepo:
   treasury. Disputes draw a 5-member jury from `ValidatorStaking`'s active
   set; losing bonds and losing jurors are slashed. Governance is EVM-hubbed
   (FOCAT ERC20Votes + OZ Governor + Timelock own every parameter); non-EVM
-  runtimes mirror decisions via admin accounts — see `docs/governance.md`.
+  runtimes mirror decisions via admin accounts. EVM contracts are
+  initializer-style behind OZ transparent proxies (ProxyAdmin owned by the
+  timelock — record *proxy* addresses in chains.ts); FOCAT is bridgeable
+  via governance-approved burn/mint bridges (ERC-7802 + per-bridge rate
+  limits on EVM; home chain mints the supply, remotes start at zero) — see
+  `docs/governance.md`.
 
 **Anchoring is real where a chain is provisioned; everything else is mock.**
 The pay-as-you-go upload flow sends real transactions through

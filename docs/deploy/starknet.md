@@ -71,3 +71,11 @@ chunk-anchor FileRegistry, `tokenContract` = FocToken, and
 staking, and platforms in one deployment). Fund the
 `ANCHOR_STARKNET_ACCOUNT` with FOCAT and stake at least 5 validators. The
 admin executes EVM governance decisions (see docs/governance.md).
+
+
+## Bridging & upgrades
+
+The token constructor now takes `(initial_holder, initial_supply, admin)`
+— pass `initial_supply = 0` on remote chains. The admin approves bridges
+(`set_bridge`) which mint/burn supply, and upgrades both contracts in
+place via `upgrade(new_class_hash)` (replace_class).

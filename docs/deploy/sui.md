@@ -57,3 +57,12 @@ Record on the chain entry: `moduleAddress` (package id), `tokenContract`
 call argument). Fund the `ANCHOR_SUI_PRIVATE_KEY` account with FOCAT and
 stake at least 5 validators before enabling challenges. The `AdminCap`
 holder executes EVM governance decisions (see docs/governance.md).
+
+
+## Bridging & upgrades
+
+The publisher receives a `TokenAdminCap`; the `TreasuryCap` lives inside
+the shared `TokenController`. Mint home-chain supply with `admin_mint`
+(remote chains mint nothing), approve bridges with `set_bridge`, and keep
+the package `UpgradeCap` with the admin for native package upgrades.
+Record the `TokenController` object id alongside `tokenContract`.

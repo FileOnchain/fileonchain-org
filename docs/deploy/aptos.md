@@ -67,3 +67,11 @@ file-anchor path on it. Then:
   min 1000 FOCAT) so challenges can draw a jury
 - the publisher account is the parameter admin — it executes EVM
   governance decisions (see docs/governance.md)
+
+
+## Bridging & upgrades
+
+Approve bridges with `foc_token::set_bridge(admin, bridge, true)`; bridges
+mint arriving supply (`bridge_mint`) and burn departing supply from their
+own store (`bridge_burn`). Publish with the default *compatible* upgrade
+policy so the package stays upgradeable by the publisher account.

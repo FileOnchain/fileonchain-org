@@ -6,9 +6,13 @@
 //! is initiated with `ft_transfer_call(registry, amount, msg)` and the
 //! registry's `ft_on_transfer` routes it.
 //!
-//! Fixed supply minted to `owner_id` at init (mirroring the EVM
-//! FileOnChainAttestationToken); the owner is the admin account that executes EVM
-//! governance decisions — see docs/governance.md.
+//! The same FOCAT exists on every runtime, so the token is bridgeable:
+//! the admin (the account that executes EVM governance decisions — see
+//! docs/governance.md) approves bridge accounts, which mint arriving
+//! supply and burn departing supply from their own balance. Initial supply
+//! mints to `owner_id` on the home chain only — deploy remotes with 0.
+//! Upgrades use NEAR's native mechanism: redeploy the wasm to the same
+//! account with its full-access key (state is preserved).
 
 use near_contract_standards::fungible_token::metadata::{
     FungibleTokenMetadata, FungibleTokenMetadataProvider, FT_METADATA_SPEC,
@@ -20,8 +24,9 @@ use near_contract_standards::storage_management::{
 use near_sdk::borsh::BorshSerialize;
 use near_sdk::collections::LazyOption;
 use near_sdk::json_types::U128;
+use near_sdk::store::IterableSet;
 use near_sdk::{
-    near, AccountId, BorshStorageKey, NearToken, PanicOnDefault, PromiseOrValue,
+    env, near, AccountId, BorshStorageKey, NearToken, PanicOnDefault, PromiseOrValue,
 };
 
 #[derive(BorshSerialize, BorshStorageKey)]
@@ -29,6 +34,7 @@ use near_sdk::{
 enum StorageKey {
     FungibleToken,
     Metadata,
+    Bridges,
 }
 
 #[near(contract_state)]
@@ -36,6 +42,8 @@ enum StorageKey {
 pub struct FocToken {
     token: FungibleToken,
     metadata: LazyOption<FungibleTokenMetadata>,
+    admin: AccountId,
+    bridges: IterableSet<AccountId>,
 }
 
 #[near]
@@ -65,7 +73,75 @@ impl FocToken {
         Self {
             token,
             metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
+            admin: owner_id,
+            bridges: IterableSet::new(StorageKey::Bridges),
         }
+    }
+
+    // ---------------------------------------------------------------
+    // Bridging (admin-approved bridges move supply between chains)
+    // ---------------------------------------------------------------
+
+    pub fn set_admin(&mut self, new_admin: AccountId) {
+        self.assert_admin();
+        self.admin = new_admin;
+    }
+
+    pub fn set_bridge(&mut self, bridge: AccountId, enabled: bool) {
+        self.assert_admin();
+        if enabled {
+            self.bridges.insert(bridge);
+        } else {
+            self.bridges.remove(&bridge);
+        }
+    }
+
+    pub fn is_bridge(&self, bridge: AccountId) -> bool {
+        self.bridges.contains(&bridge)
+    }
+
+    /// Mint arriving supply to `receiver_id` (destination side of a
+    /// transfer). The receiver must be storage-registered.
+    pub fn bridge_mint(&mut self, receiver_id: AccountId, amount: U128) {
+        self.assert_bridge();
+        self.token.internal_deposit(&receiver_id, amount.into());
+        near_contract_standards::fungible_token::events::FtMint {
+            owner_id: &receiver_id,
+            amount,
+            memo: Some("bridge transfer in"),
+        }
+        .emit();
+    }
+
+    /// Burn departing supply from the bridge's own balance (source side —
+    /// the user transfers to the bridge first).
+    pub fn bridge_burn(&mut self, amount: U128) {
+        self.assert_bridge();
+        let bridge = env::predecessor_account_id();
+        self.token.internal_withdraw(&bridge, amount.into());
+        near_contract_standards::fungible_token::events::FtBurn {
+            owner_id: &bridge,
+            amount,
+            memo: Some("bridge transfer out"),
+        }
+        .emit();
+    }
+}
+
+impl FocToken {
+    fn assert_admin(&self) {
+        assert_eq!(
+            env::predecessor_account_id(),
+            self.admin,
+            "FOCAT: not admin"
+        );
+    }
+
+    fn assert_bridge(&self) {
+        assert!(
+            self.bridges.contains(&env::predecessor_account_id()),
+            "FOCAT: not a bridge"
+        );
     }
 }
 
@@ -134,6 +210,50 @@ mod tests {
         assert_eq!(contract.ft_balance_of(accounts(0)).0, SUPPLY);
         assert_eq!(contract.ft_metadata().symbol, "FOCAT");
         assert_eq!(contract.ft_metadata().decimals, 18);
+    }
+
+    #[test]
+    fn bridge_mints_and_burns() {
+        testing_env!(context(accounts(0)).build());
+        let mut contract = FocToken::new(accounts(0), U128(SUPPLY));
+        contract.set_bridge(accounts(2), true);
+        assert!(contract.is_bridge(accounts(2)));
+
+        // Receiver + bridge register storage first (NEP-145).
+        for account in [accounts(1), accounts(2)] {
+            testing_env!(context(account).attached_deposit(NearToken::from_near(1)).build());
+            contract.storage_deposit(None, None);
+        }
+
+        // Destination side: arriving supply mints to the recipient.
+        testing_env!(context(accounts(2)).build());
+        contract.bridge_mint(accounts(1), U128(500));
+        assert_eq!(contract.ft_balance_of(accounts(1)).0, 500);
+        assert_eq!(contract.ft_total_supply().0, SUPPLY + 500);
+
+        // Source side: departing supply burns from the bridge's balance.
+        contract.bridge_mint(accounts(2), U128(300));
+        contract.bridge_burn(U128(300));
+        assert_eq!(contract.ft_balance_of(accounts(2)).0, 0);
+        assert_eq!(contract.ft_total_supply().0, SUPPLY + 500);
+    }
+
+    #[test]
+    #[should_panic(expected = "FOCAT: not a bridge")]
+    fn unapproved_bridge_cannot_mint() {
+        testing_env!(context(accounts(0)).build());
+        let mut contract = FocToken::new(accounts(0), U128(SUPPLY));
+        testing_env!(context(accounts(2)).build());
+        contract.bridge_mint(accounts(1), U128(1));
+    }
+
+    #[test]
+    #[should_panic(expected = "FOCAT: not admin")]
+    fn non_admin_cannot_set_bridge(){
+        testing_env!(context(accounts(0)).build());
+        let mut contract = FocToken::new(accounts(0), U128(SUPPLY));
+        testing_env!(context(accounts(1)).build());
+        contract.set_bridge(accounts(2), true);
     }
 
     #[test]

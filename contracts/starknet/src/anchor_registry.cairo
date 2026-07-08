@@ -17,7 +17,7 @@
 //! are admin-gated — the admin executes EVM governance decisions (see
 //! docs/governance.md).
 
-use starknet::ContractAddress;
+use starknet::{ClassHash, ContractAddress};
 
 /// Read-back shape for a proposal (status: 0 none, 1 proposed, 2 challenged,
 /// 3 verified, 4 rejected).
@@ -56,6 +56,7 @@ pub trait IAnchorRegistry<TContractState> {
     fn claim_rewards(ref self: TContractState);
     // admin (EVM-governance executor)
     fn set_admin(ref self: TContractState, new_admin: ContractAddress);
+    fn upgrade(ref self: TContractState, new_class_hash: ClassHash);
     fn set_protocol_treasury(ref self: TContractState, treasury: ContractAddress);
     fn set_bonds(ref self: TContractState, propose_bond: u256, challenge_bond: u256);
     fn set_min_tip(ref self: TContractState, min_tip: u256);
@@ -93,10 +94,10 @@ pub mod AnchorRegistry {
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
-    use starknet::syscalls::get_block_hash_syscall;
+    use starknet::syscalls::{get_block_hash_syscall, replace_class_syscall};
     use starknet::{
-        ContractAddress, get_block_number, get_block_timestamp, get_caller_address,
-        get_contract_address,
+        ClassHash, ContractAddress, SyscallResultTrait, get_block_number, get_block_timestamp,
+        get_caller_address, get_contract_address,
     };
     use crate::foc_token::{IERC20Dispatcher, IERC20DispatcherTrait};
     use super::ProposalView;
@@ -664,6 +665,13 @@ pub mod AnchorRegistry {
             self._assert_admin();
             assert!(!new_admin.is_zero(), "AnchorRegistry: zero admin");
             self.admin.write(new_admin);
+        }
+
+        /// Starknet-native upgrade: swap this contract's class in place.
+        /// The admin executes EVM governance decisions (docs/governance.md).
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self._assert_admin();
+            replace_class_syscall(new_class_hash).unwrap_syscall();
         }
 
         fn set_protocol_treasury(ref self: ContractState, treasury: ContractAddress) {

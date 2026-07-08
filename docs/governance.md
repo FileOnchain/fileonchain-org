@@ -63,14 +63,49 @@ This is a trust seam by design (v1): non-EVM parameter changes are only as
 trustworthy as the admin's fidelity to EVM governance outcomes. Replacing
 the manual replay with a cross-chain message executor is a follow-up.
 
+## Upgradeability
+
+Every EVM protocol contract (token, FileRegistry, ValidatorStaking,
+PlatformRegistry, CachePayments, DonationEscrow) lives behind an OZ
+**TransparentUpgradeableProxy** whose auto-created ProxyAdmin is owned by
+the timelock — an upgrade is a governance proposal that calls
+`ProxyAdmin.upgradeAndCall`, exactly like a parameter change. The Governor
+and Timelock themselves are deliberately **not** proxied: a governor
+migration is a proposer-role rotation on the timelock, and the timelock is
+the root of trust.
+
+The other runtimes upgrade natively, executed by the same admin:
+
+| Runtime | Upgrade mechanism |
+| --- | --- |
+| Aptos | package republish (compatible upgrade policy) |
+| Sui | package upgrade via the publisher's `UpgradeCap` |
+| Starknet | `upgrade(new_class_hash)` on each contract (`replace_class`) |
+| NEAR | redeploy the wasm to the same account (full-access key; state preserved) |
+
+## Bridging
+
+The same FOCAT exists on every runtime; supply moves by **burn on the
+source chain, mint on the destination**, through governance-approved
+bridges — no bridge vendor is hard-coded. On EVM the token implements
+ERC-7802 (`crosschainMint`/`crosschainBurn`) with per-bridge mint/burn
+rate limits that replenish linearly over one day (xERC20-style): the limit
+is the blast-radius cap if a bridge is compromised. The non-EVM tokens
+carry admin-managed bridge allowlists with the same mint/burn pair
+(rate limits are EVM-only in v1 — a documented gap).
+
+Initial supply mints on the **home chain only**; remote deployments start
+at zero supply and receive FOCAT exclusively through bridges, so the
+global supply stays fixed.
+
 ## Token notes
 
 FOCAT exists natively on every contract runtime (ERC-20 with ERC20Votes on
 EVM, a Fungible Asset on Aptos, `Coin<FOCAT>` on Sui, a minimal ERC-20 in
-Cairo on Starknet, NEP-141 on NEAR). The supplies are **disjoint** — there
-is no bridge — and only the EVM token carries governance voting power.
-Non-EVM FOCAT is a utility asset: tips, bonds, and validator stakes on that
-runtime.
+Cairo on Starknet, NEP-141 on NEAR), connected by the bridge model above
+into one global supply. Only the EVM token carries governance voting
+power; elsewhere FOCAT is a utility asset — tips, bonds, and validator
+stakes on that runtime.
 
 ## Known v1 limitations
 

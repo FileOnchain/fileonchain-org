@@ -11,7 +11,11 @@ proposal finalizes after a 24h window and the tip splits 60/25/15 between
 staked validators, the originating platform, and the protocol treasury;
 challenges go to a jury drawn from the staked validator set. Governance is
 EVM-hubbed (Governor + timelock); the other runtimes mirror decisions via
-admin accounts — see [`docs/governance.md`](../docs/governance.md).
+admin accounts. EVM contracts are upgradeable behind OZ transparent
+proxies owned by the timelock (other runtimes upgrade natively), and FOCAT
+is bridgeable — one global supply moved by governance-approved bridges
+with burn/mint (ERC-7802 + rate limits on EVM) — see
+[`docs/governance.md`](../docs/governance.md).
 
 | Directory | Runtime | Toolchain | Artifacts |
 | --- | --- | --- | --- |
@@ -49,7 +53,7 @@ cd starknet && scarb test                # cairo-test has no coverage tool yet
 
 ```bash
 cd evm
-forge install foundry-rs/forge-std OpenZeppelin/openzeppelin-contracts@v5.4.0  # lib/ is untracked
+forge install foundry-rs/forge-std OpenZeppelin/openzeppelin-contracts@v5.4.0 OpenZeppelin/openzeppelin-contracts-upgradeable@v5.4.0  # lib/ is untracked
 forge build
 forge test
 ```
