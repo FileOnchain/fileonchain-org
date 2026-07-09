@@ -11,7 +11,7 @@ import LiveLedgerTicker, { StatCounter } from "@/components/LiveLedgerTicker";
 import { compactNumber, truncateCID } from "@/lib/cid/format";
 import {
   ACTIVE_CHAINS,
-  CHAIN_FAMILIES,
+  ACTIVE_FAMILIES,
   CHAIN_FAMILY_LABELS,
   type ChainFamily,
 } from "@fileonchain/sdk";
@@ -23,11 +23,6 @@ import type {
 import RecentAnchorsTable from "@/components/explorer/RecentAnchorsTable";
 import ExplorerFilters from "@/components/explorer/ExplorerFilters";
 import { trackEvent } from "@/lib/analytics";
-
-/** Runtimes with at least one network open for uploads — planned families stay hidden. */
-const ACTIVE_FAMILIES = CHAIN_FAMILIES.filter((family) =>
-  ACTIVE_CHAINS.some((c) => c.family === family),
-);
 
 /**
  * ExplorerShell — Etherscan-style home for the multichain CID indexer.

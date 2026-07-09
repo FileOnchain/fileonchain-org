@@ -3,8 +3,7 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import {
-  ACTIVE_CHAINS,
-  CHAIN_FAMILIES,
+  ACTIVE_FAMILIES,
   CHAIN_FAMILY_LABELS,
   type ChainFamily,
 } from "@fileonchain/sdk";
@@ -22,9 +21,7 @@ interface ExplorerFiltersProps {
 // anchors on planned families, so their chips would always filter to nothing.
 const RUNTIME_OPTIONS: Array<{ id: ChainFamily | "all"; label: string }> = [
   { id: "all", label: "All runtimes" },
-  ...CHAIN_FAMILIES.filter((family) =>
-    ACTIVE_CHAINS.some((c) => c.family === family),
-  ).map((family) => ({
+  ...ACTIVE_FAMILIES.map((family) => ({
     id: family,
     label: CHAIN_FAMILY_LABELS[family],
   })),
