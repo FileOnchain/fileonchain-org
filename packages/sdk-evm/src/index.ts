@@ -618,8 +618,12 @@ export interface EvmChunkedAnchorParams {
   chainId: ChainId;
   /** CIDv1 of the whole file. */
   fileCid: string;
-  /** Chunks to anchor; `data` is ignored — EVM stores CIDs, not bytes. */
+  /** Chunks to anchor; `data` is embedded (base64) when `includeData` asks
+   * for on-chain storage. */
   chunks: AnchorChunk[];
+  /** Embed chunk bytes in the payloads (on-chain storage). Defaults to the
+   * chain's `embedsChunkData` flag; bytes ride the event `uri` calldata. */
+  includeData?: boolean;
   /** SHA-256 of the raw content on the file-level anchor; zero hash if unknown. */
   contentHash?: Hex;
   /** Optional IPFS / Arweave pointer on the file-level anchor. */
@@ -649,6 +653,7 @@ export const anchorChunkedFile = async (
     chunks,
     contentHash = zeroHash,
     uri = "",
+    includeData,
     platformId = DEFAULT_PLATFORM_ID,
     tip,
     publicClient,
@@ -657,6 +662,7 @@ export const anchorChunkedFile = async (
 ): Promise<ChunkedAnchorReceipt> => {
   if (!isValidCID(fileCid)) throw new Error(`"${fileCid}" is not a valid CIDv1 base32 string.`);
   const chain = resolveEvmProposeChain(chainId);
+  const embedData = includeData ?? chain.embedsChunkData ?? false;
   const account = requireAccount(walletClient);
 
   const viemChain = toViemChain(chain);
@@ -666,7 +672,7 @@ export const anchorChunkedFile = async (
 
   for (const chunk of chunks) {
     onProgress?.({ stage: "signing", chunksAnchored: chunk.index, chunksTotal: total });
-    const payload = buildChunkAnchorPayload({ fileCid, chunk, total });
+    const payload = buildChunkAnchorPayload({ fileCid, chunk, total, includeData: embedData });
     const txHash = await walletClient.writeContract({
       chain: viemChain,
       account,

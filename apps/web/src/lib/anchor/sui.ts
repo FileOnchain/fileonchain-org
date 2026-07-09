@@ -27,6 +27,8 @@ export const sendSuiAnchor = async ({
   chunks,
   platformId,
   tip,
+  includeData,
+  uri,
   onProgress,
 }: AnchorRequest): Promise<ChunkedAnchorReceipt> => {
   const { suiAddress } = useWalletStates.getState();
@@ -88,6 +90,6 @@ export const sendSuiAnchor = async ({
         return { digest };
       },
     },
-    { chainId: chain.id, fileCid, chunks, platformId, tip, onProgress },
+    { chainId: chain.id, fileCid, chunks, platformId, tip, includeData, uri, onProgress },
   );
 };

@@ -10,12 +10,21 @@ import {
   ChangeEvent,
   DragEvent,
   useCallback,
+  useEffect,
+  useMemo,
+  useRef,
   useState,
 } from "react";
 import {
   ChainNotProvisionedError,
   ZERO_ADDRESS,
+  buildStorageUri,
+  getChain,
+  getChunkDataBudget,
+  isStorageCapable,
   type AnchorChunk,
+  type ChainConfig,
+  type ChainId,
 } from "@fileonchain/sdk";
 import { ChunkData, generateCIDs } from "@/utils/generateCIDs";
 import { readFileContent } from "@/utils/readFileContent";
@@ -71,7 +80,28 @@ type SelectedCidData = {
 
 export type UploadPaymentMethod = "payg" | "credits" | "byok";
 
-export type AnchorStatus = "idle" | "signing" | "anchoring" | "done" | "failed";
+export type AnchorStatus =
+  | "idle"
+  | "signing"
+  | "storing"
+  | "anchoring"
+  | "done"
+  | "failed";
+
+/**
+ * Where the file's bytes go:
+ * - "onchain"  — chunk bytes are embedded in the anchors on a storage chain
+ *   (the anchoring chain itself when it can store, Autonomys otherwise);
+ * - "external" — the user already hosts the bytes and provides a URI
+ *   (ipfs://…, an Auto Drive CID, https://…) for the file anchor to carry;
+ * - "none"     — proof-only: anchor the CIDs, store nothing.
+ */
+export type StorageMode = "onchain" | "external" | "none";
+
+/** Suggested storage fallback when the anchoring chain can't carry bytes —
+ * Autonomys, the permanent-storage network (testnet mirror for testnets). */
+const fallbackStorageChainId = (anchorChain: ChainConfig): ChainId =>
+  anchorChain.testnet ? "substrate:autonomys-taurus" : "substrate:autonomys-mainnet";
 
 export const useFileUploader = () => {
   const { activeChain } = useChain();
@@ -105,6 +135,29 @@ export const useFileUploader = () => {
   const [anchorStatus, setAnchorStatus] = useState<AnchorStatus>("idle");
   const [anchorProgress, setAnchorProgress] = useState(0);
 
+  // Storage: bytes go on-chain by default; the anchoring chain is the
+  // default target, Autonomys the fallback when it can't carry bytes.
+  const [storageMode, setStorageMode] = useState<StorageMode>("onchain");
+  const [storageChainId, setStorageChainId] = useState<ChainId | null>(null);
+  const [externalUri, setExternalUri] = useState("");
+  const [storageTxHash, setStorageTxHash] = useState<string | null>(null);
+
+  /** The chain that will hold the bytes, or null when not storing on-chain. */
+  const storageChain = useMemo<ChainConfig | null>(() => {
+    if (storageMode !== "onchain") return null;
+    const explicit = storageChainId ? getChain(storageChainId) : null;
+    if (explicit && isStorageCapable(explicit)) return explicit;
+    if (isStorageCapable(activeChain)) return activeChain;
+    return getChain(fallbackStorageChainId(activeChain)) ?? null;
+  }, [storageMode, storageChainId, activeChain]);
+
+  /** Chunk size follows the storage chain's per-transaction data budget so
+   * every chunk anchor (with bytes) fits in one transaction. */
+  const chunkSize = useMemo(() => {
+    if (!storageChain) return CHUNK_BUFFER_SIZE;
+    return Math.min(CHUNK_BUFFER_SIZE, getChunkDataBudget(storageChain) ?? CHUNK_BUFFER_SIZE);
+  }, [storageChain]);
+
   const handleSearch = useCallback(async (chunks: ChunkData[]) => {
     if (chunks.length === 0) return;
     try {
@@ -116,10 +169,15 @@ export const useFileUploader = () => {
     }
   }, []);
 
+  /** Chunk size the current `cids` were sliced with — guards the re-slice
+   * effect below against redundant re-hashing. */
+  const lastChunkSize = useRef(chunkSize);
+
   /**
    * Prepare a file: ingest via IPLD for the canonical file CID and slice
-   * into real 64KB SHA-256 chunks. Anchoring is a separate explicit step —
-   * see `anchor()` — so the user can pick a payment method first.
+   * into real SHA-256 chunks sized for the storage chain. Anchoring is a
+   * separate explicit step — see `anchor()` — so the user can pick a
+   * payment method first.
    */
   const processFile = useCallback(
     async (selectedFile: File) => {
@@ -130,6 +188,7 @@ export const useFileUploader = () => {
       setCids([]);
       setFileCid(null);
       setTxHash(null);
+      setStorageTxHash(null);
       setAnchorStatus("idle");
       setAnchorProgress(0);
       setIsUploading(true);
@@ -150,9 +209,11 @@ export const useFileUploader = () => {
         stringToCid(cidString);
         setFileCid(cidString);
 
-        // Real 64KB chunking — one entry (and, in production, one
-        // transaction) per chunk, with nextCid chaining.
-        const chunks = await generateCIDs(selectedFile, CHUNK_BUFFER_SIZE);
+        // Real chunking sized to the storage chain's per-tx data budget —
+        // one entry (and, in production, one transaction) per chunk, with
+        // nextCid chaining.
+        const chunks = await generateCIDs(selectedFile, chunkSize);
+        lastChunkSize.current = chunkSize;
         setCids(chunks);
 
         await handleSearch(chunks);
@@ -162,8 +223,26 @@ export const useFileUploader = () => {
         setIsUploading(false);
       }
     },
-    [handleSearch],
+    [handleSearch, chunkSize],
   );
+
+  // Re-slice when the storage target (and so the chunk budget) changes.
+  // Chunks are frozen once anchoring starts — only idle/failed re-slice.
+  useEffect(() => {
+    if (!file || isUploading) return;
+    if (anchorStatus !== "idle" && anchorStatus !== "failed") return;
+    if (lastChunkSize.current === chunkSize) return;
+    let cancelled = false;
+    void (async () => {
+      const chunks = await generateCIDs(file, chunkSize);
+      if (cancelled) return;
+      lastChunkSize.current = chunkSize;
+      setCids(chunks);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [file, isUploading, anchorStatus, chunkSize]);
 
   /** One wallet signature authorizing the batch, per the active family. */
   const signAuthorization = useCallback(
@@ -265,9 +344,13 @@ export const useFileUploader = () => {
 
   /**
    * Pay-as-you-go: send the real per-chunk transactions for the active
-   * family via `lib/anchor`. When the chain has nothing deployed to anchor
-   * against yet, fall back to the previous simulated flow — one
-   * authorization signature, ticking progress, then the mock anchor.
+   * family via `lib/anchor`. Storage happens first: when the storage chain
+   * differs from the anchoring chain, a storage pass embeds the bytes there
+   * and the anchor pass carries a `fileonchain://` URI pointing at it; when
+   * they're the same chain, one combined pass stores and anchors together.
+   * When the anchoring chain has nothing deployed yet, fall back to the
+   * previous simulated flow — one authorization signature, ticking
+   * progress, then the mock anchor.
    */
   const anchorPayg = useCallback(async (): Promise<AnchorOutcome> => {
     if (!file || !fileCid) throw new Error("No file prepared");
@@ -277,15 +360,62 @@ export const useFileUploader = () => {
       nextCid: chunk.nextCid?.toString(),
       data: chunk.data,
     }));
+    // Senders that dial an RPC themselves honor the account's custom
+    // endpoint; wallet-broadcast families ignore rpcUrl anyway.
+    const rpcOverrides = getRpcOverrides();
 
     try {
+      // Storage pass — bytes embedded in chunk anchors on the storage
+      // chain. Its provisioning failure is the user's to resolve (pick
+      // another storage chain), never silently mocked.
+      let uri: string | undefined;
+      const storesOnAnchorChain = storageChain?.id === activeChain.id;
+      if (storageChain && !storesOnAnchorChain) {
+        setAnchorStatus("storing");
+        try {
+          const stored = await anchorFileOnChain({
+            chain: withRpcOverride(storageChain, rpcOverrides),
+            fileCid,
+            chunks,
+            includeData: true,
+            onProgress: (progress) => {
+              setAnchorStatus(progress.stage === "signing" ? "signing" : "storing");
+              setAnchorProgress(progress.chunksAnchored);
+            },
+          });
+          setStorageTxHash(stored.txHash);
+          uri = buildStorageUri(storageChain.id, fileCid);
+          trackEvent("chain_anchor_success", {
+            family: storageChain.family,
+            chain_id: storageChain.id,
+            payment_method: "payg",
+            chunk_count: chunks.length,
+          });
+        } catch (error) {
+          if (error instanceof ChainNotProvisionedError) {
+            throw new Error(
+              `${storageChain.name} can't store bytes for real yet. Pick a different storage chain, or switch storage off.`,
+            );
+          }
+          throw error;
+        }
+      } else if (storageMode === "external" && externalUri.trim()) {
+        uri = externalUri.trim();
+      }
+
+      // Anchor pass — proof-only unless the anchoring chain is also the
+      // storage chain. Bytes are stripped on proof-only passes so a
+      // storage-first chain's default embed can't sneak them in twice.
       setAnchorStatus("signing");
+      setAnchorProgress(0);
       const outcome = await anchorFileOnChain({
-        // Senders that dial an RPC themselves honor the account's custom
-        // endpoint; wallet-broadcast families ignore rpcUrl anyway.
-        chain: withRpcOverride(activeChain, getRpcOverrides()),
+        chain: withRpcOverride(activeChain, rpcOverrides),
         fileCid,
-        chunks,
+        chunks: storesOnAnchorChain
+          ? chunks
+          : chunks.map(({ cid, index, nextCid }) => ({ cid, index, nextCid })),
+        includeData: Boolean(storesOnAnchorChain),
+        uri,
         onProgress: (progress) => {
           setAnchorStatus(progress.stage === "signing" ? "signing" : "anchoring");
           setAnchorProgress(progress.chunksAnchored);
@@ -330,7 +460,16 @@ export const useFileUploader = () => {
       submitter: result.submitter,
       simulated: true,
     };
-  }, [file, fileCid, cids, activeChain, signAuthorization]);
+  }, [
+    file,
+    fileCid,
+    cids,
+    activeChain,
+    storageChain,
+    storageMode,
+    externalUri,
+    signAuthorization,
+  ]);
 
   /**
    * Anchor the prepared file with the selected payment method.
@@ -352,6 +491,7 @@ export const useFileUploader = () => {
     }
     setError(null);
     setAnchorProgress(0);
+    setStorageTxHash(null);
 
     try {
       if (paymentMethod === "payg") {
@@ -502,6 +642,14 @@ export const useFileUploader = () => {
     byokKeyId,
     anchorStatus,
     anchorProgress,
+    storageMode,
+    storageChain,
+    externalUri,
+    chunkSize,
+    storageTxHash,
+    setStorageMode,
+    setStorageChainId,
+    setExternalUri,
     setPaymentMethod,
     setByokKeyId,
     anchor,

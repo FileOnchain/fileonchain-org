@@ -250,8 +250,12 @@ export interface AptosChunkedAnchorParams {
   chainId: ChainId;
   /** CIDv1 of the whole file. */
   fileCid: string;
-  /** Chunks to anchor; `data` is ignored — the module stores CIDs, not bytes. */
+  /** Chunks to anchor; `data` is embedded (base64) when `includeData` asks
+   * for on-chain storage. */
   chunks: AnchorChunk[];
+  /** Embed chunk bytes in the payloads (on-chain storage). Defaults to the
+   * chain's `embedsChunkData` flag; mind the per-transaction byte budget. */
+  includeData?: boolean;
   /** Optional SHA-256 (hex) of the raw content, on the file-level anchor. */
   sha256?: string;
   /** Optional IPFS / Arweave pointer, on the file-level anchor. */
@@ -272,15 +276,16 @@ export interface AptosChunkedAnchorParams {
  */
 export const anchorChunkedFile = async (
   signer: AptosAnchorSigner,
-  { chainId, fileCid, chunks, sha256, uri, platformId = "1", tip, onProgress }: AptosChunkedAnchorParams
+  { chainId, fileCid, chunks, sha256, uri, includeData, platformId = "1", tip, onProgress }: AptosChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
   const chain = resolveAptosChain(chainId);
+  const embedData = includeData ?? chain.embedsChunkData ?? false;
   const total = chunks.length;
   const txHashes: string[] = [];
 
   for (const chunk of chunks) {
     onProgress?.({ stage: "signing", chunksAnchored: chunk.index, chunksTotal: total });
-    const payload = buildChunkAnchorPayload({ fileCid, chunk, total });
+    const payload = buildChunkAnchorPayload({ fileCid, chunk, total, includeData: embedData });
     const { hash } = await signer.signAndSubmitTransaction(
       anchorPayload(chain.moduleAddress, chunk.cid, payload)
     );

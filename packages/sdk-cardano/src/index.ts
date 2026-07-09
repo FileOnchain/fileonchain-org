@@ -90,8 +90,12 @@ export interface CardanoChunkedAnchorParams {
   chainId: ChainId;
   /** CIDv1 of the whole file. */
   fileCid: string;
-  /** Chunks to anchor; `data` is ignored — metadata holds CIDs, not bytes. */
+  /** Chunks to anchor; `data` is embedded (base64) when `includeData` asks
+   * for on-chain storage. */
   chunks: AnchorChunk[];
+  /** Embed chunk bytes in the payloads (on-chain storage). Defaults to the
+   * chain's `embedsChunkData` flag; mind the per-transaction byte budget. */
+  includeData?: boolean;
   /** Optional SHA-256 (hex) of the raw content, on the file-level anchor. */
   sha256?: string;
   /** Optional IPFS / Arweave pointer, on the file-level anchor. */
@@ -107,14 +111,20 @@ export interface CardanoChunkedAnchorParams {
  */
 export const anchorChunkedFile = async (
   signer: CardanoAnchorSigner,
-  { chainId, fileCid, chunks, sha256, uri, onProgress }: CardanoChunkedAnchorParams
+  { chainId, fileCid, chunks, sha256, uri, includeData, onProgress }: CardanoChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
   const chain = resolveCardanoChain(chainId);
 
   // No blockNumber in the receipt — CIP-30 wallets return only the hash.
   return runSequentialChunkedAnchor({
     chainId: chain.id,
-    payloads: buildChunkedAnchorPayloads({ fileCid, chunks, sha256, uri }),
+    payloads: buildChunkedAnchorPayloads({
+    fileCid,
+    chunks,
+    sha256,
+    uri,
+    includeData: includeData ?? chain.embedsChunkData ?? false,
+  }),
     chunksTotal: chunks.length,
     submitter: signer.address,
     send: (payload) => signer.submitMetadataTransaction(splitForMetadata(payload)),

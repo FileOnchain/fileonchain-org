@@ -1,4 +1,4 @@
-import type { ChainId, ChainFamily } from "./types";
+import type { ChainFamily, ChainId } from "./types";
 
 /**
  * Rollout status of a chain in the FileOnChain product:
@@ -73,8 +73,10 @@ export interface ChainConfig {
   hcsTopicId?: string | null;
   /**
    * Whether chunk anchors on this chain embed the chunk bytes themselves
-   * (base64 `d` field). Only data-storage chains (Autonomys) set this;
-   * everywhere else anchors are CID-only. Absent means false.
+   * (base64 `d` field) *by default* — i.e. the chain is a storage-first
+   * network (Autonomys). Absent means false. Any storage-capable chain can
+   * still store bytes on request via the clients' `includeData` option —
+   * see `getChunkDataBudget` / `isStorageCapable` in `storage.ts`.
    */
   embedsChunkData?: boolean;
   /** Rollout status — only `"active"` chains accept new uploads. */
@@ -82,7 +84,8 @@ export interface ChainConfig {
   testnet: boolean;
 }
 
-export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
+export const ZERO_ADDRESS =
+  "0x0000000000000000000000000000000000000000" as const;
 
 /* TODO: deploy address — replace after Foundry Deploy.s.sol runs on each chain */
 export const CHAINS: readonly ChainConfig[] = [
@@ -124,7 +127,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
-    status: "active",
+    status: "planned",
     testnet: false,
   },
   // Auto EVM — Autonomys' EVM domain (consensus chain is the Substrate
@@ -159,7 +162,7 @@ export const CHAINS: readonly ChainConfig[] = [
     explorerTxPath: "/tx/",
     explorerAddressPath: "/address/",
     nativeCurrency: { symbol: "ETH", decimals: 18 },
-    icon: "/chains/op.svg",
+    icon: "/chains/optimism.svg",
     registryContract: ZERO_ADDRESS,
     cacheContract: ZERO_ADDRESS,
     donationContract: ZERO_ADDRESS,
@@ -179,7 +182,7 @@ export const CHAINS: readonly ChainConfig[] = [
     explorerTxPath: "/tx/",
     explorerAddressPath: "/address/",
     nativeCurrency: { symbol: "ETH", decimals: 18 },
-    icon: "/chains/arb.svg",
+    icon: "/chains/arbitrum.svg",
     registryContract: ZERO_ADDRESS,
     cacheContract: ZERO_ADDRESS,
     donationContract: ZERO_ADDRESS,
@@ -380,7 +383,7 @@ export const CHAINS: readonly ChainConfig[] = [
     explorerTxPath: "/tx/",
     explorerAddressPath: "/address/",
     nativeCurrency: { symbol: "ETH", decimals: 18 },
-    icon: "/chains/eth.svg",
+    icon: "/chains/sepolia.svg",
     registryContract: ZERO_ADDRESS,
     cacheContract: ZERO_ADDRESS,
     donationContract: ZERO_ADDRESS,
@@ -407,7 +410,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
-    status: "active",
+    status: "planned",
     testnet: true,
   },
   {
@@ -440,7 +443,7 @@ export const CHAINS: readonly ChainConfig[] = [
     explorerTxPath: "/tx/",
     explorerAddressPath: "/address/",
     nativeCurrency: { symbol: "ETH", decimals: 18 },
-    icon: "/chains/op.svg",
+    icon: "/chains/optimism.svg",
     registryContract: ZERO_ADDRESS,
     cacheContract: ZERO_ADDRESS,
     donationContract: ZERO_ADDRESS,
@@ -460,7 +463,7 @@ export const CHAINS: readonly ChainConfig[] = [
     explorerTxPath: "/tx/",
     explorerAddressPath: "/address/",
     nativeCurrency: { symbol: "ETH", decimals: 18 },
-    icon: "/chains/arb.svg",
+    icon: "/chains/arbitrum.svg",
     registryContract: ZERO_ADDRESS,
     cacheContract: ZERO_ADDRESS,
     donationContract: ZERO_ADDRESS,
@@ -682,7 +685,7 @@ export const CHAINS: readonly ChainConfig[] = [
     explorerTxPath: "/extrinsic/",
     explorerAddressPath: "/account/",
     nativeCurrency: { symbol: "TAU", decimals: 18 },
-    icon: "/chains/autonomys.svg",
+    icon: "/chains/tau.svg",
     registryContract: null,
     cacheContract: null,
     donationContract: null,
@@ -1220,8 +1223,9 @@ export const TESTNET_CHAINS: readonly ChainConfig[] = CHAINS.filter(
  * Chains a picker should offer given the user's testnet-visibility
  * preference. Keeps the "hide testnets" rule in one place.
  */
-export const getVisibleChains = (showTestnets: boolean): readonly ChainConfig[] =>
-  showTestnets ? CHAINS : MAINNET_CHAINS;
+export const getVisibleChains = (
+  showTestnets: boolean,
+): readonly ChainConfig[] => (showTestnets ? CHAINS : MAINNET_CHAINS);
 
 /** Display labels for each rollout status. */
 export const CHAIN_STATUS_LABELS: Record<ChainStatus, string> = {
@@ -1235,7 +1239,8 @@ export const isChainActive = (chain: ChainConfig): boolean =>
   chain.status === "active";
 
 /** Chains open for new uploads — upload pickers offer only these. */
-export const ACTIVE_CHAINS: readonly ChainConfig[] = CHAINS.filter(isChainActive);
+export const ACTIVE_CHAINS: readonly ChainConfig[] =
+  CHAINS.filter(isChainActive);
 
 /**
  * Pick the registry address for a chain, falling back to the zero address.
@@ -1272,10 +1277,12 @@ export const CHAIN_FAMILY_LABELS: Record<ChainFamily, string> = {
  */
 export const CHAIN_FAMILY_TAGLINES: Record<ChainFamily, string> = {
   evm: "Same Ethereum tooling, different network.",
-  substrate: "Uses Substrate's `system.remark` as the on-chain storage primitive.",
+  substrate:
+    "Uses Substrate's `system.remark` as the on-chain storage primitive.",
   solana: "Programs instead of contracts. Use a Solana wallet.",
   aptos: "Move modules. Use an Aptos wallet.",
-  cosmos: "IBC app-chains; anchors ride the transaction memo. Use Keplr or Leap.",
+  cosmos:
+    "IBC app-chains; anchors ride the transaction memo. Use Keplr or Leap.",
   sui: "Move objects and PTBs — separate from Aptos. Use a Sui wallet.",
   starknet: "Cairo contracts on a ZK rollup. Use Argent or Braavos.",
   near: "Human-readable accounts and WASM contracts. Use a NEAR wallet.",
@@ -1288,7 +1295,9 @@ export const CHAIN_FAMILY_TAGLINES: Record<ChainFamily, string> = {
 
 /** Every chain family, in display order — UI surfaces that enumerate
  * runtimes (filters, grids, switchers) iterate this, never a local list. */
-export const CHAIN_FAMILIES = Object.keys(CHAIN_FAMILY_LABELS) as readonly ChainFamily[];
+export const CHAIN_FAMILIES = Object.keys(
+  CHAIN_FAMILY_LABELS,
+) as readonly ChainFamily[];
 
 /**
  * Build an explorer link for a tx hash.

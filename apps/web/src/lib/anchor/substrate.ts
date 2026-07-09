@@ -32,6 +32,8 @@ export const sendSubstrateAnchor = async ({
   chain,
   fileCid,
   chunks,
+  includeData,
+  uri,
   onProgress,
 }: AnchorRequest): Promise<ChunkedAnchorReceipt> => {
   const { selectedAccount } = useWalletStates.getState();
@@ -53,6 +55,8 @@ export const sendSubstrateAnchor = async ({
     signer: injector.signer,
     fileCid,
     chunks,
+    includeData,
+    uri,
     onProgress,
   });
 };

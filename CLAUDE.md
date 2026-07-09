@@ -51,6 +51,15 @@ back to `apps/web/src/lib/mock/*` only when a chain has nothing deployed
 (`ChainNotProvisionedError`). Registry reads, cache, donations, and the
 indexer still resolve through the mock layer — see "Mock layer" below.
 
+**Files are stored on-chain by default, not just anchored.** Uploads pick a
+storage chain (default: the anchoring chain when storage-capable, Autonomys
+suggested otherwise) whose per-tx data budget (`getChunkDataBudget`) sizes
+the chunks; the storage pass embeds chunk bytes (`includeData`) and proof
+anchors on other chains carry a `fileonchain://<chainId>/<cid>` URI to the
+stored copy. Users can opt out (anchor-only) or link an external URI —
+`useFileUploader` + `components/upload/StorageSelector.tsx`; vocabulary in
+`packages/utils/src/storage.ts`; design in `docs/whitepaper.md`.
+
 ## Commands
 
 Run from the repo root:
@@ -142,6 +151,14 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
   verification vocabulary (`ProposalStatus`, `AnchorProposal`, the
   `proposal` block on `ChunkedAnchorReceipt`, the `"approving"`
   `AnchorStage` for token-allowance steps).
+- `src/storage.ts` — the on-chain storage vocabulary: per-family payload
+  budgets (`FAMILY_PAYLOAD_BUDGET_BYTES`), `getChunkDataBudget` /
+  `isStorageCapable` / `storageChunkCount` (raw bytes one chunk anchor can
+  carry after envelope + base64), and the `fileonchain://<chainId>/<cid>`
+  storage URI (`buildStorageUri` / `parseStorageUri`) that proof anchors on
+  other chains carry to point at the chain holding the bytes. Every family
+  client takes `includeData` (default `chain.embedsChunkData`) to embed
+  chunk bytes in its anchors.
 - `src/helpers.ts` — the orchestration the family clients share:
   `resolveFamilyChain` (behind every `resolve<Family>Chain` guard),
   `assertPayloadFits` (memo/comment/message size pre-flight),

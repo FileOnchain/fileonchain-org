@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <linearGradient id="sol" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0%" stop-color="#9945FF"/>
-    <stop offset="100%" stop-color="#14F195"/>
-  </linearGradient>
-  <rect width="32" height="32" rx="6" fill="url(#sol)"/>
-  <path d="M9 11h14l-3-3H6l3 3zm0 5h14l-3-3H6l3 3zm0 5h14l-3-3H6l3 3z" fill="#fff" opacity=".9"/>
-</svg>

@@ -222,8 +222,12 @@ export interface StarknetChunkedAnchorParams {
   chainId: ChainId;
   /** CIDv1 of the whole file. */
   fileCid: string;
-  /** Chunks to anchor; `data` is ignored — the registry stores CIDs, not bytes. */
+  /** Chunks to anchor; `data` is embedded (base64) when `includeData` asks
+   * for on-chain storage. */
   chunks: AnchorChunk[];
+  /** Embed chunk bytes in the payloads (on-chain storage). Defaults to the
+   * chain's `embedsChunkData` flag; mind the per-transaction byte budget. */
+  includeData?: boolean;
   /** Optional SHA-256 (hex) of the raw content, on the file-level anchor. */
   sha256?: string;
   /** Optional IPFS / Arweave pointer, on the file-level anchor. */
@@ -253,6 +257,7 @@ export const anchorChunkedFile = async (
     chunks,
     sha256,
     uri,
+    includeData,
     platformId = "1",
     tip,
     maxCallsPerTx = DEFAULT_MAX_CALLS_PER_TX,
@@ -260,6 +265,7 @@ export const anchorChunkedFile = async (
   }: StarknetChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
   const chain = resolveStarknetChain(chainId);
+  const embedData = includeData ?? chain.embedsChunkData ?? false;
   const total = chunks.length;
   const proposePath = canPropose(chain, signer);
 
@@ -267,7 +273,7 @@ export const anchorChunkedFile = async (
   // only after every chunk.
   const calls: StarknetAnchorCall[] = chunks.map((chunk) => ({
     cid: chunk.cid,
-    payload: buildChunkAnchorPayload({ fileCid, chunk, total }),
+    payload: buildChunkAnchorPayload({ fileCid, chunk, total, includeData: embedData }),
   }));
   if (!proposePath) {
     calls.push({

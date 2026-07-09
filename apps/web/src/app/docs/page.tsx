@@ -136,7 +136,7 @@ const job = await client.anchor({
   fileName: "data.bin",
   fileSizeBytes: 150_000,
   chunkCount: 3,
-  chainIds: ["evm:8453"], // must be status: "active" chains
+  chainIds: ["evm:870"], // must be status: "active" chains
   paymentMethod: "credits",
 });
 
@@ -664,6 +664,24 @@ const DocsPage = () => (
               anchor — and reports the same{" "}
               <code className="font-mono text-xs">AnchorProgress</code> stages, so
               one progress UI covers all twelve families.
+            </CardDescription>
+          </Card>
+          <Card>
+            <CardTitle>On-chain storage</CardTitle>
+            <CardDescription className="mt-2 leading-relaxed">
+              Every <code className="font-mono text-xs">anchorChunkedFile</code>{" "}
+              accepts <code className="font-mono text-xs">includeData</code> —
+              chunk bytes ride inside the anchor payloads (base64{" "}
+              <code className="font-mono text-xs">d</code> field), turning the
+              chain into the file&apos;s home. Chunk sizes must fit each
+              chain&apos;s per-transaction budget —{" "}
+              <code className="font-mono text-xs">getChunkDataBudget(chain)</code>{" "}
+              / <code className="font-mono text-xs">isStorageCapable(chain)</code>.
+              Anchors on other chains point at the stored copy via a{" "}
+              <code className="font-mono text-xs">
+                fileonchain://&lt;chainId&gt;/&lt;cid&gt;
+              </code>{" "}
+              storage URI (<code className="font-mono text-xs">buildStorageUri</code>).
             </CardDescription>
           </Card>
           <Card>

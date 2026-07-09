@@ -18,6 +18,15 @@ export interface AnchorRequest {
   platformId?: string;
   /** FOCAT tip in base units; contract families default to the on-chain minTip. */
   tip?: bigint;
+  /**
+   * Embed the chunk bytes in the anchor payloads — on-chain storage.
+   * Defaults to the chain's `embedsChunkData` flag (Autonomys stores by
+   * default); pass `false` explicitly for a proof-only pass.
+   */
+  includeData?: boolean;
+  /** Pointer to where the bytes live, on the file-level anchor — a
+   * `fileonchain://<chainId>/<cid>` storage URI or any external location. */
+  uri?: string;
   onProgress?: AnchorProgressHandler;
 }
 

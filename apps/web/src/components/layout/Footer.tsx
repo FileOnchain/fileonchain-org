@@ -17,6 +17,7 @@ const PRODUCT_LINKS = [
 ] as const;
 
 const RESOURCE_LINKS = [
+  { href: "/whitepaper", label: "White paper", internal: true },
   { href: "/docs", label: "SDK documentation", internal: true },
   { href: GITHUB_REPO, label: "GitHub repository" },
   { href: `${GITHUB_REPO}/tree/main/packages/sdk`, label: "SDK · @fileonchain/sdk" },
