@@ -5,12 +5,12 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Leaderboard",
   description:
-    "The most active uploaders on FileOnChain — ranked by onchain anchors, bytes stored, and donations across EVM, Substrate, Solana, and Aptos.",
+    "Every role in FileOnChain's verification market, ranked — top uploaders by anchors and bytes, top validators by stake and rewards, top platforms by anchors originated, and top FOCAT holders by holdings and voting power.",
   alternates: { canonical: "/leaderboard" },
   openGraph: {
     title: "Leaderboard · FileOnChain",
     description:
-      "Top uploaders ranked across every runtime — anchors, bytes, and public cache donations.",
+      "Top uploaders, validators, platforms, and FOCAT holders — the verification market, ranked.",
     url: "/leaderboard",
     type: "website",
   },
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Leaderboard · FileOnChain",
     description:
-      "Top uploaders ranked across every runtime — anchors, bytes, and public cache donations.",
+      "Top uploaders, validators, platforms, and FOCAT holders — the verification market, ranked.",
   },
 };
 

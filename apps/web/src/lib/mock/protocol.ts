@@ -85,6 +85,64 @@ export const MOCK_PLATFORMS: MockPlatform[] = [
   },
 ];
 
+export interface MockFocatHolder {
+  address: string;
+  /** Best-effort label for known protocol addresses. */
+  label?: string;
+  /** What the address is in the protocol. */
+  tag: "treasury" | "platform" | "validator" | "community";
+  /** Liquid FOCAT balance (excludes stake). */
+  balance: number;
+  /** FOCAT locked in ValidatorStaking. */
+  staked: number;
+  /**
+   * ERC20Votes voting power — own delegation plus received delegations.
+   * Zero when the holder delegated away (or, for the timelock, never votes).
+   */
+  votingPower: number;
+}
+
+/**
+ * FOCAT holder board: the protocol treasury, platform treasuries, validators
+ * (liquid rewards + locked stake), and community delegates. Balances reuse
+ * the validator/platform mocks above so the boards agree with each other.
+ */
+export const MOCK_FOCAT_HOLDERS: MockFocatHolder[] = [
+  {
+    address: addr("timelock-treasury"),
+    label: "Protocol treasury",
+    tag: "treasury",
+    balance: 5_960,
+    staked: 0,
+    votingPower: 0,
+  },
+  ...MOCK_PLATFORMS.map(
+    (platform): MockFocatHolder => ({
+      address: platform.treasury,
+      label: platform.name,
+      tag: "platform",
+      balance: platform.revenueFoc,
+      staked: 0,
+      votingPower: platform.revenueFoc,
+    }),
+  ),
+  ...MOCK_VALIDATORS.map(
+    (validator, i): MockFocatHolder => ({
+      address: validator.address,
+      tag: "validator",
+      balance: validator.rewardsEarned,
+      staked: validator.stake,
+      // Validators self-delegate their liquid rewards; the largest also
+      // collects community delegations.
+      votingPower: validator.rewardsEarned + (i === 0 ? 6_550 : 0),
+    }),
+  ),
+  { address: addr("community-1"), tag: "community", balance: 9_200, staked: 0, votingPower: 11_650 },
+  { address: addr("community-2"), tag: "community", balance: 4_100, staked: 0, votingPower: 0 },
+  { address: addr("community-3"), tag: "community", balance: 2_450, staked: 0, votingPower: 2_450 },
+  { address: addr("community-4"), tag: "community", balance: 1_180, staked: 0, votingPower: 1_180 },
+];
+
 export const MOCK_PROTOCOL_STATS: MockProtocolStats = {
   totalStakedFoc: MOCK_VALIDATORS.filter((v) => v.active).reduce((sum, v) => sum + v.stake, 0),
   activeValidators: MOCK_VALIDATORS.filter((v) => v.active).length,
