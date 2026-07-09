@@ -12,6 +12,8 @@ export const sendCosmosAnchor = async ({
   chain,
   fileCid,
   chunks,
+  includeData,
+  uri,
   onProgress,
 }: AnchorRequest): Promise<ChunkedAnchorReceipt> => {
   const { cosmosAddress } = useWalletStates.getState();
@@ -57,6 +59,6 @@ export const sendCosmosAnchor = async ({
         return { txHash: result.transactionHash, height: result.height };
       },
     },
-    { chainId: chain.id, fileCid, chunks, onProgress },
+    { chainId: chain.id, fileCid, chunks, includeData, uri, onProgress },
   );
 };

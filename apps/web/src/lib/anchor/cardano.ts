@@ -12,6 +12,8 @@ export const sendCardanoAnchor = async ({
   chain,
   fileCid,
   chunks,
+  includeData,
+  uri,
   onProgress,
 }: AnchorRequest): Promise<ChunkedAnchorReceipt> => {
   const { cardanoAddress } = useWalletStates.getState();
@@ -43,6 +45,6 @@ export const sendCardanoAnchor = async ({
         return { txHash };
       },
     },
-    { chainId: chain.id, fileCid, chunks, onProgress },
+    { chainId: chain.id, fileCid, chunks, includeData, uri, onProgress },
   );
 };

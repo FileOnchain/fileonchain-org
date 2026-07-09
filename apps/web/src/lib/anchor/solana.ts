@@ -10,6 +10,8 @@ export const sendSolanaAnchor = async ({
   chain,
   fileCid,
   chunks,
+  includeData,
+  uri,
   onProgress,
 }: AnchorRequest): Promise<ChunkedAnchorReceipt> => {
   const { solanaAddress } = useWalletStates.getState();
@@ -38,6 +40,6 @@ export const sendSolanaAnchor = async ({
       publicKey: new PublicKey(solanaAddress),
       signAndSendTransaction: sendTransaction,
     },
-    { chainId: chain.id, fileCid, chunks, onProgress },
+    { chainId: chain.id, fileCid, chunks, includeData, uri, onProgress },
   );
 };

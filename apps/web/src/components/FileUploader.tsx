@@ -10,6 +10,7 @@ import { truncateFileName } from "@/utils/truncateFileName";
 import DropZone from "@/components/upload/DropZone";
 import ChunkProgressList from "@/components/upload/ChunkProgressList";
 import CostEstimatePanel from "@/components/upload/CostEstimatePanel";
+import StorageSelector from "@/components/upload/StorageSelector";
 import PaymentMethodSelector from "@/components/upload/PaymentMethodSelector";
 import FocatTopUp from "@/components/upload/FocatTopUp";
 import UploadAdvisor, { type AdvisorApplyPayload } from "@/components/upload/UploadAdvisor";
@@ -34,8 +35,8 @@ const FILE_NAME_MAX_LENGTH = 40;
 
 const UPLOAD_STEPS: Step[] = [
   { id: "select", label: "1 · Select file", description: "Drop or pick a file to upload" },
-  { id: "split", label: "2 · Split & hash", description: "Slice into 64KB chunks, SHA-256 each" },
-  { id: "send", label: "3 · Send chunks", description: "One transaction per chunk on the chain" },
+  { id: "split", label: "2 · Split & hash", description: "Slice into chain-sized chunks, SHA-256 each" },
+  { id: "send", label: "3 · Store & send", description: "Bytes to the storage chain, one anchor per chunk" },
   { id: "register", label: "4 · Register", description: "Write each tx hash into the registry contract" },
   { id: "done", label: "Done", description: "Indexed and retrievable from the chain" },
 ];
@@ -54,6 +55,14 @@ const FileUploader = () => {
     byokKeyId,
     anchorStatus,
     anchorProgress,
+    storageMode,
+    storageChain,
+    externalUri,
+    chunkSize,
+    storageTxHash,
+    setStorageMode,
+    setStorageChainId,
+    setExternalUri,
     setPaymentMethod,
     setByokKeyId,
     anchor,
@@ -79,7 +88,7 @@ const FileUploader = () => {
     ? "select"
     : isUploading
       ? "split"
-      : anchorStatus === "signing" || anchorStatus === "anchoring"
+      : anchorStatus === "signing" || anchorStatus === "storing" || anchorStatus === "anchoring"
         ? "register"
         : anchorStatus === "done"
           ? "done"
@@ -112,27 +121,32 @@ const FileUploader = () => {
     await processFile(next);
   }, [queue, processFile]);
 
-  const anchorBusy = anchorStatus === "signing" || anchorStatus === "anchoring";
+  const anchorBusy =
+    anchorStatus === "signing" || anchorStatus === "storing" || anchorStatus === "anchoring";
   const anchorLabel =
     anchorStatus === "done"
       ? "Anchored ✓"
       : anchorStatus === "signing"
         ? "Waiting for signature…"
-        : anchorStatus === "anchoring"
-          ? paymentMethod === "payg"
-            ? `Sending chunks ${anchorProgress}/${cids.length}…`
-            : "Anchoring server-side…"
-          : paymentMethod === "payg"
-            ? "Sign & anchor"
-            : paymentMethod === "credits"
-              ? "Anchor with credits"
-              : "Anchor via provider";
+        : anchorStatus === "storing"
+          ? `Storing bytes ${anchorProgress}/${cids.length}…`
+          : anchorStatus === "anchoring"
+            ? paymentMethod === "payg"
+              ? `Sending chunks ${anchorProgress}/${cids.length}…`
+              : "Anchoring server-side…"
+            : paymentMethod === "payg"
+              ? storageMode === "onchain"
+                ? "Sign, store & anchor"
+                : "Sign & anchor"
+              : paymentMethod === "credits"
+                ? "Anchor with credits"
+                : "Anchor via provider";
 
   // Same chunk estimate the cost panel uses: real chunk count once the
-  // split ran, a rough 64KB byte split before that.
+  // split ran, a rough byte split at the current chunk size before that.
   const estimatedChunkCount = Math.max(
     1,
-    cids.length > 0 ? cids.length : Math.ceil((file?.size ?? 0) / 65_536),
+    cids.length > 0 ? cids.length : Math.ceil((file?.size ?? 0) / chunkSize),
   );
 
   const applyRecommendation = React.useCallback(
@@ -262,6 +276,11 @@ const FileUploader = () => {
                     Next file ({queue.length} queued)
                   </Button>
                 )}
+                {storageTxHash && (
+                  <span className="font-mono text-[11px] text-muted">
+                    stored · {storageTxHash.slice(0, 10)}…
+                  </span>
+                )}
                 {queue.length > 0 && anchorStatus !== "done" && (
                   <span className="text-xs text-muted">
                     {queue.length} more {queue.length === 1 ? "file" : "files"} queued
@@ -276,6 +295,21 @@ const FileUploader = () => {
               file={file}
               chunkCount={estimatedChunkCount}
               onApply={applyRecommendation}
+            />
+
+            {/* Where the bytes live — on-chain storage is the default;
+                the storage chain drives the chunk size above. */}
+            <StorageSelector
+              fileSize={file.size}
+              mode={storageMode}
+              storageChain={storageChain}
+              externalUri={externalUri}
+              activeChain={activeChain}
+              paymentMethod={paymentMethod}
+              disabled={anchorBusy || anchorStatus === "done"}
+              onModeChange={setStorageMode}
+              onStorageChainChange={setStorageChainId}
+              onExternalUriChange={setExternalUri}
             />
 
             <PaymentMethodSelector
