@@ -74,7 +74,8 @@ export interface BuildChunkedAnchorPayloadsParams {
   sha256?: string;
   /** Optional IPFS / Arweave pointer, on the file-level anchor. */
   uri?: string;
-  /** Embed chunk bytes (base64) in the chunk payloads. Substrate only. */
+  /** Embed chunk bytes (base64) in the chunk payloads — on-chain storage.
+   * Any storage-capable chain may set this (see `getChunkDataBudget`). */
   includeData?: boolean;
 }
 

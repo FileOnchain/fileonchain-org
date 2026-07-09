@@ -100,7 +100,8 @@ export interface BuildChunkAnchorParams {
   chunk: AnchorChunk;
   /** Total number of chunks in the file. */
   total: number;
-  /** Embed the chunk bytes (base64) in the payload. Substrate only. */
+  /** Embed the chunk bytes (base64) in the payload — on-chain storage.
+   * Any storage-capable chain may set this (see `getChunkDataBudget`). */
   includeData?: boolean;
 }
 

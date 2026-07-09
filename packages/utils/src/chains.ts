@@ -73,8 +73,10 @@ export interface ChainConfig {
   hcsTopicId?: string | null;
   /**
    * Whether chunk anchors on this chain embed the chunk bytes themselves
-   * (base64 `d` field). Only data-storage chains (Autonomys) set this;
-   * everywhere else anchors are CID-only. Absent means false.
+   * (base64 `d` field) *by default* — i.e. the chain is a storage-first
+   * network (Autonomys). Absent means false. Any storage-capable chain can
+   * still store bytes on request via the clients' `includeData` option —
+   * see `getChunkDataBudget` / `isStorageCapable` in `storage.ts`.
    */
   embedsChunkData?: boolean;
   /** Rollout status — only `"active"` chains accept new uploads. */

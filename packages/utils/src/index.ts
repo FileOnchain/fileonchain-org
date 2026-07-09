@@ -60,6 +60,19 @@ export {
   type BuildChunkAnchorParams,
 } from "./anchor";
 export {
+  FAMILY_PAYLOAD_BUDGET_BYTES,
+  CHUNK_ENVELOPE_BYTES,
+  MIN_CHUNK_DATA_BYTES,
+  MAX_CHUNK_DATA_BYTES,
+  STORAGE_URI_SCHEME,
+  getChunkDataBudget,
+  isStorageCapable,
+  storageChunkCount,
+  buildStorageUri,
+  parseStorageUri,
+  type StorageUriParts,
+} from "./storage";
+export {
   resolveFamilyChain,
   utf8ByteLength,
   assertPayloadFits,
