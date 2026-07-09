@@ -250,8 +250,12 @@ export interface NearChunkedAnchorParams {
   chainId: ChainId;
   /** CIDv1 of the whole file. */
   fileCid: string;
-  /** Chunks to anchor; `data` is ignored — the contract stores CIDs, not bytes. */
+  /** Chunks to anchor; `data` is embedded (base64) when `includeData` asks
+   * for on-chain storage. */
   chunks: AnchorChunk[];
+  /** Embed chunk bytes in the payloads (on-chain storage). Defaults to the
+   * chain's `embedsChunkData` flag; mind the per-transaction byte budget. */
+  includeData?: boolean;
   /** Optional SHA-256 (hex) of the raw content, on the file-level anchor. */
   sha256?: string;
   /** Optional IPFS / Arweave pointer, on the file-level anchor. */
@@ -272,16 +276,17 @@ export interface NearChunkedAnchorParams {
  */
 export const anchorChunkedFile = async (
   signer: NearAnchorSigner,
-  { chainId, fileCid, chunks, sha256, uri, platformId = "1", tip, onProgress }: NearChunkedAnchorParams
+  { chainId, fileCid, chunks, sha256, uri, includeData, platformId = "1", tip, onProgress }: NearChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
   const chain = resolveNearChain(chainId);
+  const embedData = includeData ?? chain.embedsChunkData ?? false;
   const total = chunks.length;
   const txHashes: string[] = [];
   let lastBlockHeight: number | undefined;
 
   for (const chunk of chunks) {
     onProgress?.({ stage: "signing", chunksAnchored: chunk.index, chunksTotal: total });
-    const payload = buildChunkAnchorPayload({ fileCid, chunk, total });
+    const payload = buildChunkAnchorPayload({ fileCid, chunk, total, includeData: embedData });
     const { txHash, blockHeight } = await signer.callAnchor(chain.moduleAddress, chunk.cid, payload);
     txHashes.push(txHash);
     lastBlockHeight = blockHeight ?? lastBlockHeight;

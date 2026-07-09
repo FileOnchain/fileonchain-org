@@ -78,8 +78,12 @@ export interface HederaChunkedAnchorParams {
   chainId: ChainId;
   /** CIDv1 of the whole file. */
   fileCid: string;
-  /** Chunks to anchor; `data` is ignored — messages hold CIDs, not bytes. */
+  /** Chunks to anchor; `data` is embedded (base64) when `includeData` asks
+   * for on-chain storage. */
   chunks: AnchorChunk[];
+  /** Embed chunk bytes in the payloads (on-chain storage). Defaults to the
+   * chain's `embedsChunkData` flag; mind the per-transaction byte budget. */
+  includeData?: boolean;
   /** Optional SHA-256 (hex) of the raw content, on the file-level anchor. */
   sha256?: string;
   /** Optional IPFS / Arweave pointer, on the file-level anchor. */
@@ -95,11 +99,17 @@ export interface HederaChunkedAnchorParams {
  */
 export const anchorChunkedFile = async (
   signer: HederaAnchorSigner,
-  { chainId, fileCid, chunks, sha256, uri, onProgress }: HederaChunkedAnchorParams
+  { chainId, fileCid, chunks, sha256, uri, includeData, onProgress }: HederaChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
   const chain = resolveHederaChain(chainId);
 
-  const messages = buildChunkedAnchorPayloads({ fileCid, chunks, sha256, uri });
+  const messages = buildChunkedAnchorPayloads({
+    fileCid,
+    chunks,
+    sha256,
+    uri,
+    includeData: includeData ?? chain.embedsChunkData ?? false,
+  });
   for (const message of messages) assertMessageFits(message);
 
   // The receipt's blockNumber carries the last consensus sequence number.

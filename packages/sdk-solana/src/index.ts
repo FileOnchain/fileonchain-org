@@ -95,8 +95,12 @@ export interface SolanaChunkedAnchorParams {
   chainId: ChainId;
   /** CIDv1 of the whole file. */
   fileCid: string;
-  /** Chunks to anchor; `data` is ignored — memos hold CIDs, not bytes. */
+  /** Chunks to anchor; `data` is embedded (base64) when `includeData` asks
+   * for on-chain storage — mind the tiny per-tx memo budget. */
   chunks: AnchorChunk[];
+  /** Embed chunk bytes in the payloads (on-chain storage). Defaults to the
+   * chain's `embedsChunkData` flag. */
+  includeData?: boolean;
   /** Optional SHA-256 (hex) of the raw content, on the file-level anchor. */
   sha256?: string;
   /** Optional IPFS / Arweave pointer, on the file-level anchor. */
@@ -123,6 +127,7 @@ export const anchorChunkedFile = async (
     chunks,
     sha256,
     uri,
+    includeData,
     maxMemoBytesPerTx = DEFAULT_MAX_MEMO_BYTES_PER_TX,
     onProgress,
   }: SolanaChunkedAnchorParams
@@ -130,7 +135,14 @@ export const anchorChunkedFile = async (
   const chain = resolveSolanaChain(chainId);
   const total = chunks.length;
 
-  const payloads = buildChunkedAnchorPayloads({ fileCid, chunks, sha256, uri });
+  const embedData = includeData ?? chain.embedsChunkData ?? false;
+  const payloads = buildChunkedAnchorPayloads({
+    fileCid,
+    chunks,
+    sha256,
+    uri,
+    includeData: embedData,
+  });
   const batches = batchByBytes(payloads, maxMemoBytesPerTx, (payload) => payload.length);
 
   const txHashes: string[] = [];

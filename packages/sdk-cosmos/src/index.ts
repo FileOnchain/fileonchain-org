@@ -80,8 +80,12 @@ export interface CosmosChunkedAnchorParams {
   chainId: ChainId;
   /** CIDv1 of the whole file. */
   fileCid: string;
-  /** Chunks to anchor; `data` is ignored — memos hold CIDs, not bytes. */
+  /** Chunks to anchor; `data` is embedded (base64) when `includeData` asks
+   * for on-chain storage. */
   chunks: AnchorChunk[];
+  /** Embed chunk bytes in the payloads (on-chain storage). Defaults to the
+   * chain's `embedsChunkData` flag; mind the per-transaction byte budget. */
+  includeData?: boolean;
   /** Optional SHA-256 (hex) of the raw content, on the file-level anchor. */
   sha256?: string;
   /** Optional IPFS / Arweave pointer, on the file-level anchor. */
@@ -104,13 +108,20 @@ export const anchorChunkedFile = async (
     chunks,
     sha256,
     uri,
+    includeData,
     maxMemoBytes = DEFAULT_MAX_MEMO_BYTES,
     onProgress,
   }: CosmosChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
   const chain = resolveCosmosChain(chainId);
 
-  const memos = buildChunkedAnchorPayloads({ fileCid, chunks, sha256, uri });
+  const memos = buildChunkedAnchorPayloads({
+    fileCid,
+    chunks,
+    sha256,
+    uri,
+    includeData: includeData ?? chain.embedsChunkData ?? false,
+  });
   for (const memo of memos) assertMemoFits(memo, maxMemoBytes);
 
   return runSequentialChunkedAnchor({
