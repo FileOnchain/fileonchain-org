@@ -3,6 +3,7 @@ import {
   CHAINS,
   DEFAULT_CHAIN_ID,
   getChain,
+  isChainActive,
   type ChainConfig,
   type ChainId,
 } from "@fileonchain/sdk";
@@ -42,8 +43,11 @@ export const hydrateActiveChain = () => {
   activeChainHydrated = true;
   try {
     const stored = window.sessionStorage.getItem(ACTIVE_CHAIN_STORAGE_KEY);
-    if (stored && getChain(stored as ChainId)) {
-      useChainsStates.setState({ activeChainId: stored as ChainId });
+    const chain = stored ? getChain(stored as ChainId) : undefined;
+    // Ignore selections whose chain has since left "active" — uploads
+    // must never start on a planned/deprecated chain.
+    if (chain && isChainActive(chain)) {
+      useChainsStates.setState({ activeChainId: chain.id });
     }
   } catch {
     // Storage unavailable — keep the default chain.

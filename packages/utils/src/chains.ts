@@ -1,6 +1,17 @@
 import type { ChainId, ChainFamily } from "./types";
 
 /**
+ * Rollout status of a chain in the FileOnChain product:
+ *
+ * - `"active"` — open for anchoring; pickers offer it for uploads.
+ * - `"planned"` — on the roadmap; listed in the UI but not selectable for
+ *   uploads, and the anchoring API rejects it.
+ * - `"deprecated"` — being wound down; existing anchors stay readable but
+ *   no new uploads are accepted.
+ */
+export type ChainStatus = "active" | "planned" | "deprecated";
+
+/**
  * ChainConfig — the single source of truth for every supported network.
  *
  * Each chain carries its RPC endpoint, explorer paths, and the relevant
@@ -66,6 +77,8 @@ export interface ChainConfig {
    * everywhere else anchors are CID-only. Absent means false.
    */
   embedsChunkData?: boolean;
+  /** Rollout status — only `"active"` chains accept new uploads. */
+  status: ChainStatus;
   testnet: boolean;
 }
 
@@ -91,6 +104,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "active",
     testnet: false,
   },
   {
@@ -110,6 +124,29 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "active",
+    testnet: false,
+  },
+  // Auto EVM — Autonomys' EVM domain (consensus chain is the Substrate
+  // entries below; this is the domain EVM runtime).
+  {
+    id: "evm:870",
+    family: "evm",
+    name: "Auto EVM",
+    shortName: "AUTO",
+    rpcUrl: "https://auto-evm.mainnet.autonomys.xyz/ws",
+    explorerUrl: "https://explorer.auto-evm.mainnet.autonomys.xyz",
+    explorerTxPath: "/tx/",
+    explorerAddressPath: "/address/",
+    nativeCurrency: { symbol: "AI3", decimals: 18 },
+    icon: "/chains/auto.svg",
+    registryContract: ZERO_ADDRESS,
+    cacheContract: ZERO_ADDRESS,
+    donationContract: ZERO_ADDRESS,
+    programId: null,
+    moduleAddress: null,
+    palletContract: null,
+    status: "active",
     testnet: false,
   },
   {
@@ -129,6 +166,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: false,
   },
   {
@@ -148,6 +186,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: false,
   },
   {
@@ -167,6 +206,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: false,
   },
   {
@@ -186,6 +226,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: false,
   },
   {
@@ -205,6 +246,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: false,
   },
   {
@@ -224,6 +266,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: false,
   },
   {
@@ -243,6 +286,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: false,
   },
   {
@@ -262,6 +306,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: false,
   },
   {
@@ -281,6 +326,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: false,
   },
   {
@@ -300,6 +346,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: false,
   },
   {
@@ -319,6 +366,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: false,
   },
   // EVM testnets
@@ -339,6 +387,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "active",
     testnet: true,
   },
   {
@@ -358,6 +407,27 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "active",
+    testnet: true,
+  },
+  {
+    id: "evm:490000",
+    family: "evm",
+    name: "Auto EVM Chronos",
+    shortName: "AUTO",
+    rpcUrl: "https://auto-evm.chronos.autonomys.xyz/ws",
+    explorerUrl: "https://explorer.auto-evm.chronos.autonomys.xyz",
+    explorerTxPath: "/tx/",
+    explorerAddressPath: "/address/",
+    nativeCurrency: { symbol: "tAI3", decimals: 18 },
+    icon: "/chains/auto.svg",
+    registryContract: ZERO_ADDRESS,
+    cacheContract: ZERO_ADDRESS,
+    donationContract: ZERO_ADDRESS,
+    programId: null,
+    moduleAddress: null,
+    palletContract: null,
+    status: "active",
     testnet: true,
   },
   {
@@ -377,6 +447,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: true,
   },
   {
@@ -396,6 +467,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: true,
   },
   {
@@ -415,6 +487,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: true,
   },
   {
@@ -434,6 +507,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: true,
   },
   {
@@ -453,6 +527,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: true,
   },
   {
@@ -472,6 +547,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: true,
   },
   {
@@ -491,6 +567,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: true,
   },
   {
@@ -510,6 +587,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: true,
   },
   {
@@ -529,6 +607,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: true,
   },
   {
@@ -548,6 +627,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: true,
   },
   {
@@ -567,6 +647,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: true,
   },
   // Substrate
@@ -588,6 +669,7 @@ export const CHAINS: readonly ChainConfig[] = [
     moduleAddress: null,
     palletContract: "system.remarkWithEvent",
     embedsChunkData: true,
+    status: "planned",
     testnet: false,
   },
   {
@@ -608,6 +690,7 @@ export const CHAINS: readonly ChainConfig[] = [
     moduleAddress: null,
     palletContract: "system.remarkWithEvent",
     embedsChunkData: true,
+    status: "planned",
     testnet: true,
   },
   {
@@ -627,6 +710,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: "system.remarkWithEvent",
+    status: "planned",
     testnet: false,
   },
   {
@@ -646,6 +730,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: "system.remarkWithEvent",
+    status: "planned",
     testnet: false,
   },
   {
@@ -665,6 +750,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: "system.remarkWithEvent",
+    status: "planned",
     testnet: true,
   },
   {
@@ -684,6 +770,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: "system.remarkWithEvent",
+    status: "planned",
     testnet: true,
   },
   // Solana
@@ -705,6 +792,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: false,
   },
   {
@@ -724,6 +812,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: true,
   },
   // Aptos
@@ -745,6 +834,7 @@ export const CHAINS: readonly ChainConfig[] = [
     /* TODO: deploy Move module on Aptos for CID anchoring */
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: false,
   },
   {
@@ -764,6 +854,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: true,
   },
   // Cosmos — anchors ride the tx memo; memoAnchoring is the provisioning switch
@@ -785,6 +876,7 @@ export const CHAINS: readonly ChainConfig[] = [
     moduleAddress: null,
     palletContract: null,
     bech32Prefix: "cosmos",
+    status: "planned",
     testnet: false,
   },
   {
@@ -806,6 +898,7 @@ export const CHAINS: readonly ChainConfig[] = [
     palletContract: null,
     memoAnchoring: true,
     bech32Prefix: "cosmos",
+    status: "planned",
     testnet: true,
   },
   // Sui — provisioned once the Move module address lands
@@ -827,6 +920,7 @@ export const CHAINS: readonly ChainConfig[] = [
     moduleAddress: null,
     palletContract: null,
     /* TODO: deploy contracts/sui module and set moduleAddress */
+    status: "planned",
     testnet: false,
   },
   {
@@ -846,6 +940,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: true,
   },
   // Starknet — provisioned once the Cairo registry address lands
@@ -867,6 +962,7 @@ export const CHAINS: readonly ChainConfig[] = [
     moduleAddress: null,
     palletContract: null,
     /* TODO: deploy contracts/starknet registry and set registryContract */
+    status: "planned",
     testnet: false,
   },
   {
@@ -886,6 +982,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: true,
   },
   // NEAR — moduleAddress holds the registry contract account
@@ -907,6 +1004,7 @@ export const CHAINS: readonly ChainConfig[] = [
     moduleAddress: null,
     palletContract: null,
     /* TODO: deploy contracts/near and set moduleAddress to the contract account */
+    status: "planned",
     testnet: false,
   },
   {
@@ -926,6 +1024,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: true,
   },
   // TRON — memo MVP; a TVM FileRegistry can land in moduleAddress later
@@ -946,6 +1045,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: false,
   },
   {
@@ -966,6 +1066,7 @@ export const CHAINS: readonly ChainConfig[] = [
     moduleAddress: null,
     palletContract: null,
     memoAnchoring: true,
+    status: "planned",
     testnet: true,
   },
   // Cardano — metadata-only MVP (no Plutus); rpcUrl expects a Blockfrost-compatible API
@@ -986,6 +1087,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: false,
   },
   {
@@ -1006,6 +1108,7 @@ export const CHAINS: readonly ChainConfig[] = [
     moduleAddress: null,
     palletContract: null,
     memoAnchoring: true,
+    status: "planned",
     testnet: true,
   },
   // TON — anchors ride transfer comments via TON Connect
@@ -1026,6 +1129,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    status: "planned",
     testnet: false,
   },
   {
@@ -1046,6 +1150,7 @@ export const CHAINS: readonly ChainConfig[] = [
     moduleAddress: null,
     palletContract: null,
     memoAnchoring: true,
+    status: "planned",
     testnet: true,
   },
   // Hedera — anchors are HCS messages; hcsTopicId is the provisioning switch
@@ -1068,6 +1173,7 @@ export const CHAINS: readonly ChainConfig[] = [
     palletContract: null,
     /* TODO: create an HCS topic (docs/deploy/hedera.md) and set hcsTopicId */
     hcsTopicId: null,
+    status: "planned",
     testnet: false,
   },
   {
@@ -1088,11 +1194,12 @@ export const CHAINS: readonly ChainConfig[] = [
     moduleAddress: null,
     palletContract: null,
     hcsTopicId: null,
+    status: "planned",
     testnet: true,
   },
 ] as const;
 
-export const DEFAULT_CHAIN_ID: ChainId = "substrate:autonomys-mainnet";
+export const DEFAULT_CHAIN_ID: ChainId = "evm:870";
 
 export const getChain = (id: ChainId | string): ChainConfig | undefined =>
   CHAINS.find((c) => c.id === id);
@@ -1115,6 +1222,20 @@ export const TESTNET_CHAINS: readonly ChainConfig[] = CHAINS.filter(
  */
 export const getVisibleChains = (showTestnets: boolean): readonly ChainConfig[] =>
   showTestnets ? CHAINS : MAINNET_CHAINS;
+
+/** Display labels for each rollout status. */
+export const CHAIN_STATUS_LABELS: Record<ChainStatus, string> = {
+  active: "Active",
+  planned: "Planned",
+  deprecated: "Deprecated",
+};
+
+/** Whether a chain is open for new uploads. */
+export const isChainActive = (chain: ChainConfig): boolean =>
+  chain.status === "active";
+
+/** Chains open for new uploads — upload pickers offer only these. */
+export const ACTIVE_CHAINS: readonly ChainConfig[] = CHAINS.filter(isChainActive);
 
 /**
  * Pick the registry address for a chain, falling back to the zero address.

@@ -18,13 +18,17 @@ deploy runbooks are under `docs/deploy/`.
 ```ts
 import {
   CHAINS, getChain, getChainsByFamily, getVisibleChains,
-  MAINNET_CHAINS, TESTNET_CHAINS, DEFAULT_CHAIN_ID,
-  buildTxUrl, buildAddressUrl, isChainProvisioned,
+  MAINNET_CHAINS, TESTNET_CHAINS, ACTIVE_CHAINS, DEFAULT_CHAIN_ID,
+  buildTxUrl, buildAddressUrl, isChainProvisioned, isChainActive,
 } from "@fileonchain/utils"; // or "@fileonchain/sdk"
 ```
 
 - Chain ids are `"<family>:<name>"` (`evm:8453`,
-  `substrate:autonomys-mainnet` — the default chain).
+  `evm:870` — Auto EVM, the default chain).
+- Every entry carries a rollout `status`: `"active"` (open for uploads),
+  `"planned"` (listed, not selectable; the anchoring API rejects it), or
+  `"deprecated"` (reads only). `isChainActive` / `ACTIVE_CHAINS` gate
+  upload surfaces; status is orthogonal to `isChainProvisioned`.
 - Webapp pickers use `useVisibleChains()` (preference-driven testnet
   visibility); static marketing copy counts `MAINNET_CHAINS`.
 - Explorer links always come from `buildTxUrl` / `buildAddressUrl`.

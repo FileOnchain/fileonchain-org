@@ -14,6 +14,7 @@ import {
 import { useChain } from "@/hooks/useChain";
 import { useVisibleChains } from "@/hooks/useVisibleChains";
 import { Badge } from "@/components/ui/Badge";
+import { ChainStatusBadge } from "@/components/chain/ChainStatusBadge";
 import ScrollReveal from "@/components/ScrollReveal";
 
 /**
@@ -38,16 +39,21 @@ interface ChainTileProps {
 
 const ChainTile = ({ chain, active, onSelect }: ChainTileProps) => {
   const iconSrc = `/chains/${chain.shortName.toLowerCase()}.svg`;
+  // Planned/deprecated chains show their status but can't become the
+  // active chain — the active chain feeds the upload flow.
+  const selectable = chain.status === "active";
   return (
     <motion.button
       type="button"
-      onClick={onSelect}
-      whileHover={{ y: -2 }}
-      whileTap={{ scale: 0.98 }}
+      onClick={selectable ? onSelect : undefined}
+      whileHover={selectable ? { y: -2 } : undefined}
+      whileTap={selectable ? { scale: 0.98 } : undefined}
       transition={{ duration: 0.16, ease: EASE_OUT }}
       aria-pressed={active}
+      aria-disabled={!selectable || undefined}
       className={
-        "group relative flex w-full items-center gap-3 overflow-hidden rounded-xl border bg-surface p-3 text-left transition-colors duration-base ease-out-soft hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary " +
+        "group relative flex w-full items-center gap-3 overflow-hidden rounded-xl border bg-surface p-3 text-left transition-colors duration-base ease-out-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary " +
+        (selectable ? "hover:border-primary/40 " : "cursor-not-allowed opacity-60 ") +
         (active ? "border-primary bg-primary/5" : "border-border")
       }
     >
@@ -65,6 +71,7 @@ const ChainTile = ({ chain, active, onSelect }: ChainTileProps) => {
           <span className="truncate font-mono text-sm font-semibold text-foreground">
             {chain.shortName}
           </span>
+          <ChainStatusBadge status={chain.status} />
           {chain.testnet && (
             <Badge variant="warning" size="sm">
               Testnet
@@ -96,7 +103,7 @@ const ChainsGrid = () => {
             Supported chains
           </p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-            {visibleChains.length} chains across four runtimes.
+            {visibleChains.length} chains across {CHAIN_FAMILIES.length} runtimes.
           </h2>
         </div>
         <p className="max-w-sm text-sm text-muted">

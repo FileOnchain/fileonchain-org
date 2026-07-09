@@ -84,8 +84,14 @@ export const parseAnchorPayload = (body: unknown): AnchorPayload => {
     throw new AnchorRequestError("chainIds must be a non-empty array");
   }
   for (const chainId of chainIds) {
-    if (typeof chainId !== "string" || !getChain(chainId as ChainId)) {
+    const chain = typeof chainId === "string" ? getChain(chainId as ChainId) : undefined;
+    if (!chain) {
       throw new AnchorRequestError(`Unknown chain id: ${String(chainId)}`);
+    }
+    if (chain.status !== "active") {
+      throw new AnchorRequestError(
+        `Chain ${chain.id} is ${chain.status} and not open for anchoring`,
+      );
     }
   }
   if (paymentMethod !== "credits" && paymentMethod !== "byok") {

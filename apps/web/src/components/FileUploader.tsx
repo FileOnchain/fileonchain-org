@@ -54,7 +54,8 @@ const FileUploader = () => {
     processFile,
   } = useFileUploader();
 
-  const { setActiveChainId } = useChain();
+  const { activeChain, setActiveChainId } = useChain();
+  const chainNotActive = activeChain.status !== "active";
   const selectedAccount = useWalletStates((state) => state.selectedAccount);
   const [isWalletModalOpen, setIsWalletModalOpen] = React.useState(false);
   const [selectedChunkIndex, setSelectedChunkIndex] = React.useState<number | null>(null);
@@ -221,6 +222,13 @@ const FileUploader = () => {
                 </p>
               )}
 
+              {chainNotActive && (
+                <p role="alert" className="mt-4 text-sm text-warning">
+                  {activeChain.name} is {activeChain.status} — anchoring isn&apos;t open
+                  on it yet. Pick an active chain from the network switcher.
+                </p>
+              )}
+
               <div className="mt-5 flex flex-wrap items-center gap-2">
                 {paymentMethod === "payg" && (
                   <Button variant="secondary" onClick={() => setIsWalletModalOpen(true)}>
@@ -232,7 +240,9 @@ const FileUploader = () => {
                 <Button
                   onClick={() => void anchor()}
                   isLoading={anchorBusy}
-                  disabled={cids.length === 0 || isUploading || anchorStatus === "done"}
+                  disabled={
+                    cids.length === 0 || isUploading || anchorStatus === "done" || chainNotActive
+                  }
                 >
                   {anchorLabel}
                 </Button>

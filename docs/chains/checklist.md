@@ -7,9 +7,14 @@ when every box is checked.
 - [ ] **Registry entry** — the chain has an entry in
   `packages/utils/src/chains.ts` with every field correct: `id`
   (`family:reference`), `family`, names, `rpcUrl`, explorer URL + tx/address
-  paths, `nativeCurrency`, `icon`, `testnet`, and any family extras
-  (`bech32Prefix`, `embedsChunkData`). Both mainnet **and** testnet entries
-  exist. No chain data hardcoded anywhere else.
+  paths, `nativeCurrency`, `icon`, `status`, `testnet`, and any family
+  extras (`bech32Prefix`, `embedsChunkData`). Both mainnet **and** testnet
+  entries exist. No chain data hardcoded anywhere else.
+- [ ] **Status** — a new chain lands as `status: "planned"` (listed in the
+  UI with a badge, not selectable for upload, rejected by the anchoring
+  API). Flip to `"active"` only once the boxes below are checked; retiring
+  a chain sets `"deprecated"` (existing anchors stay readable, no new
+  uploads).
 - [ ] **Icon** — the SVG referenced by the entry's `icon` field exists in
   `apps/web/public/chains/`.
 - [ ] **Cost row** — the chain has a per-anchor cost row in

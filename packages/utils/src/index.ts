@@ -20,15 +20,19 @@ export {
   CHAIN_FAMILIES,
   CHAIN_FAMILY_LABELS,
   CHAIN_FAMILY_TAGLINES,
+  CHAIN_STATUS_LABELS,
   MAINNET_CHAINS,
   TESTNET_CHAINS,
+  ACTIVE_CHAINS,
   getChain,
   getChainsByFamily,
   getVisibleChains,
   getRegistryAddress,
+  isChainActive,
   buildTxUrl,
   buildAddressUrl,
   type ChainConfig,
+  type ChainStatus,
 } from "./chains";
 export { CIDV1_BASE32_RE, isValidCID, validateOrError } from "./cid";
 export {

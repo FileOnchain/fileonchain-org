@@ -28,6 +28,8 @@ export interface ChainCostEstimate {
 const CHAIN_COSTS: Record<string, Omit<ChainCostEstimate, "chainName" | "shortName">> = {
   "evm:1":           { chainId: "evm:1",              nativeSymbol: "ETH",   feePerChunkNative: 0.00042, feePerChunkUsd: 1.40,  platformFeePct: 1.0, tier: "expensive" },
   "evm:8453":        { chainId: "evm:8453",           nativeSymbol: "ETH",   feePerChunkNative: 0.00004, feePerChunkUsd: 0.13,  platformFeePct: 1.0, tier: "cheap" },
+  "evm:870":         { chainId: "evm:870",            nativeSymbol: "AI3",   feePerChunkNative: 0.0005,  feePerChunkUsd: 0.002, platformFeePct: 0.5, tier: "cheap" },
+  "evm:490000":      { chainId: "evm:490000",         nativeSymbol: "tAI3",  feePerChunkNative: 0.0005,  feePerChunkUsd: 0.0001, platformFeePct: 0.0, tier: "testnet" },
   "evm:10":          { chainId: "evm:10",             nativeSymbol: "ETH",   feePerChunkNative: 0.00006, feePerChunkUsd: 0.20,  platformFeePct: 1.0, tier: "cheap" },
   "evm:42161":       { chainId: "evm:42161",          nativeSymbol: "ETH",   feePerChunkNative: 0.00003, feePerChunkUsd: 0.10,  platformFeePct: 1.0, tier: "cheap" },
   "evm:137":         { chainId: "evm:137",            nativeSymbol: "MATIC", feePerChunkNative: 0.018,   feePerChunkUsd: 0.012, platformFeePct: 1.0, tier: "cheap" },

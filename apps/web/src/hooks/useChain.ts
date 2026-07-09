@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { hydrateActiveChain, useChainsStates } from "@/states/chains";
-import { getChain, type ChainConfig, type ChainId } from "@fileonchain/sdk";
+import { DEFAULT_CHAIN_ID, getChain, type ChainConfig, type ChainId } from "@fileonchain/sdk";
 
 /**
  * useChain — convenience hook around the chains store. Returns the active
@@ -24,7 +24,7 @@ export const useChain = (): {
     hydrateActiveChain();
   }, []);
 
-  const activeChain = activeChainId ? (getChain(activeChainId) ?? (getChain("substrate:autonomys-mainnet")!)) : (getChain("substrate:autonomys-mainnet")!);
+  const activeChain = (activeChainId ? getChain(activeChainId) : undefined) ?? getChain(DEFAULT_CHAIN_ID)!;
 
   return {
     activeChainId,

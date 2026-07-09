@@ -17,6 +17,8 @@ export interface SearchSelectOption {
   leading?: React.ReactNode;
   /** Node rendered after the label (status badge). */
   trailing?: React.ReactNode;
+  /** Listed but not selectable (still searchable, skipped by keyboard nav). */
+  disabled?: boolean;
 }
 
 export interface SearchSelectProps {
@@ -100,6 +102,7 @@ export const SearchSelect = ({
   };
 
   const select = (option: SearchSelectOption) => {
+    if (option.disabled) return;
     onValueChange(option.value);
     setOpen(false);
   };
@@ -118,7 +121,15 @@ export const SearchSelect = ({
       event.preventDefault();
       if (filtered.length === 0) return;
       const delta = event.key === "ArrowDown" ? 1 : -1;
-      setActiveIndex((i) => (i + delta + filtered.length) % filtered.length);
+      // Skip disabled options; give up after a full loop (all disabled).
+      setActiveIndex((i) => {
+        let next = i;
+        for (let step = 0; step < filtered.length; step += 1) {
+          next = (next + delta + filtered.length) % filtered.length;
+          if (!filtered[next]?.disabled) return next;
+        }
+        return i;
+      });
     } else if (event.key === "Enter") {
       event.preventDefault();
       if (activeOption) select(activeOption);
@@ -224,14 +235,17 @@ export const SearchSelect = ({
                     data-value={option.value}
                     role="option"
                     aria-selected={option.value === value}
+                    aria-disabled={option.disabled || undefined}
                     onClick={() => select(option)}
                     onMouseMove={() => {
+                      if (option.disabled) return;
                       const index = filtered.indexOf(option);
                       if (index !== activeIndex) setActiveIndex(index);
                     }}
                     className={cn(
                       "flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm",
                       option === activeOption && "bg-surface",
+                      option.disabled && "cursor-not-allowed opacity-50",
                     )}
                   >
                     {option.leading}
