@@ -1299,6 +1299,12 @@ export const CHAIN_FAMILIES = Object.keys(
   CHAIN_FAMILY_LABELS,
 ) as readonly ChainFamily[];
 
+/** Families with at least one network open for uploads, in display order —
+ * surfaces that list live runtimes iterate this instead of re-deriving it. */
+export const ACTIVE_FAMILIES: readonly ChainFamily[] = CHAIN_FAMILIES.filter(
+  (family) => ACTIVE_CHAINS.some((c) => c.family === family),
+);
+
 /**
  * Build an explorer link for a tx hash.
  */

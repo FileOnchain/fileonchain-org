@@ -24,6 +24,7 @@ export {
   MAINNET_CHAINS,
   TESTNET_CHAINS,
   ACTIVE_CHAINS,
+  ACTIVE_FAMILIES,
   getChain,
   getChainsByFamily,
   getVisibleChains,

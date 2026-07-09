@@ -9,7 +9,12 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import LiveLedgerTicker, { StatCounter } from "@/components/LiveLedgerTicker";
 import { compactNumber, truncateCID } from "@/lib/cid/format";
-import { CHAINS, CHAIN_FAMILIES, CHAIN_FAMILY_LABELS, type ChainFamily } from "@fileonchain/sdk";
+import {
+  ACTIVE_CHAINS,
+  ACTIVE_FAMILIES,
+  CHAIN_FAMILY_LABELS,
+  type ChainFamily,
+} from "@fileonchain/sdk";
 import type {
   FileCategory,
   ExplorerStats,
@@ -123,9 +128,9 @@ const ExplorerShell = () => {
       <section className="mt-10">
         <div className="grid grid-cols-2 gap-4 rounded-2xl border border-border bg-surface p-6 md:grid-cols-5">
           <StatCounter
-            value={stats?.totalChains ?? 10}
+            value={stats?.totalChains ?? ACTIVE_CHAINS.length}
             label="Chains reporting"
-            hint="EVM · Substrate · Solana · Aptos"
+            hint={ACTIVE_FAMILIES.map((f) => CHAIN_FAMILY_LABELS[f]).join(" · ")}
             format={(n) => Math.round(n).toString()}
           />
           <StatCounter
@@ -183,9 +188,9 @@ const ExplorerShell = () => {
           </div>
         </header>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {CHAIN_FAMILIES.map(
+          {ACTIVE_FAMILIES.map(
             (runtimeId) => {
-              const chains = CHAINS.filter((c) => c.family === runtimeId);
+              const chains = ACTIVE_CHAINS.filter((c) => c.family === runtimeId);
               const mainnet = chains.filter((c) => !c.testnet).length;
               const testnet = chains.length - mainnet;
               return (
@@ -275,7 +280,7 @@ const ExplorerShell = () => {
       <section className="mt-16 rounded-2xl border border-dashed border-border bg-surface/60 p-5 text-sm text-muted">
         <p>
           The explorer indexes every CID that has been publicly anchored on the
-          registry contracts across <span className="font-semibold text-foreground">{CHAINS.length} supported chains</span>.
+          registry contracts across <span className="font-semibold text-foreground">{ACTIVE_CHAINS.length} active chains</span>.
           One chain is enough to retrieve a file — adding more chains is optional and
           each chain charges its own gas. Some testnet anchors are reported as
           {" "}<span className="font-semibold text-warning">pending</span> until finality; status codes follow the

@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { FiArrowRight } from "react-icons/fi";
+import { ACTIVE_FAMILIES } from "@fileonchain/sdk";
 import { Identicon } from "@/components/ui/Identicon";
 import RuntimeChip from "@/components/profile/RuntimeChip";
 import type { PublicProfile } from "@/lib/mock/profiles";
@@ -94,17 +95,16 @@ const LeaderboardTable = ({ profiles }: LeaderboardTableProps) => {
                   </div>
                 </div>
 
-                {/* Runtimes */}
+                {/* Runtimes — only families with a network open for uploads;
+                    a chip lights up when the profile has a wallet there. */}
                 <div className="hidden flex-wrap items-center gap-1 md:flex">
-                  {(["evm", "substrate", "solana", "aptos"] as const).map(
-                    (family) => (
-                      <RuntimeChip
-                        key={family}
-                        family={family}
-                        active={linkedFamilies.has(family)}
-                      />
-                    ),
-                  )}
+                  {ACTIVE_FAMILIES.map((family) => (
+                    <RuntimeChip
+                      key={family}
+                      family={family}
+                      active={linkedFamilies.has(family)}
+                    />
+                  ))}
                 </div>
 
                 {/* Files */}

@@ -2,10 +2,13 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { FaGithub, FaLinkedin, FaTwitter } from "react-icons/fa";
-import { MAINNET_CHAINS, CHAIN_FAMILIES, CHAIN_FAMILY_LABELS } from "@fileonchain/sdk";
+import { MAINNET_CHAINS, CHAIN_FAMILIES, isChainActive } from "@fileonchain/sdk";
 import { siteConfig } from "@/lib/site";
 
 const GITHUB_REPO = "https://github.com/FileOnchain/fileonchain-org";
+
+/** Networks open for uploads today — planned/deprecated entries stay off the footer. */
+const ACTIVE_MAINNET_CHAINS = MAINNET_CHAINS.filter(isChainActive);
 
 const PRODUCT_LINKS = [
   { href: "/", label: "Upload" },
@@ -146,25 +149,16 @@ const Footer = () => (
 
           <nav aria-label="Networks" className="flex flex-col gap-3">
             <p className={columnHeading}>Networks</p>
-            {/* Two sub-columns: twelve families would otherwise double the
-                footer's height next to the six-item link columns. */}
+            {/* Two sub-columns so the list stays level with the six-item
+                link columns as more chains flip to active. */}
             <ul className="grid grid-cols-2 gap-x-4 gap-y-2">
-              {CHAIN_FAMILIES.map((family) => {
-                const count = MAINNET_CHAINS.filter((c) => c.family === family).length;
-                return (
-                  <li key={family}>
-                    <Link
-                      href={`/explorer?runtime=${family}`}
-                      className={`${footerLink} inline-flex items-baseline gap-1.5`}
-                    >
-                      {CHAIN_FAMILY_LABELS[family]}
-                      <span className="font-mono text-[11px] tabular-nums text-muted/70">
-                        {count}
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
+              {ACTIVE_MAINNET_CHAINS.map((chain) => (
+                <li key={chain.id}>
+                  <Link href={`/explorer?runtime=${chain.family}`} className={footerLink}>
+                    {chain.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </nav>
         </div>
