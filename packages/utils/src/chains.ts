@@ -126,7 +126,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
-    status: "active",
+    status: "planned",
     testnet: false,
   },
   // Auto EVM — Autonomys' EVM domain (consensus chain is the Substrate
@@ -409,7 +409,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
-    status: "active",
+    status: "planned",
     testnet: true,
   },
   {
