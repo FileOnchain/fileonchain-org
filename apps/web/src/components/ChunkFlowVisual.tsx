@@ -5,11 +5,13 @@ import { motion } from "framer-motion";
 
 /**
  * ChunkFlowVisual — editorial diagram that shows the FileOnChain pipeline:
- *   File → split into chunks → SHA-256 each → linked CID chain → registry
+ *   File → split into 64 KiB chunks → each anchor carries cid + the bytes
+ *   themselves (the `d` field) → written into the chain's ledger.
  *
- * Pure SVG, scales to its container, animated with framer-motion + CSS
- * keyframes. Lives on the right half of the hero on desktop and below the
- * heading on mobile. No external deps beyond what's already loaded.
+ * The sample math is honest: a 184 KB photo splits into exactly the three
+ * 64 KiB chunks drawn. Pure SVG, scales to its container, animated with
+ * framer-motion + CSS keyframes. Lives on the right half of the hero on
+ * desktop and below the heading on mobile.
  */
 
 const MONO = "ui-monospace, 'JetBrains Mono', Menlo, monospace";
@@ -60,12 +62,12 @@ const ChunkNode = ({ x, y, index, cid, delay = 0 }: ChunkNodeProps) => (
     </text>
     <text
       x={x - 58}
-      y={y - 2}
-      fontSize={9}
+      y={y - 4}
+      fontSize={8}
       fill="var(--muted)"
       fontFamily={MONO}
     >
-      SHA-256
+      cid · sha-256
     </text>
     <text
       x={x - 58}
@@ -74,8 +76,30 @@ const ChunkNode = ({ x, y, index, cid, delay = 0 }: ChunkNodeProps) => (
       fill="var(--foreground)"
       fontFamily={MONO}
     >
-      {cid.slice(0, 14)}…{cid.slice(-4)}
+      {cid.slice(0, 10)}…{cid.slice(-4)}
     </text>
+    {/* The chunk's own bytes ride along in the anchor — the `d` field.
+        Drawn as a base64 strip: 64 KiB of real data, not just a hash. */}
+    <text x={x + 46} y={y - 4} fontSize={8} fill="var(--accent)" fontFamily={MONO}>
+      d: 64 KiB
+    </text>
+    {[
+      { yOff: 2, w: 36 },
+      { yOff: 8, w: 30 },
+      { yOff: 14, w: 20 },
+    ].map(({ yOff, w }) => (
+      <line
+        key={yOff}
+        x1={x + 46}
+        y1={y - 6 + yOff}
+        x2={x + 46 + w}
+        y2={y - 6 + yOff}
+        stroke="var(--accent)"
+        strokeWidth={3}
+        strokeLinecap="round"
+        opacity={0.45}
+      />
+    ))}
   </motion.g>
 );
 
@@ -87,7 +111,7 @@ const ChunkFlowVisual = () => {
         xmlns="http://www.w3.org/2000/svg"
         className="w-full h-auto"
         role="img"
-        aria-label="How FileOnChain works: file split into chunks, each hashed into a CID, then anchored onchain."
+        aria-label="How FileOnChain works: a file is split into 64 KiB chunks, each anchor carries the chunk's CID and its bytes, and the chain's ledger stores the file itself."
       >
         <defs>
           <linearGradient id="flowGrad" x1="0" y1="0" x2="1" y2="0">
@@ -120,26 +144,27 @@ const ChunkFlowVisual = () => {
             stroke="var(--border)"
             strokeWidth={1}
           />
-          {/* Document icon */}
-          <g transform="translate(34,46)">
-            <rect width={36} height={48} rx={4} fill="var(--surface)" stroke="var(--border)" />
-            <path d="M26 0 L36 10 L36 48" fill="none" stroke="var(--border)" />
-            <path d="M26 0 L26 10 L36 10" fill="none" stroke="var(--primary)" strokeWidth={1.5} />
-            <line x1={8} y1={20} x2={28} y2={20} stroke="var(--muted)" strokeWidth={1} opacity={0.5} />
-            <line x1={8} y1={28} x2={28} y2={28} stroke="var(--muted)" strokeWidth={1} opacity={0.5} />
-            <line x1={8} y1={36} x2={22} y2={36} stroke="var(--muted)" strokeWidth={1} opacity={0.5} />
-          </g>
-          <text x={86} y={54} fontSize={10} fill="var(--muted)" fontFamily="var(--font-sans)" letterSpacing={1}>
+          <text x={30} y={48} fontSize={9} fill="var(--muted)" fontFamily="var(--font-sans)" letterSpacing={1.2}>
             INPUT
           </text>
-          <text x={86} y={72} fontSize={14} fontWeight={600} fill="var(--foreground)" fontFamily="var(--font-sans)">
-            manifest.json
+          {/* Photo thumbnail — the input is data, not metadata. */}
+          <g transform="translate(30,56)">
+            <rect width={30} height={38} rx={4} fill="var(--surface)" stroke="var(--border)" />
+            <circle cx={9} cy={11} r={3.5} fill="var(--accent)" opacity={0.55} />
+            <path
+              d="M3 30 L11 20 L17 26 L22 21 L27 27 L27 34 L3 34 Z"
+              fill="var(--primary)"
+              opacity={0.35}
+            />
+          </g>
+          <text x={68} y={70} fontSize={12} fontWeight={600} fill="var(--foreground)" fontFamily="var(--font-sans)">
+            photo.jpg
           </text>
-          <text x={86} y={88} fontSize={10} fill="var(--muted)" fontFamily={MONO}>
-            12.4 KB
+          <text x={68} y={85} fontSize={9} fill="var(--muted)" fontFamily={MONO}>
+            184 KB
           </text>
-          <text x={86} y={102} fontSize={9} fill="var(--muted)" fontFamily={MONO}>
-            sha: 9f8e…d24a
+          <text x={68} y={98} fontSize={9} fill="var(--muted)" fontFamily={MONO}>
+            raw bytes
           </text>
         </motion.g>
 
@@ -149,12 +174,15 @@ const ChunkFlowVisual = () => {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <line x1={156} y1={70} x2={214} y2={70} stroke="url(#flowGrad)" strokeWidth={2} strokeDasharray="4 4">
+          <line x1={160} y1={70} x2={214} y2={70} stroke="url(#flowGrad)" strokeWidth={2} strokeDasharray="4 4">
             <animate attributeName="stroke-dashoffset" from="16" to="0" dur="0.8s" repeatCount="indefinite" />
           </line>
           <polygon points="214,65 224,70 214,75" fill="var(--accent)" />
-          <text x={172} y={58} textAnchor="middle" fontSize={9} fill="var(--muted)" fontFamily="var(--font-sans)" letterSpacing={1.2}>
-            SPLIT · 64KB
+          <text x={190} y={56} textAnchor="middle" fontSize={8} fill="var(--muted)" fontFamily="var(--font-sans)" letterSpacing={1}>
+            SPLIT
+          </text>
+          <text x={190} y={88} textAnchor="middle" fontSize={8} fill="var(--muted)" fontFamily={MONO}>
+            3 × 64 KiB
           </text>
         </motion.g>
 
@@ -256,7 +284,7 @@ const ChunkFlowVisual = () => {
             fill="var(--foreground)"
             fontFamily="var(--font-sans)"
           >
-            <tspan fontStyle="italic" fontFamily="var(--font-display)">Three chunks</tspan>, one chain.
+            <tspan fontStyle="italic" fontFamily="var(--font-display)">Three chunks</tspan>, one chain — bytes included.
           </text>
           <text
             x={16}
@@ -265,7 +293,7 @@ const ChunkFlowVisual = () => {
             fill="var(--muted)"
             fontFamily="var(--font-sans)"
           >
-            Each piece is content-addressed and reconstructed on retrieval.
+            Each anchor carries its chunk&apos;s data, so the chain itself holds the file.
           </text>
         </motion.g>
 
@@ -275,11 +303,11 @@ const ChunkFlowVisual = () => {
           animate={{ opacity: 0.85, rotate: -8 }}
           transition={{ duration: 0.6, delay: 1.6 }}
         >
-          <g transform="translate(420, 240)">
+          <g transform="translate(408, 240)">
             <rect
-              x={-44}
+              x={-64}
               y={-12}
-              width={88}
+              width={128}
               height={24}
               rx={4}
               fill="none"
@@ -297,7 +325,7 @@ const ChunkFlowVisual = () => {
               fill="var(--accent)"
               fontFamily="var(--font-sans)"
             >
-              ANCHORED
+              STORED ON-CHAIN
             </text>
           </g>
         </motion.g>
