@@ -113,19 +113,14 @@ const StorageSelector = ({
   return (
     <div className="rounded-2xl border border-border bg-surface p-4 md:p-5">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-            File storage
-          </p>
-          <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-foreground">
-            <FiDatabase size={13} className="text-primary" />
-            {mode === "onchain" && storageChain
-              ? `Bytes live on ${storageChain.name}`
-              : mode === "external"
-                ? "Bytes live at your URI"
-                : "No bytes stored — proof only"}
-          </p>
-        </div>
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+          <FiDatabase size={13} className="text-primary" />
+          {mode === "onchain" && storageChain
+            ? `Bytes live on ${storageChain.name}`
+            : mode === "external"
+              ? "Bytes live at your URI"
+              : "No bytes stored — proof only"}
+        </p>
         {mode === "onchain" && storageChain && storageTxs !== null && (
           <div className="text-right">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
