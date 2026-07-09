@@ -40,7 +40,7 @@ const ChainTicker = ({ className }: ChainTickerProps) => {
 
       <div className="flex w-max animate-marquee-slow items-center gap-3 py-3 will-change-transform group-hover:[animation-play-state:paused]">
         {tiles.map((chain, i) => {
-          const iconSrc = `/chains/${chain.shortName.toLowerCase()}.svg`;
+          const iconSrc = chain.icon;
           return (
             <div
               key={`${chain.id}-${i}`}

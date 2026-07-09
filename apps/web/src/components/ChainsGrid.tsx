@@ -38,7 +38,7 @@ interface ChainTileProps {
 }
 
 const ChainTile = ({ chain, active, onSelect }: ChainTileProps) => {
-  const iconSrc = `/chains/${chain.shortName.toLowerCase()}.svg`;
+  const iconSrc = chain.icon;
   // Planned/deprecated chains show their status but can't become the
   // active chain — the active chain feeds the upload flow.
   const selectable = chain.status === "active";

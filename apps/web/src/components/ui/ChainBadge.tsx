@@ -1,5 +1,6 @@
 import * as React from "react";
 import Image from "next/image";
+import { getChain } from "@fileonchain/sdk";
 import { cn } from "@/lib/cn";
 
 interface ChainBadgeProps {
@@ -19,7 +20,9 @@ const sizeMap = {
 
 /**
  * ChainBadge — pill rendering a chain icon (or initials) + short name. The
- * icon source defaults to `/chains/<shortName>.svg` when not provided.
+ * icon comes from the chain registry (`chain.icon`, looked up by `chainId`)
+ * unless explicitly overridden — never derived from the symbol, which would
+ * duplicate the registry's asset mapping and 404 on most chains.
  */
 export const ChainBadge = ({
   chainId,
@@ -31,7 +34,7 @@ export const ChainBadge = ({
 }: ChainBadgeProps) => {
   const sizes = sizeMap[size];
   const fallbackIcon = shortName?.slice(0, 3).toUpperCase();
-  const iconSrc = icon ?? (shortName ? `/chains/${shortName.toLowerCase()}.svg` : null);
+  const iconSrc = icon ?? (chainId ? (getChain(chainId)?.icon ?? null) : null);
 
   return (
     <span
