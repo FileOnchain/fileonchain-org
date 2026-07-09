@@ -2,11 +2,11 @@
 
 import * as React from "react";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFileUploader } from "@/hooks/useFileUploader";
-import { useWalletStates } from "@/states/wallet";
+import { getFamilyAddress, useWalletStates } from "@/states/wallet";
 import { truncateFileName } from "@/utils/truncateFileName";
-import ConnectWalletModal from "./ConnectWalletModal";
 import DropZone from "@/components/upload/DropZone";
 import ChunkProgressList from "@/components/upload/ChunkProgressList";
 import CostEstimatePanel from "@/components/upload/CostEstimatePanel";
@@ -21,6 +21,13 @@ import { CopyButton } from "@/components/ui/CopyButton";
 import { StatusStepper, Step } from "@/components/ui/StatusStepper";
 import CIDPreviewPanel from "@/components/registry/CIDPreviewPanel";
 import { cn } from "@/lib/cn";
+
+// Same unified connect modal as the nav — loaded with `ssr: false` so the
+// heavy chain SDK bundles never execute during SSR (see NavWallet).
+const ChainConnectModal = dynamic(
+  () => import("@/components/chain/ChainConnectModal").then((m) => m.ChainConnectModal),
+  { ssr: false },
+);
 
 const SNIPPET_PREVIEW_CHARS = 500;
 const FILE_NAME_MAX_LENGTH = 40;
@@ -56,7 +63,11 @@ const FileUploader = () => {
 
   const { activeChain, setActiveChainId } = useChain();
   const chainNotActive = activeChain.status !== "active";
-  const selectedAccount = useWalletStates((state) => state.selectedAccount);
+  // Address of the wallet connected for the active chain's family — the one
+  // that will actually sign the pay-as-you-go transactions.
+  const connectedAddress = useWalletStates((state) =>
+    getFamilyAddress(state, activeChain.family),
+  );
   const [isWalletModalOpen, setIsWalletModalOpen] = React.useState(false);
   const [selectedChunkIndex, setSelectedChunkIndex] = React.useState<number | null>(null);
   // Extra files selected together queue up and advance after each anchor.
@@ -232,8 +243,8 @@ const FileUploader = () => {
               <div className="mt-5 flex flex-wrap items-center gap-2">
                 {paymentMethod === "payg" && (
                   <Button variant="secondary" onClick={() => setIsWalletModalOpen(true)}>
-                    {selectedAccount
-                      ? `${selectedAccount.address.slice(0, 6)}…${selectedAccount.address.slice(-4)}`
+                    {connectedAddress
+                      ? `${connectedAddress.slice(0, 6)}…${connectedAddress.slice(-4)}`
                       : "Connect wallet"}
                   </Button>
                 )}
@@ -320,7 +331,7 @@ const FileUploader = () => {
         )}
       </AnimatePresence>
 
-      <ConnectWalletModal isOpen={isWalletModalOpen} onClose={() => setIsWalletModalOpen(false)} />
+      <ChainConnectModal open={isWalletModalOpen} onOpenChange={setIsWalletModalOpen} />
     </div>
   );
 };

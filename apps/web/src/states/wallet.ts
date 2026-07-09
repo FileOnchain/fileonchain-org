@@ -73,6 +73,43 @@ const initialState: WalletState = {
   hederaAddress: null,
 };
 
+/** Connected address for a chain family, or null when that family's wallet
+ * isn't connected. Substrate reads the selected extension account; every
+ * other family reads its per-family address slot. */
+export const getFamilyAddress = (
+  state: WalletState,
+  family: ChainFamily | null,
+): string | null => {
+  switch (family) {
+    case "substrate":
+      return state.selectedAccount?.address ?? null;
+    case "evm":
+      return state.evmAddress;
+    case "solana":
+      return state.solanaAddress;
+    case "aptos":
+      return state.aptosAddress;
+    case "cosmos":
+      return state.cosmosAddress;
+    case "sui":
+      return state.suiAddress;
+    case "starknet":
+      return state.starknetAddress;
+    case "near":
+      return state.nearAddress;
+    case "tron":
+      return state.tronAddress;
+    case "cardano":
+      return state.cardanoAddress;
+    case "ton":
+      return state.tonAddress;
+    case "hedera":
+      return state.hederaAddress;
+    default:
+      return null;
+  }
+};
+
 export const useWalletStates = create<WalletStateAndHelpers>((set) => ({
   ...initialState,
   setNetworkId: (networkId) => set(() => ({ networkId })),

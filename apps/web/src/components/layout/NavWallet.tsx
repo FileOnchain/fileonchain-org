@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import dynamic from "next/dynamic";
-import { useWalletStates } from "@/states/wallet";
+import { getFamilyAddress, useWalletStates } from "@/states/wallet";
 import { cn } from "@/lib/cn";
 
 const ChainConnectModal = dynamic(
@@ -18,20 +18,7 @@ const ChainConnectModal = dynamic(
 export const NavWallet = () => {
   const [open, setOpen] = React.useState(false);
 
-  const chainFamily = useWalletStates((s) => s.chainFamily);
-  const evmAddress = useWalletStates((s) => s.evmAddress);
-  const solanaAddress = useWalletStates((s) => s.solanaAddress);
-  const aptosAddress = useWalletStates((s) => s.aptosAddress);
-  const substrateAccount = useWalletStates((s) => s.selectedAccount);
-
-  const connectedAddress =
-    chainFamily === "evm"
-      ? evmAddress
-      : chainFamily === "solana"
-        ? solanaAddress
-        : chainFamily === "aptos"
-          ? aptosAddress
-          : substrateAccount?.address ?? null;
+  const connectedAddress = useWalletStates((s) => getFamilyAddress(s, s.chainFamily));
 
   const label = connectedAddress
     ? `${connectedAddress.slice(0, 6)}…${connectedAddress.slice(-4)}`
