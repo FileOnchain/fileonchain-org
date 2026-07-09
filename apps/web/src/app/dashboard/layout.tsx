@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ButtonLink } from "@/components/ui/ButtonLink";
 import DashboardNav from "@/components/dashboard/DashboardNav";
 
 export const metadata: Metadata = {
@@ -37,12 +37,9 @@ export default async function DashboardLayout({
         title="Your account."
         lede="Uploads, activity, credits, API keys, and bring-your-own-key providers — everything tied to your signed-in identity."
         actions={
-          <Link
-            href="/profile"
-            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md border border-border bg-surface-elevated px-4 text-sm font-medium text-foreground transition-all duration-base ease-out-soft hover:border-primary/50 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
+          <ButtonLink href="/profile" variant="secondary">
             Public profile →
-          </Link>
+          </ButtonLink>
         }
       />
       <DashboardNav />

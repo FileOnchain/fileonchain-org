@@ -2,9 +2,15 @@
 
 import * as React from "react";
 import { cn } from "@/lib/cn";
+import {
+  buttonBaseClasses,
+  buttonSizeClasses,
+  buttonVariantClasses,
+  type ButtonSize,
+  type ButtonVariant,
+} from "./buttonStyles";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "outline";
-export type ButtonSize = "sm" | "md" | "lg";
+export type { ButtonVariant, ButtonSize };
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -14,24 +20,6 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   rightIcon?: React.ReactNode;
   fullWidth?: boolean;
 }
-
-const variantClasses: Record<ButtonVariant, string> = {
-  primary:
-    "bg-primary text-primary-foreground hover:bg-primary-hover active:translate-y-px disabled:bg-muted disabled:text-muted-foreground",
-  secondary:
-    "bg-surface text-foreground border border-border hover:bg-surface-elevated hover:border-primary/40",
-  ghost: "bg-transparent text-foreground hover:bg-surface",
-  outline:
-    "bg-transparent text-primary border border-primary hover:bg-primary hover:text-primary-foreground",
-  danger:
-    "bg-danger text-white hover:opacity-90 active:translate-y-px disabled:opacity-50",
-};
-
-const sizeClasses: Record<ButtonSize, string> = {
-  sm: "h-8 px-3 text-sm rounded-md gap-1.5",
-  md: "h-10 px-4 text-sm rounded-md gap-2",
-  lg: "h-12 px-6 text-base rounded-lg gap-2.5",
-};
 
 /**
  * Button — primary interactive primitive.
@@ -62,12 +50,10 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         type={type}
         disabled={disabled || isLoading}
         className={cn(
-          "inline-flex items-center justify-center font-medium",
-          "transition-colors duration-base ease-out-soft",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          buttonBaseClasses,
           "disabled:cursor-not-allowed disabled:opacity-60",
-          variantClasses[variant],
-          sizeClasses[size],
+          buttonVariantClasses[variant],
+          buttonSizeClasses[size],
           fullWidth && "w-full",
           className,
         )}

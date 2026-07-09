@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { ButtonLink } from "@/components/ui/ButtonLink";
 import { siteConfig } from "@/lib/site";
 import {
   MOCK_PLATFORMS,
@@ -121,19 +121,17 @@ const ProtocolPage = () => {
   const stats = MOCK_PROTOCOL_STATS;
   const split = stats.feeSplit;
   return (
-    <PageShell>
+    <PageShell size="wide" padding="lg" atmosphere>
       <PageHeader
+        className="mb-8"
         index="07"
         kicker="Verification market"
         title="The anchor protocol"
         lede="Anchors are verified claims, not just transactions: every file anchor posts a FOCAT tip and a bond, survives a challenge window policed by staked validators, and pays the network that verified it."
         actions={
-          <Link
-            href="/docs"
-            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md border border-border bg-surface-elevated px-4 text-sm font-medium text-foreground transition-all duration-base ease-out-soft hover:border-primary/50 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
+          <ButtonLink href="/docs" variant="secondary">
             Read the docs →
-          </Link>
+          </ButtonLink>
         }
       />
 
