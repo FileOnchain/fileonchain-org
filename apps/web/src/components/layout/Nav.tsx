@@ -24,7 +24,6 @@ const PRIMARY_LINKS: NavLink[] = [
   { href: "/cache", label: "Cache" },
   { href: "/donations", label: "Donations" },
   { href: "/protocol", label: "Protocol" },
-  { href: "/docs", label: "Docs" },
   { href: "/dashboard", label: "Dashboard" },
 ];
 

@@ -449,7 +449,7 @@ const IndexEntry = ({
  * repository; keep the two in sync when the protocol design changes.
  */
 const WhitepaperPage = () => (
-  <PageShell size="default" padding="lg" atmosphere>
+  <PageShell size="wide" padding="lg" atmosphere>
     <PageHeader
       className="mb-8"
       index="08"

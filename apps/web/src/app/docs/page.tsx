@@ -310,7 +310,7 @@ const PackageLink = ({ dir }: { dir: string }) => (
  * client islands).
  */
 const DocsPage = () => (
-  <PageShell size="default" padding="lg" atmosphere>
+  <PageShell size="wide" padding="lg" atmosphere>
     <PageHeader
       className="mb-10"
       index="07"
@@ -336,7 +336,7 @@ const DocsPage = () => (
       {/* ------------------------------------------------------------ */}
       <section id="getting-started" className="scroll-mt-24 space-y-6">
         <SectionHeading id="getting-started-heading">Getting started</SectionHeading>
-        <p className="text-sm leading-relaxed text-muted md:text-base">
+        <p className="max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
           There are three ways to anchor a CID, depending on who signs the
           transaction:
         </p>
@@ -379,7 +379,7 @@ const DocsPage = () => (
           </SectionHeading>
           <PackageLink dir="sdk" />
         </div>
-        <p className="text-sm leading-relaxed text-muted md:text-base">
+        <p className="max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
           The package most apps should install. The root entry re-exports the
           entire dependency-free core (chain registry, CID validation, anchor
           payloads) plus the EVM contract ABIs. Each chain family lives on its own
@@ -392,7 +392,7 @@ const DocsPage = () => (
           peer dependencies.
         </p>
         <CodeBlock title="registry.ts" code={REGISTRY_SNIPPET} />
-        <p className="text-sm leading-relaxed text-muted md:text-base">
+        <p className="max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
           Every family exports the same{" "}
           <code className="font-mono text-xs">anchorChunkedFile</code> with an
           identical progress and receipt shape — chunk anchors first, the
@@ -417,13 +417,13 @@ const DocsPage = () => (
           </SectionHeading>
           <PackageLink dir="utils" />
         </div>
-        <p className="text-sm leading-relaxed text-muted md:text-base">
+        <p className="max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
           The dependency-free foundation everything else builds on — the
           umbrella&apos;s root entry re-exports all of it, so you only depend on
           it directly when you want chain metadata without any anchoring code.
           It is the single source of truth for:
         </p>
-        <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted md:text-base">
+        <ul className="list-disc space-y-2 pl-5 max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
           <li>
             <span className="font-medium text-foreground">The chain registry</span> —{" "}
             <code className="font-mono text-xs">CHAINS</code>,{" "}
@@ -465,7 +465,7 @@ const DocsPage = () => (
         <SectionHeading id="families-heading">
           Family clients — <span className="font-mono">@fileonchain/sdk-*</span>
         </SectionHeading>
-        <p className="text-sm leading-relaxed text-muted md:text-base">
+        <p className="max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
           One anchor client per chain family, all published standalone and
           re-exported by the umbrella. Nine of the twelve are fully
           dependency-free: the SDK owns payload building, ordering, batching,
@@ -524,7 +524,7 @@ const DocsPage = () => (
           </table>
         </div>
 
-        <p className="text-sm leading-relaxed text-muted md:text-base">
+        <p className="max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
           Every package is also importable as{" "}
           <code className="font-mono text-xs">@fileonchain/sdk/&lt;family&gt;</code>.
           Besides <code className="font-mono text-xs">anchorChunkedFile</code>, each
@@ -558,7 +558,7 @@ const DocsPage = () => (
           <h3 className="text-lg font-semibold text-foreground">
             The dependency-free nine — bring a signer
           </h3>
-          <p className="text-sm leading-relaxed text-muted md:text-base">
+          <p className="max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
             Aptos, Cosmos, Sui, Starknet, NEAR, TRON, Cardano, TON, and Hedera
             follow the same pattern: the client takes a small signer object
             instead of a chain SDK. Injected wallets (Petra, Keplr, Argent,
@@ -577,7 +577,7 @@ const DocsPage = () => (
           </SectionHeading>
           <PackageLink dir="api" />
         </div>
-        <p className="text-sm leading-relaxed text-muted md:text-base">
+        <p className="max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
           A zero-dependency typed client for the hosted{" "}
           <code className="font-mono text-xs">/api/v1/*</code> endpoints.
           FileOnChain&apos;s workers sign and send the transactions, paid with
@@ -592,7 +592,7 @@ const DocsPage = () => (
           .
         </p>
         <CodeBlock title="hosted.ts" code={API_SNIPPET} />
-        <p className="text-sm leading-relaxed text-muted md:text-base">
+        <p className="max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
           Errors surface as{" "}
           <code className="font-mono text-xs">FileOnChainApiError</code> with a{" "}
           <code className="font-mono text-xs">.status</code>: 401 bad key, 402
@@ -608,7 +608,7 @@ const DocsPage = () => (
           </SectionHeading>
           <PackageLink dir="mcp" />
         </div>
-        <p className="text-sm leading-relaxed text-muted md:text-base">
+        <p className="max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
           A stdio MCP (Model Context Protocol) server. Five read-only tools
           serve the chain registry with no configuration (
           <code className="font-mono text-xs">list_chains</code>,{" "}
@@ -623,11 +623,11 @@ const DocsPage = () => (
           credits through the hosted API — the server never holds private keys.
         </p>
         <CodeBlock title="mcp-config.json" code={MCP_SNIPPET} />
-        <p className="text-sm leading-relaxed text-muted md:text-base">
+        <p className="max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
           Or with the Claude Code CLI:
         </p>
         <CodeBlock title="terminal" code={MCP_CLAUDE_SNIPPET} />
-        <p className="text-sm leading-relaxed text-muted md:text-base">
+        <p className="max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
           <code className="font-mono text-xs">FILEONCHAIN_API_KEY</code> is required
           only for the anchoring tools;{" "}
           <code className="font-mono text-xs">FILEONCHAIN_API_URL</code> optionally
