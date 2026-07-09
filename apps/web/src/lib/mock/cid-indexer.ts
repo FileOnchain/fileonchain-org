@@ -1,9 +1,16 @@
 import {
   CHAINS,
   getChain,
+  isChainActive,
   type ChainFamily,
   type ChainId,
 } from "@fileonchain/sdk";
+
+/**
+ * The mock indexer only reports anchors on chains open for uploads —
+ * planned/deprecated registry entries must never appear as live activity.
+ */
+const INDEXED_CHAINS = CHAINS.filter(isChainActive);
 
 /* TODO: wire to The Graph / Goldsky / Subscan / per-chain RPCs and mirror
  * nodes. The family-specific tx→payload extractors already exist in
@@ -248,7 +255,7 @@ const buildHit = async (file: RegisteredFile, chainId: ChainId): Promise<SearchH
  * "found on N chains" model in the explorer detail view.
  */
 const buildAllHitsFor = async (file: RegisteredFile): Promise<SearchHit[]> => {
-  const ids: ChainId[] = CHAINS.map((c) => c.id);
+  const ids: ChainId[] = INDEXED_CHAINS.map((c) => c.id);
   const hits = await Promise.all(ids.map((id) => buildHit(file, id)));
   return hits;
 };
@@ -347,7 +354,7 @@ export interface ExplorerStats {
 export const getExplorerStats = async (): Promise<ExplorerStats> => {
   await new Promise((r) => setTimeout(r, 100));
   const totalFiles = MOCK_FILES.length;
-  const totalChains = CHAINS.length;
+  const totalChains = INDEXED_CHAINS.length;
   const totalAnchors = totalFiles * totalChains;
   const totalBytes = MOCK_FILES.reduce((acc, f) => acc + f.sizeBytes, 0);
   const uploaders = new Set(MOCK_FILES.map((f) => f.uploader));
@@ -384,11 +391,11 @@ export const getUploaderAggregates = async (): Promise<UploaderAggregate[]> => {
       files: 0,
       bytes: 0,
       anchors: 0,
-      chains: CHAINS.length,
+      chains: INDEXED_CHAINS.length,
     };
     agg.files += 1;
     agg.bytes += file.sizeBytes;
-    agg.anchors += CHAINS.length;
+    agg.anchors += INDEXED_CHAINS.length;
     byUploader.set(file.uploader, agg);
   }
   return Array.from(byUploader.values());

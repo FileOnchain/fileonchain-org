@@ -2,7 +2,12 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { CHAIN_FAMILIES, CHAIN_FAMILY_LABELS, type ChainFamily } from "@fileonchain/sdk";
+import {
+  ACTIVE_CHAINS,
+  CHAIN_FAMILIES,
+  CHAIN_FAMILY_LABELS,
+  type ChainFamily,
+} from "@fileonchain/sdk";
 import type { FileCategory } from "@/lib/mock/cid-indexer";
 import { cn } from "@/lib/cn";
 
@@ -13,9 +18,13 @@ interface ExplorerFiltersProps {
   onCategoryChange: (c: FileCategory | "all") => void;
 }
 
+// Only runtimes with a network open for uploads — the indexer never reports
+// anchors on planned families, so their chips would always filter to nothing.
 const RUNTIME_OPTIONS: Array<{ id: ChainFamily | "all"; label: string }> = [
   { id: "all", label: "All runtimes" },
-  ...CHAIN_FAMILIES.map((family) => ({
+  ...CHAIN_FAMILIES.filter((family) =>
+    ACTIVE_CHAINS.some((c) => c.family === family),
+  ).map((family) => ({
     id: family,
     label: CHAIN_FAMILY_LABELS[family],
   })),

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
+import { MAINNET_CHAINS, isChainActive } from "@fileonchain/sdk";
 
 interface StatProps {
   value: number;
@@ -105,16 +106,27 @@ interface LedgerEvent {
   time: string;
 }
 
-const LEDGER_FEED: LedgerEvent[] = [
-  { cid: "bafy…z3q1", chain: "AUTONOMYS", time: "now" },
-  { cid: "bafy…71fv", chain: "BASE", time: "2s" },
-  { cid: "bafy…kk8d", chain: "SOLANA", time: "5s" },
-  { cid: "bafy…lp2c", chain: "ARBITRUM", time: "9s" },
-  { cid: "bafy…mn5w", chain: "POLYGON", time: "13s" },
-  { cid: "bafy…rr7u", chain: "OPTIMISM", time: "18s" },
-  { cid: "bafy…xs9b", chain: "APTOS", time: "24s" },
-  { cid: "bafy…dj4h", chain: "ETHEREUM", time: "31s" },
-];
+// Mock CIDs/ages cycling through the networks that are actually open for
+// uploads — the ticker must never show activity on a planned chain.
+const TICKER_SEEDS = [
+  { cid: "bafy…z3q1", time: "now" },
+  { cid: "bafy…71fv", time: "2s" },
+  { cid: "bafy…kk8d", time: "5s" },
+  { cid: "bafy…lp2c", time: "9s" },
+  { cid: "bafy…mn5w", time: "13s" },
+  { cid: "bafy…rr7u", time: "18s" },
+  { cid: "bafy…xs9b", time: "24s" },
+  { cid: "bafy…dj4h", time: "31s" },
+] as const;
+
+const ACTIVE_NAMES = MAINNET_CHAINS.filter(isChainActive).map((c) =>
+  c.name.toUpperCase(),
+);
+
+const LEDGER_FEED: LedgerEvent[] = TICKER_SEEDS.map((seed, i) => ({
+  ...seed,
+  chain: ACTIVE_NAMES[i % ACTIVE_NAMES.length],
+}));
 
 const LiveLedgerTicker = () => {
   const loop = [...LEDGER_FEED, ...LEDGER_FEED];
