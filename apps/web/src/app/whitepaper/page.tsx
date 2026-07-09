@@ -10,12 +10,12 @@ import { CHAIN_FAMILIES, MAINNET_CHAINS, TESTNET_CHAINS } from "@fileonchain/sdk
 export const metadata: Metadata = {
   title: "White Paper",
   description:
-    "The FileOnChain white paper: one anchor payload across twelve chain families, an optimistic propose/verify market backed by the FOCAT token, EVM-hubbed governance, and storage decoupled from proof.",
+    "The FileOnChain white paper: files stored on-chain by default, one payload vocabulary across twelve chain families, fileonchain:// pointers from proofs to bytes, an optimistic verification market backed by FOCAT, and EVM-hubbed governance.",
   alternates: { canonical: "/whitepaper" },
   openGraph: {
     title: "White Paper · FileOnChain",
     description:
-      "A chain-agnostic protocol for permanent, verifiable file anchoring — the design, the verification market, the FOCAT token, and governance.",
+      "Permanent on-chain file storage with cross-chain proofs — the storage model, the verification market, the FOCAT token, and governance.",
     url: "/whitepaper",
     type: "article",
   },
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "White Paper · FileOnChain",
     description:
-      "A chain-agnostic protocol for permanent, verifiable file anchoring — the design, the verification market, the FOCAT token, and governance.",
+      "Permanent on-chain file storage with cross-chain proofs — the storage model, the verification market, the FOCAT token, and governance.",
   },
 };
 
@@ -41,11 +41,11 @@ const TOC = [
   { href: "#motivation", label: "1 · Motivation" },
   { href: "#principles", label: "2 · Design principles" },
   { href: "#system", label: "3 · System overview" },
-  { href: "#chains", label: "4 · Chain families" },
+  { href: "#chains", label: "4 · Chains & budgets" },
   { href: "#protocol", label: "5 · Anchor protocol" },
   { href: "#token", label: "6 · FOCAT token" },
   { href: "#governance", label: "7 · Governance" },
-  { href: "#storage", label: "8 · Storage" },
+  { href: "#retrieval", label: "8 · Retrieval & caches" },
   { href: "#access", label: "9 · Access paths" },
   { href: "#security", label: "10 · Security" },
   { href: "#status", label: "11 · Status" },
@@ -54,24 +54,24 @@ const TOC = [
 
 const PRINCIPLES = [
   {
+    title: "The chain is the storage medium",
+    body: "By default the file's bytes are written into the chain's own history — no pinning service, no canonical host, no company that can turn it off. Retrieval needs nothing but a node (or archive) of the storage chain.",
+  },
+  {
+    title: "The user picks where bytes live",
+    body: "Any storage-capable chain can be the file's home. The anchoring chain is the default; Autonomys — purpose-built for permanent data storage — is the suggested home for medium and large files, where it is cheapest. Users who already host bytes elsewhere opt out and link their copy instead.",
+  },
+  {
     title: "Content addressing over location addressing",
-    body: "Files are identified by CIDv1 hashes — valid forever, verifiable by anyone holding the bytes. The anchor commits to what the file is, never where it lives.",
+    body: "Files are identified by CIDv1 hashes — valid forever, verifiable by anyone holding the bytes, wherever they were found.",
   },
   {
     title: "Chain-agnostic by construction",
-    body: "The payload written on-chain is byte-identical on every family. Chains differ only in the transaction envelope — a contract call, a remark, a memo, metadata, or a consensus message.",
-  },
-  {
-    title: "Meet each chain where it is",
-    body: "Contract runtimes get the full verification protocol; memo-capable chains get lightweight anchoring through native channels with no deployment required.",
+    body: "The payload written on-chain is byte-identical on every family. Chains differ only in the transaction envelope — a contract call, a remark, a memo, metadata, or a consensus message — and in how many bytes one transaction can carry.",
   },
   {
     title: "Optimistic verification",
     body: "Most anchors are honest, so the fast path is cheap: propose, wait out a challenge window, finalize. Disputes are the expensive exception, resolved by staked-validator juries.",
-  },
-  {
-    title: "Storage is a market, not a promise",
-    body: "Anchoring proves; caching serves. Private caching is paid and end-to-end encrypted; public caching is donation-funded. Neither is required for an anchor to remain valid.",
   },
   {
     title: "Open everything",
@@ -79,22 +79,10 @@ const PRINCIPLES = [
   },
 ] as const;
 
-const FILE_PAYLOAD_FIELDS = [
+const CHUNK_PAYLOAD_FIELDS = [
   { field: "p", type: '"fileonchain"', meaning: "Protocol tag" },
   { field: "v", type: "1", meaning: "Payload version" },
-  { field: "op", type: '"anchor"', meaning: "Operation" },
-  { field: "cid", type: "string", meaning: "CIDv1 of the file or folder DAG root" },
-  { field: "sha256", type: "string · optional", meaning: "SHA-256 (hex) of the raw content" },
-  { field: "uri", type: "string · optional", meaning: "IPFS / Arweave pointer" },
-  {
-    field: "pid",
-    type: "string · optional",
-    meaning: "Originating platform id (integrator attribution)",
-  },
-] as const;
-
-const CHUNK_PAYLOAD_FIELDS = [
-  { field: "op", type: '"chunk"', meaning: "Operation (p and v as above)" },
+  { field: "op", type: '"chunk"', meaning: "Operation" },
   { field: "cid", type: "string", meaning: "CIDv1 of this chunk" },
   { field: "fileCid", type: "string", meaning: "CIDv1 of the whole file" },
   { field: "idx", type: "number", meaning: "Zero-based chunk index" },
@@ -107,7 +95,19 @@ const CHUNK_PAYLOAD_FIELDS = [
   {
     field: "d",
     type: "string · optional",
-    meaning: "Base64 chunk bytes — only on data-carrying chains",
+    meaning: "The chunk's bytes (base64) — present on the storage chain",
+  },
+] as const;
+
+const FILE_PAYLOAD_FIELDS = [
+  { field: "op", type: '"anchor"', meaning: "Operation (p and v as above)" },
+  { field: "cid", type: "string", meaning: "CIDv1 of the file or folder DAG root" },
+  { field: "sha256", type: "string · optional", meaning: "SHA-256 (hex) of the raw content" },
+  { field: "uri", type: "string · optional", meaning: "Where the bytes live (storage URI or external pointer)" },
+  {
+    field: "pid",
+    type: "string · optional",
+    meaning: "Originating platform id (integrator attribution)",
   },
 ] as const;
 
@@ -120,8 +120,7 @@ const TRANSPORT_ROWS = [
   },
   {
     family: "Substrate",
-    transport:
-      "system.remarkWithEvent batched via utility.batchAll; chunk bytes embedded where supported (Autonomys)",
+    transport: "system.remarkWithEvent batched via utility.batchAll",
     deployment: null,
   },
   { family: "Solana", transport: "SPL Memo program", deployment: null },
@@ -173,10 +172,47 @@ const TRANSPORT_ROWS = [
   },
 ] as const;
 
+const STORAGE_BUDGET_ROWS = [
+  {
+    family: "Substrate (Autonomys)",
+    budget: "64 KiB",
+    character:
+      "Suggested home — permanent-storage network, embeds bytes by default, cheapest for large files",
+    suggested: true,
+  },
+  {
+    family: "EVM",
+    budget: "64 KiB",
+    character:
+      "Calldata storage; costs scale with gas price — practical on L2s, expensive on Ethereum L1",
+    suggested: false,
+  },
+  { family: "NEAR", budget: "~48 KiB", character: "Function-call args", suggested: false },
+  { family: "Aptos", budget: "~36 KiB", character: "Entry-function arg", suggested: false },
+  { family: "Starknet", budget: "~24 KiB", character: "ByteArray calldata", suggested: false },
+  { family: "Sui", budget: "~12 KiB", character: "PTB pure argument", suggested: false },
+  { family: "Cardano", budget: "~5.8 KiB", character: "CIP-20 metadata", suggested: false },
+  { family: "TRON", budget: "~1.3 KiB", character: "Memo field", suggested: false },
+  { family: "Hedera", budget: "512 B", character: "One HCS message per chunk", suggested: false },
+  { family: "TON", budget: "448 B", character: "Transfer comment", suggested: false },
+  {
+    family: "Solana",
+    budget: "256 B",
+    character: "Memo — viable for very small files only",
+    suggested: false,
+  },
+  {
+    family: "Cosmos",
+    budget: "—",
+    character: "Memos (256 B default) can't fit the envelope plus data: anchor-only",
+    suggested: false,
+  },
+] as const;
+
 const LIFECYCLE_STEPS = [
   {
     title: "1 · Propose",
-    body: "proposeAnchor escrows a FOCAT tip plus a refundable bond and records the CID, the URI, and the originating platform id. Chunk anchors stay free — only the file-level CID enters the protocol.",
+    body: "proposeAnchor escrows a FOCAT tip plus a refundable bond and records the CID, the storage URI, and the originating platform id. Chunk anchors — including the data-carrying ones — stay free; only the file-level CID enters the paid protocol.",
   },
   {
     title: "2 · Challenge window",
@@ -236,13 +272,13 @@ const TOKEN_POINTS = [
 ] as const;
 
 const LIMITATIONS = [
+  "On-chain bytes are public and permanent. Anything stored unencrypted is world-readable forever — that is the point, and also the warning. Sensitive content belongs in the encrypted private cache, or encrypted client-side before storage.",
+  "Data durability equals the storage chain's history retention. On a purpose-built storage network (Autonomys) archival is the protocol; on general-purpose chains, embedded bytes live in transaction history (e.g. EVM calldata), whose long-term availability depends on archive nodes.",
+  "Small-budget chains make storage possible, not economical — a 1 MB file is ~16 transactions on Autonomys and ~2,000 on Hedera. The uploader surfaces transaction counts and costs before signing.",
   "Anchoring proves existence and integrity, not authorship or truthfulness — the market backs the claim's well-formedness and attribution, it does not fact-check file contents.",
   "Jury randomness is chain-dependent in v1: native randomness on Aptos and Sui; prevrandao + parent blockhash on EVM (sequencer-influenceable on most L2s); a two-step block-hash draw on Starknet (the weakest); the block producer's random_seed on NEAR.",
-  "Jury votes are public — no commit-reveal — and non-voting jurors are not slashed.",
-  "Platform registration is governance-gated rather than permissionless in v1.",
-  "Validator stake is not delegatable, and juries are uniform rather than stake-weighted.",
+  "Jury votes are public — no commit-reveal — and non-voting jurors are not slashed. Platform registration is governance-gated rather than permissionless in v1. Validator stake is not delegatable, and juries are uniform rather than stake-weighted.",
   "The non-EVM governance mirror is a trust seam: parameter changes there are only as trustworthy as the admin's fidelity to EVM outcomes. Bridge rate limits are EVM-only in v1.",
-  "Cache nodes are availability, not custody: private-cache nodes hold ciphertext only, and losing the client-held key means losing access — by design.",
 ] as const;
 
 /* ------------------------------------------------------------------ */
@@ -316,8 +352,8 @@ const WhitepaperPage = () => (
       className="mb-6"
       index="08"
       kicker="White paper · v1.0 · July 2026"
-      title="A chain-agnostic protocol for permanent, verifiable file anchoring."
-      lede="One anchor payload across twelve chain families, an optimistic propose/verify market backed by the FOCAT token, EVM-hubbed governance, and storage deliberately decoupled from proof."
+      title="Permanent on-chain file storage with cross-chain proofs."
+      lede="Files stored on the chain itself — bytes embedded in the anchors, on a storage chain the user picks — and proven on any of twelve chain families, with an optimistic verification market backed by the FOCAT token."
       actions={
         <a
           href={WHITEPAPER_MD}
@@ -348,25 +384,30 @@ const WhitepaperPage = () => (
       <section id="abstract" className="scroll-mt-24 space-y-4">
         <SectionHeading id="abstract-heading">Abstract</SectionHeading>
         <Prose>
-          FileOnChain is an open protocol for anchoring the existence and
-          integrity of files on public blockchains. A file is reduced to a
-          content identifier (CID) — a self-verifying hash of its bytes — and
-          that CID is written into a transaction on any of{" "}
-          {CHAIN_FAMILIES.length} chain families, from EVM and Substrate to
-          Cardano, TON, and Hedera, using one versioned payload vocabulary that
-          any indexer can read back regardless of chain. On chains with
-          smart-contract runtimes, anchors graduate from simple timestamps to{" "}
-          <em>verified claims</em> through an optimistic verification market: a
-          proposer escrows a token tip and bond, the claim survives a 24-hour
-          challenge window policed by staked validators, and the tip is split
-          between the validators who secure the market, the platform that
-          originated the anchor, and a community-governed treasury.
+          FileOnChain is an open protocol for storing files on public
+          blockchains and proving them everywhere. A file is split into chunks
+          sized to a chain&apos;s per-transaction budget, and the chunk bytes
+          themselves are embedded in anchor transactions on a{" "}
+          <em>storage chain</em> the user chooses — the chain they were
+          anchoring on anyway when it can carry data, or Autonomys, a
+          permanent-storage network, suggested for anything large. The file is
+          then <em>anchored</em> — its content identifier (CID) committed with
+          a pointer to the stored copy — on any number of the{" "}
+          {CHAIN_FAMILIES.length} supported chain families, from EVM and
+          Substrate to Cardano, TON, and Hedera, using one versioned payload
+          vocabulary that any indexer can read back regardless of chain.
         </Prose>
         <Prose>
-          Storage of the bytes themselves is deliberately decoupled from
-          anchoring and served by an encrypted paid cache and a donation-funded
-          public cache. The entire stack — contracts on five runtimes, twelve
-          TypeScript anchor clients, a hosted API, and an MCP server for AI
+          On chains with smart-contract runtimes, anchors graduate from
+          timestamps to <em>verified claims</em> through an optimistic
+          verification market: a proposer escrows a token tip and bond, the
+          claim survives a 24-hour challenge window policed by staked
+          validators, and the tip is split between the validators who secure
+          the market, the platform that originated the anchor, and a
+          community-governed treasury. Users who already host their bytes
+          elsewhere can opt out of on-chain storage and point their anchors at
+          any external location. The entire stack — contracts on five runtimes,
+          twelve TypeScript clients, a hosted API, and an MCP server for AI
           agents — is open source under the MIT license.
         </Prose>
       </section>
@@ -377,40 +418,43 @@ const WhitepaperPage = () => (
         <Prose>
           The web forgets. Links rot, platforms shut down, files are silently
           edited, and there is rarely a way to prove that a document existed in
-          a particular form at a particular time. Public blockchains solve
-          exactly this — durable, timestamped, tamper-evident records — yet
-          using them for files remains fragmented:
+          a particular form at a particular time — let alone to still{" "}
+          <em>retrieve</em> it years later. Public blockchains are the most
+          durable, tamper-evident storage medium ever deployed, yet using them
+          for files remains fragmented:
         </Prose>
         <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted md:text-base">
           <li>
-            <span className="font-medium text-foreground">Every chain is a silo.</span>{" "}
-            An anchor written on Ethereum is invisible to tooling built for
-            Solana; each ecosystem reinvents its own ad-hoc format for
-            &ldquo;this hash existed.&rdquo;
-          </li>
-          <li>
-            <span className="font-medium text-foreground">Anchors are unverified.</span>{" "}
-            A transaction proves <em>someone wrote a hash at a time</em> — it
-            says nothing about whether the anchor is well-formed, attributable,
-            or worth trusting. No economic layer puts skin in the game behind a
-            claim.
-          </li>
-          <li>
             <span className="font-medium text-foreground">
-              Storage and proof are conflated.
+              Files don&apos;t actually live on chain.
             </span>{" "}
-            Fully on-chain storage is prohibitively expensive on most networks,
-            while off-chain storage without an on-chain commitment proves
-            nothing. The two concerns need a clean seam, not a bundle.
+            Most &ldquo;on-chain storage&rdquo; projects write a hash and store
+            the bytes somewhere else — a pinning service, a gateway, a company
+            server. When that host disappears, the hash proves a file existed
+            that nobody can read anymore. A protocol named FileOnChain should
+            put the file on the chain.
+          </li>
+          <li>
+            <span className="font-medium text-foreground">Every chain is a silo.</span>{" "}
+            Bytes stored via one ecosystem&apos;s conventions are invisible to
+            tooling built for another; each chain reinvents its own ad-hoc
+            format for both data and proofs.
+          </li>
+          <li>
+            <span className="font-medium text-foreground">Proofs are unverified.</span>{" "}
+            A transaction proves <em>someone wrote a hash at a time</em> — it
+            says nothing about whether the claim is well-formed, attributable,
+            or worth trusting. No economic layer puts skin in the game behind
+            it.
           </li>
         </ul>
         <Prose>
-          FileOnChain addresses all three: one anchor vocabulary that works
-          identically across {CHAIN_FAMILIES.length} chain families, an
-          optimistic verification protocol that turns anchors into economically
-          backed claims on contract-capable chains, and byte storage kept
-          separate — content addressing makes files reconstructible and
-          verifiable from any host, so no canonical host needs to exist.
+          FileOnChain addresses all three: it stores the file on chain by
+          default — chunk bytes embedded in the same anchor transactions that
+          prove it — defines one payload vocabulary for data and proofs across{" "}
+          {CHAIN_FAMILIES.length} chain families, and adds an optimistic
+          verification protocol that turns anchors into economically backed
+          claims on contract-capable chains.
         </Prose>
       </section>
 
@@ -435,54 +479,83 @@ const WhitepaperPage = () => (
           3.1 Content addressing and chunking
         </h3>
         <Prose>
-          A file — or a folder, which anchors exactly like a file via the CID
-          of its DAG root — is processed client-side: the bytes are split into
-          64&nbsp;KiB chunks, each chunk is hashed with SHA-256 and encoded as
-          a CIDv1, and chunk CIDs are linked into a forward-chained sequence in
-          which each chunk anchor names the CID of the next. Hashing happens in
-          the browser or the caller&apos;s own process; the raw bytes never
-          need to leave the uploader&apos;s machine for an anchor to be
-          created.
+          A file — or a folder, handled exactly like a file via the CID of its
+          DAG root — is processed client-side: the bytes are split into chunks
+          sized to the storage chain&apos;s per-transaction data budget
+          (64&nbsp;KiB where the chain allows it, smaller where the transport
+          is tighter), each chunk is hashed with SHA-256 and encoded as a
+          CIDv1, and chunk CIDs are linked into a forward-chained sequence in
+          which each chunk anchor names the CID of the next. For proof-only
+          anchors the raw bytes never leave the uploader&apos;s machine; for
+          storage the bytes go directly from the user&apos;s wallet to the
+          chain.
         </Prose>
 
         <h3 className="text-lg font-semibold text-foreground">3.2 The anchor payload</h3>
         <Prose>
-          Every anchor, on every chain, is the same versioned JSON document,
-          identified by the protocol tag{" "}
+          Every anchor — data-carrying or proof-only, on every chain — is the
+          same versioned JSON document, identified by the protocol tag{" "}
           <code className="font-mono text-xs">p: &quot;fileonchain&quot;</code> and
           version <code className="font-mono text-xs">v: 1</code>. The
-          file-level anchor — one per file or folder DAG root:
+          chunk-level anchor carries the file&apos;s bytes when the chain is
+          the storage home:
         </Prose>
-        <FieldTable rows={FILE_PAYLOAD_FIELDS} />
-        <Prose>The chunk-level anchor — one per 64&nbsp;KiB chunk:</Prose>
         <FieldTable rows={CHUNK_PAYLOAD_FIELDS} />
+        <Prose>The file-level anchor — one per file or folder DAG root:</Prose>
+        <FieldTable rows={FILE_PAYLOAD_FIELDS} />
         <Prose>
-          Two properties follow. First,{" "}
+          Three properties follow. First,{" "}
+          <span className="font-medium text-foreground">
+            the file is reconstructible from the chain alone
+          </span>
+          : walking the chunk trail on the storage chain and base64-decoding
+          each <code className="font-mono text-xs">d</code> field rebuilds the
+          file, and every chunk&apos;s CID verifies its bytes — no off-chain
+          index required. Second,{" "}
           <span className="font-medium text-foreground">one indexer reads every chain</span>:
           the payload decodes identically whether it was found in an EVM event,
           a Substrate remark, a Solana memo, Cardano transaction metadata, or a
-          Hedera consensus message. Second,{" "}
+          Hedera consensus message. Third,{" "}
           <span className="font-medium text-foreground">
             attribution travels with the payload
           </span>
           : the <code className="font-mono text-xs">pid</code> field carries
-          the originating platform on every family — including memo-only chains
-          with no contract to enforce it.
+          the originating platform on every family.
         </Prose>
 
-        <h3 className="text-lg font-semibold text-foreground">3.3 Anchoring order</h3>
+        <h3 className="text-lg font-semibold text-foreground">
+          3.3 Storage URIs — proofs point at the bytes
+        </h3>
+        <Prose>
+          When the bytes live on one chain and proofs on others, every
+          file-level anchor carries a <code className="font-mono text-xs">uri</code>{" "}
+          naming the storage home:{" "}
+          <code className="font-mono text-xs">
+            fileonchain://&lt;chainId&gt;/&lt;fileCid&gt;
+          </code>
+          . A reader who finds the anchor on, say, Base resolves the URI to the
+          storage chain, walks the chunk trail there, and verifies the rebuilt
+          bytes against the anchored CID. Users who opted out of on-chain
+          storage may set the URI to any external location instead —{" "}
+          <code className="font-mono text-xs">ipfs://…</code>, an Auto Drive
+          CID, <code className="font-mono text-xs">https://…</code> — or omit
+          it entirely for a pure existence proof.
+        </Prose>
+
+        <h3 className="text-lg font-semibold text-foreground">3.4 Anchoring order</h3>
         <Prose>
           Chunk anchors are always written first and the file-level anchor
           last. Indexers rely on this ordering: when a file-level anchor
-          appears, its chunk trail is already complete, so the file record can
-          be finalized in a single pass.
+          appears, its chunk trail — and, on the storage chain, the file&apos;s
+          full data — is already on-chain, so the file record can be finalized
+          in a single pass.
         </Prose>
       </section>
 
       {/* ------------------------------------------------------------ */}
       <section id="chains" className="scroll-mt-24 space-y-6">
         <SectionHeading id="chains-heading">
-          4 · Chain families and transports
+          4 · Chain families, transports, and storage budgets
         </SectionHeading>
         <Prose>
           FileOnChain v1 spans {CHAIN_FAMILIES.length} chain families —{" "}
@@ -526,20 +599,60 @@ const WhitepaperPage = () => (
             </tbody>
           </table>
         </div>
+
+        <h3 className="text-lg font-semibold text-foreground">Storage budgets</h3>
         <Prose>
-          The chain registry (
+          Any chain whose transport can carry a meaningful slice of data is a
+          valid storage chain — the user picks, guided by per-chain cost
+          estimates. After the JSON envelope and base64 inflation, the raw
+          bytes one chunk anchor can store are:
+        </Prose>
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-border bg-surface-elevated/60">
+                {["Family", "Raw data per tx", "Storage character"].map((h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted"
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {STORAGE_BUDGET_ROWS.map((row) => (
+                <tr key={row.family} className="border-b border-border last:border-b-0">
+                  <td className="whitespace-nowrap px-4 py-3 font-medium text-foreground">
+                    {row.family}
+                    {row.suggested && (
+                      <Badge variant="success" size="sm" className="ml-2">
+                        suggested
+                      </Badge>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 font-mono text-xs tabular-nums text-muted">
+                    {row.budget}
+                  </td>
+                  <td className="px-4 py-3 text-muted">{row.character}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <Prose>
+          The uploader derives the chunk size from this budget, so a file
+          stored on Autonomys is a handful of 64&nbsp;KiB chunks while the same
+          file on Hedera is many 512-byte messages — the interface shows the
+          transaction count and cost for every candidate before anything is
+          signed. Tiny budgets make storage <em>possible</em> everywhere the
+          physics allow, not <em>sensible</em> everywhere: the suggested path
+          stores medium and large files on Autonomys and anchors proofs
+          wherever the user needs them. The chain registry (
           <code className="font-mono text-xs">packages/utils/src/chains.ts</code>
-          ) is the protocol&apos;s single source of truth: every network entry
-          carries its RPC endpoints, explorer URL templates, deployed
-          contract/module/program/topic identifiers, and a rollout status. A
-          chain is <span className="font-medium text-foreground">provisioned</span>{" "}
-          when its entry carries a live deployment (or needs none); anchoring
-          against an unprovisioned chain fails fast with a typed error so
-          callers can fall back or choose another network. Sui and Starknet
-          batch all of a file&apos;s anchors into a single programmable
-          transaction block or multicall — one signature for the whole file;
-          the memo, metadata, and comment families send one payload per
-          transaction with pre-flight size validation.
+          ) remains the single source of truth for every network&apos;s
+          endpoints, deployments, rollout status, and storage character.
         </Prose>
       </section>
 
@@ -573,9 +686,9 @@ const WhitepaperPage = () => (
           ))}
         </div>
         <Prose>
-          Verification settles per file, per chain: the same CID can be
-          anchored — and independently verified — on any number of chains, and
-          the record on each remains readable by anyone, wallet-free.
+          Verification settles per file, per chain: the same CID — stored once
+          — can be anchored and independently verified on any number of chains,
+          and the record on each remains readable by anyone, wallet-free.
         </Prose>
 
         <h3 className="text-lg font-semibold text-foreground">The fee split</h3>
@@ -617,7 +730,9 @@ const WhitepaperPage = () => (
         <Prose>
           FOCAT (FileOnChain Attestation Token) is the unit of account of the
           verification market: tips, bonds, validator stakes, and — on EVM —
-          governance votes. It is designed to stay out of the user&apos;s way.
+          governance votes. Storage itself is paid in each chain&apos;s native
+          fees; FOCAT prices the <em>verification</em> of the file-level
+          claim. It is designed to stay out of the user&apos;s way.
         </Prose>
         <div className="grid gap-4 md:grid-cols-2">
           {TOKEN_POINTS.map((point) => (
@@ -677,32 +792,38 @@ const WhitepaperPage = () => (
       </section>
 
       {/* ------------------------------------------------------------ */}
-      <section id="storage" className="scroll-mt-24 space-y-4">
-        <SectionHeading id="storage-heading">
-          8 · Storage: anchoring proves, caching serves
+      <section id="retrieval" className="scroll-mt-24 space-y-4">
+        <SectionHeading id="retrieval-heading">
+          8 · Retrieval and the cache tiers
         </SectionHeading>
         <Prose>
-          An anchor commits to a file&apos;s content; it does not store the
-          bytes (except on data-carrying chains such as Autonomys, where chunk
-          bytes ride along in the anchor itself). Because CIDs are
-          content-addressed, the bytes can be rebuilt and verified from any
-          host — so availability is a market with two tiers rather than a
-          promise.
+          The storage chain is the file&apos;s home; the cache tiers exist to
+          make retrieval <em>fast</em> and, when wanted, <em>private</em> —
+          they accelerate, they never replace.
         </Prose>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardTitle>Straight from the chain</CardTitle>
+            <CardDescription className="mt-2 leading-relaxed">
+              Anyone can rebuild a stored file from the storage chain&apos;s
+              history: walk the chunk trail, decode the data fields, verify
+              against the CIDs. The trust-minimized path — it requires nothing
+              from FileOnChain.
+            </CardDescription>
+          </Card>
           <Card>
             <CardTitle>Private cache — paid</CardTitle>
             <CardDescription className="mt-2 leading-relaxed">
               Chunks are encrypted client-side with a key only the uploader
-              (and their sharees) hold; cache nodes store ciphertext for the
-              duration paid and never see plaintext. Payments settle in USDC
-              through the CachePayments contract.
+              (and their sharees) hold; cache nodes serve ciphertext at CDN
+              speeds for the duration paid and never see plaintext. Payments
+              settle in USDC through the CachePayments contract.
             </CardDescription>
           </Card>
           <Card>
-            <CardTitle>Public cache — donation-funded</CardTitle>
+            <CardTitle>Public cache — donations</CardTitle>
             <CardDescription className="mt-2 leading-relaxed">
-              A free, slow-tier pin for public goods — research data, archives,
+              A free pin for public goods — research data, archives,
               open-source releases. Donations in the chain&apos;s native coin
               route through the DonationEscrow contract to cache node
               operators.
@@ -710,8 +831,9 @@ const WhitepaperPage = () => (
           </Card>
         </div>
         <Prose>
-          Neither tier is required for an anchor&apos;s validity, and no
-          canonical host exists: anyone holding bytes that hash to the anchored
+          Because content addressing verifies bytes wherever they come from, a
+          cache node — or any mirror — can vanish without loss: the chain still
+          holds the file, and anyone holding bytes that hash to the anchored
           CID holds the file.
         </Prose>
       </section>
@@ -727,26 +849,31 @@ const WhitepaperPage = () => (
           <Card>
             <CardTitle>The webapp</CardTitle>
             <CardDescription className="mt-2 leading-relaxed">
-              Wallet-signed, pay-as-you-go anchoring across all twelve
-              families, an explorer over anchored CIDs, cache payments,
-              donations, and a credits-based dashboard.
+              Wallet-signed uploads across all twelve families: pick the
+              storage chain (cost and transaction count shown per candidate),
+              anchor on the chain of your choice, or opt out and link an
+              existing copy — plus an explorer, cache payments, donations, and
+              a credits dashboard.
             </CardDescription>
           </Card>
           <Card>
             <CardTitle className="font-mono text-sm">@fileonchain/sdk</CardTitle>
             <CardDescription className="mt-2 leading-relaxed">
-              The umbrella TypeScript SDK: chain registry and payload
-              vocabulary at the root, one anchor client per family behind
-              subpaths, all sharing one progress and receipt shape. Nine of
-              twelve clients are fully dependency-free.
+              The umbrella TypeScript SDK: chain registry, payload vocabulary,
+              and storage budgets at the root, one client per family behind
+              subpaths — every family&apos;s anchorChunkedFile takes an
+              includeData switch for on-chain storage. Nine of twelve clients
+              are fully dependency-free.
             </CardDescription>
           </Card>
           <Card>
             <CardTitle className="font-mono text-sm">@fileonchain/api</CardTitle>
             <CardDescription className="mt-2 leading-relaxed">
               A zero-dependency client for the hosted API: FileOnChain&apos;s
-              workers sign and send, paid with account credits under fok_ API
-              keys. On-chain failures refund credits.
+              workers sign and send proof anchors, paid with account credits
+              under fok_ API keys. Hosted anchoring never receives file bytes —
+              storage stays wallet-signed (or rides Auto Drive BYOK keys on
+              Autonomys).
             </CardDescription>
           </Card>
           <Card>
@@ -794,17 +921,19 @@ const WhitepaperPage = () => (
       <section id="status" className="scroll-mt-24 space-y-4">
         <SectionHeading id="status-heading">11 · Implementation status</SectionHeading>
         <Prose>
-          FileOnChain ships honestly: anchoring is real wherever a chain is
-          provisioned, and the registry&apos;s provisioning flags — not
-          marketing copy — are the switch. The anchor payload vocabulary, all
-          twelve family clients, the contract suites for the five contract
-          runtimes, the hosted API, and the MCP server are built and open
-          source. Per-chain rollout is tracked in the chain registry: each
-          network flips to real anchoring when its contracts, modules, topics,
-          or native channels are deployed, recorded, and QA&apos;d. Surfaces
-          not yet wired to live deployments run against a clearly marked
-          deterministic mock layer whose call signatures match the real
-          integrations, so the seams swap without breaking callers.
+          FileOnChain ships honestly: storage and anchoring are real wherever a
+          chain is provisioned, and the registry&apos;s provisioning flags —
+          not marketing copy — are the switch. The payload vocabulary
+          (including data-carrying chunks), the per-family storage budgets, all
+          twelve family clients with the includeData storage switch, the
+          contract suites for the five contract runtimes, the hosted API, and
+          the MCP server are built and open source. Per-chain rollout is
+          tracked in the chain registry: each network flips to real storage and
+          anchoring when its contracts, modules, topics, or native channels are
+          deployed, recorded, and QA&apos;d. Surfaces not yet wired to live
+          deployments run against a clearly marked deterministic mock layer
+          whose call signatures match the real integrations, so the seams swap
+          without breaking callers.
         </Prose>
       </section>
 
@@ -812,16 +941,18 @@ const WhitepaperPage = () => (
       <section id="conclusion" className="scroll-mt-24 space-y-4">
         <SectionHeading id="conclusion-heading">12 · Conclusion</SectionHeading>
         <Prose>
-          FileOnChain turns &ldquo;this file existed&rdquo; into a portable,
-          verifiable, economically backed on-chain fact. One payload vocabulary
-          makes anchors readable across twelve chain families; an optimistic
-          propose/verify market makes them trustworthy on contract-capable
-          chains; a token with one global, governance-bridged supply pays the
-          validators, platforms, and treasury that keep the market honest; and
-          content addressing keeps storage a competitive service rather than a
-          point of failure. The protocol is deliberately minimal at its core —
-          a JSON document and a hash — and deliberately honest at its edges,
-          shipping real anchoring chain by chain as deployments land.
+          FileOnChain puts the file on the chain — and the proof on every
+          chain. One payload vocabulary carries both bytes and claims across
+          twelve chain families; a user-chosen storage chain, with a
+          permanent-storage network as the suggested home, makes the file
+          itself retrievable from public infrastructure forever;
+          fileonchain:// pointers let a proof on any chain lead back to the
+          bytes; and an optimistic propose/verify market, paid in a token with
+          one global governance-bridged supply, makes the claims worth
+          trusting. The protocol is deliberately minimal at its core — a JSON
+          document, a hash, and the bytes themselves — and deliberately honest
+          at its edges, shipping real storage chain by chain as deployments
+          land.
         </Prose>
       </section>
     </div>

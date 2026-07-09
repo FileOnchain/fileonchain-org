@@ -667,6 +667,24 @@ const DocsPage = () => (
             </CardDescription>
           </Card>
           <Card>
+            <CardTitle>On-chain storage</CardTitle>
+            <CardDescription className="mt-2 leading-relaxed">
+              Every <code className="font-mono text-xs">anchorChunkedFile</code>{" "}
+              accepts <code className="font-mono text-xs">includeData</code> —
+              chunk bytes ride inside the anchor payloads (base64{" "}
+              <code className="font-mono text-xs">d</code> field), turning the
+              chain into the file&apos;s home. Chunk sizes must fit each
+              chain&apos;s per-transaction budget —{" "}
+              <code className="font-mono text-xs">getChunkDataBudget(chain)</code>{" "}
+              / <code className="font-mono text-xs">isStorageCapable(chain)</code>.
+              Anchors on other chains point at the stored copy via a{" "}
+              <code className="font-mono text-xs">
+                fileonchain://&lt;chainId&gt;/&lt;cid&gt;
+              </code>{" "}
+              storage URI (<code className="font-mono text-xs">buildStorageUri</code>).
+            </CardDescription>
+          </Card>
+          <Card>
             <CardTitle>Provisioning</CardTitle>
             <CardDescription className="mt-2 leading-relaxed">
               A chain is &quot;provisioned&quot; when its registry entry carries a

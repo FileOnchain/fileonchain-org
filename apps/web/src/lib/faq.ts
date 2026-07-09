@@ -5,12 +5,12 @@
  */
 export const FAQ = [
   {
-    q: "What file types can I anchor?",
-    a: "Anything that fits in a browser file input — images, video, JSON, text, binaries. We do not parse or restrict content: the registry writes the content hash, not the bytes. Files larger than ~1GB are chunked so they can fit any supported chain's tx payload.",
+    q: "What file types can I upload?",
+    a: "Anything that fits in a browser file input — images, video, JSON, text, binaries. We do not parse or restrict content. Files are split into chunks sized to the storage chain's per-transaction data budget, so any file can ride any storage-capable chain.",
   },
   {
     q: "Where are the bytes actually stored?",
-    a: "Two places: (1) onchain, the root CID is committed in a registry contract call on the chain you choose; (2) optionally, on a paid cache node that pins the encrypted chunks for the duration you pay for. Anyone can rebuild the file from any number of cache nodes — there is no canonical host.",
+    a: "On-chain, by default: chunk bytes are embedded in the anchor transactions on the storage chain you pick — the anchoring chain itself when it can carry them, or Autonomys, the permanent-storage network suggested for larger files. You can also opt out and anchor proof-only, optionally pointing the anchor at a copy you host elsewhere (IPFS, Auto Drive, any URI). Paid cache nodes can additionally pin encrypted chunks for fast retrieval.",
   },
   {
     q: "Can I switch chains after anchoring?",
