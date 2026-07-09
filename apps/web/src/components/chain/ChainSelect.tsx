@@ -63,37 +63,44 @@ export const ChainSelect = ({
 }: ChainSelectProps) => {
   const options = React.useMemo<SearchSelectOption[]>(
     () =>
-      CHAIN_FAMILIES.flatMap((family) =>
-        chains
-          .filter((chain) => chain.family === family)
-          .map((chain) => ({
-            value: chain.id,
-            label: chain.name,
-            group: CHAIN_FAMILY_LABELS[family],
-            keywords: [
-              chain.shortName,
-              chain.family,
-              chain.id,
-              chain.status,
-              ...(chain.testnet ? ["testnet"] : []),
-            ],
-            leading: (
-              <ChainBadge
-                chainId={chain.id}
-                chainName={chain.name}
-                shortName={chain.shortName}
-                size="sm"
-              />
-            ),
-            trailing: (
-              <span className="flex items-center gap-1">
-                <ChainStatusBadge status={chain.status} />
-                {chain.testnet && testnetBadge}
-              </span>
-            ),
-            disabled: restrictToActive ? chain.status !== "active" : false,
-          })),
-      ),
+      CHAIN_FAMILIES.flatMap((family) => {
+        const familyChains = chains.filter((chain) => chain.family === family);
+        // Selectable chains first — with dozens of planned entries, active
+        // ones (and their testnets) must not hide below the fold.
+        if (restrictToActive) {
+          familyChains.sort(
+            (a, b) =>
+              Number(b.status === "active") - Number(a.status === "active"),
+          );
+        }
+        return familyChains.map((chain) => ({
+          value: chain.id,
+          label: chain.name,
+          group: CHAIN_FAMILY_LABELS[family],
+          keywords: [
+            chain.shortName,
+            chain.family,
+            chain.id,
+            chain.status,
+            ...(chain.testnet ? ["testnet"] : []),
+          ],
+          leading: (
+            <ChainBadge
+              chainId={chain.id}
+              chainName={chain.name}
+              shortName={chain.shortName}
+              size="sm"
+            />
+          ),
+          trailing: (
+            <span className="flex items-center gap-1">
+              <ChainStatusBadge status={chain.status} />
+              {chain.testnet && testnetBadge}
+            </span>
+          ),
+          disabled: restrictToActive ? chain.status !== "active" : false,
+        }));
+      }),
     [chains, restrictToActive],
   );
 
