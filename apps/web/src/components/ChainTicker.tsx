@@ -3,6 +3,7 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { isChainActive } from "@fileonchain/sdk";
 import { useVisibleChains } from "@/hooks/useVisibleChains";
 
 interface ChainTickerProps {
@@ -10,17 +11,25 @@ interface ChainTickerProps {
 }
 
 /**
- * ChainTicker — editorial ticker strip showing every supported chain in a
+ * ChainTicker — editorial ticker strip showing every active chain in a
  * continuous horizontal marquee. Doubles up the list and uses a CSS
  * marquee for a seamless loop. Pauses on hover via `group-hover`.
  *
  * Lives just below the hero so the chain support story is always visible.
  * The strips fade at both edges so the loop is not visually abrupt.
  */
+
+/** Minimum chips per half-strip so a short active list still spans the viewport. */
+const MIN_TILES = 12;
+
 const ChainTicker = ({ className }: ChainTickerProps) => {
-  const visibleChains = useVisibleChains();
-  // Tile the chain list twice to produce a seamless marquee loop.
-  const tiles = [...visibleChains, ...visibleChains];
+  // Only networks open for uploads — planned chains stay off the banner.
+  const activeChains = useVisibleChains().filter(isChainActive);
+  // Repeat the (possibly short) active list until the strip is long enough,
+  // then tile it twice to produce a seamless marquee loop.
+  const repeats = Math.max(1, Math.ceil(MIN_TILES / Math.max(activeChains.length, 1)));
+  const half = Array.from({ length: repeats }, () => activeChains).flat();
+  const tiles = [...half, ...half];
 
   return (
     <motion.div
@@ -28,7 +37,7 @@ const ChainTicker = ({ className }: ChainTickerProps) => {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.6 }}
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-      aria-label="Supported chains"
+      aria-label="Active chains"
       className={
         "group relative w-full overflow-hidden border-y border-border bg-surface/40 " +
         (className ?? "")
