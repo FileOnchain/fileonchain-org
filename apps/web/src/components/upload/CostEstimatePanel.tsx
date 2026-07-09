@@ -9,6 +9,7 @@ import {
   totalCostFor,
   type ChainCostEstimate,
 } from "@/lib/mock/costs";
+import { isChainActive } from "@fileonchain/sdk";
 import { useChain } from "@/hooks/useChain";
 import { useVisibleChains } from "@/hooks/useVisibleChains";
 import { cn } from "@/lib/cn";
@@ -43,12 +44,17 @@ const TIER_LABELS: Record<ChainCostEstimate["tier"], string> = {
 const CostEstimatePanel = ({ chunkCount }: CostEstimatePanelProps) => {
   const { activeChain } = useChain();
   const visibleChains = useVisibleChains();
-  // Same testnet-visibility gate as every picker; keep the active chain
-  // even if it's a testnet the preference would hide.
+  // Same testnet-visibility gate as every picker, narrowed to chains that
+  // are open for uploads — planned/deprecated chains can't be anchored on,
+  // so offering them as redundancy would be noise. The active chain stays
+  // even if it's a testnet the preference would hide (the page-level
+  // warning covers a persisted non-active chain).
   const estimates = React.useMemo(() => {
-    const visible = new Set(visibleChains.map((chain) => chain.id));
+    const anchorable = new Set(
+      visibleChains.filter(isChainActive).map((chain) => chain.id),
+    );
     return getChainCostEstimates().filter(
-      (est) => visible.has(est.chainId) || est.chainId === activeChain.id,
+      (est) => anchorable.has(est.chainId) || est.chainId === activeChain.id,
     );
   }, [visibleChains, activeChain.id]);
   // Chains the user has selected for redundant anchoring. The active chain
