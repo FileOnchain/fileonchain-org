@@ -37,8 +37,14 @@ export interface CIDRegistryRecord {
   cid: string;
   chainId: ChainId;
   registryAddress: `0x${string}`;
-  txHash: string;
-  blockNumber: number;
+  /**
+   * Transaction hash / block of the anchoring send. Event-derived — present
+   * on records resolved from logs or an indexer, absent when the record was
+   * read straight from contract storage (which only keeps the verified
+   * proposal, not the tx that created it).
+   */
+  txHash?: string;
+  blockNumber?: number;
   timestamp: number;
   submitter: string;
   contentHash: string;
