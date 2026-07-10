@@ -28,7 +28,9 @@ import {MockUSDC} from "../src/mocks/MockUSDC.sol";
 /// a governor migration is a proposer-role rotation on the timelock.
 ///
 /// Env vars:
-///   PRIVATE_KEY                 required deployer key
+///   PRIVATE_KEY                 optional deployer key; when unset, broadcast
+///                               uses the keystore account passed via
+///                               `--account <name>` (cast wallet import)
 ///   TREASURY_ADDRESS            required; CachePayments/DonationEscrow treasury
 ///   PLATFORM_TREASURY_ADDRESS   optional; FileOnChain platform treasury (default: TREASURY_ADDRESS)
 ///   TOKEN_INITIAL_SUPPLY        optional; FOCAT minted to deployer (default 1e27).
@@ -64,7 +66,7 @@ contract Deploy is Script {
   }
 
   function run() external {
-    uint256 pk = vm.envUint("PRIVATE_KEY");
+    uint256 pk = vm.envOr("PRIVATE_KEY", uint256(0));
     address treasury = vm.envAddress("TREASURY_ADDRESS");
     address platformTreasury = vm.envOr("PLATFORM_TREASURY_ADDRESS", treasury);
     uint256 initialSupply = vm.envOr("TOKEN_INITIAL_SUPPLY", uint256(1_000_000_000e18));
@@ -73,9 +75,12 @@ contract Deploy is Script {
     uint32 votingPeriod = uint32(vm.envOr("GOVERNOR_VOTING_PERIOD", uint256(50_400)));
     uint256 proposalThreshold = vm.envOr("GOVERNOR_PROPOSAL_THRESHOLD", uint256(100_000e18));
     address usdc = vm.envOr("USDC_ADDRESS", address(0));
-    address deployer = vm.addr(pk);
+    // No PRIVATE_KEY → msg.sender is the keystore account forge unlocked
+    // via --account, and the no-arg broadcast signs with it.
+    address deployer = pk != 0 ? vm.addr(pk) : msg.sender;
 
-    vm.startBroadcast(pk);
+    if (pk != 0) vm.startBroadcast(pk);
+    else vm.startBroadcast();
 
     // Governance first: the timelock owns every ProxyAdmin from birth.
     timelock = new FileOnChainTimelock(timelockMinDelay, new address[](0), new address[](0), deployer);
