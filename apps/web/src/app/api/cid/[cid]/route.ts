@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getMockCIDRecordsAcrossChains } from "@/lib/mock/registry";
+import { getCIDRecordsAcrossChains } from "@/lib/registry/reads";
 import { isValidCID } from "@fileonchain/sdk";
 
 /* TODO: replace with real resolver that streams the file from IPFS/IPLD */
@@ -18,7 +18,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
     );
   }
 
-  const records = getMockCIDRecordsAcrossChains(cid);
+  const records = await getCIDRecordsAcrossChains(cid);
 
   return NextResponse.json({
     cid,

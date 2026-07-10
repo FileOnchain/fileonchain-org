@@ -6,11 +6,9 @@ import {
   type CIDRegistryRecord,
 } from "@fileonchain/sdk";
 
-const EVM_CHAIN_IDS = CHAINS.filter((c) => c.family === "evm").map((c) => c.id);
-
-/* TODO: wire to viem readContract / polkadot query — current implementation
- * returns deterministic fake data so the UI can be developed without
- * deploying or indexing real on-chain data.
+/* Provisioned EVM chains read the real FileRegistry through
+ * lib/registry/reads.ts; these mocks remain the fallback for chains with
+ * nothing deployed (and the polkadot-query path still TODO).
  */
 
 /**
@@ -34,7 +32,7 @@ export const getMockCIDRecord = (
 
   const seed = hashKey(cid, chainId);
   const blockNumber = 18_000_000 + Number(BigInt(seed.slice(0, 8)) % BigInt(5_000_000));
-  const timestamp = Math.floor(Date.now() / 1000) - Number(BigInt(seed.slice(8, 16)) % BigInt(86_400 * 7));
+  const timestamp = Math.floor(Date.now() / 1000) - Number(BigInt(`0x${seed.slice(8, 16)}`) % BigInt(86_400 * 7));
 
   return {
     cid,
@@ -68,8 +66,8 @@ export interface MockProposal {
   verifiedAt: number;
 }
 
-/* TODO: wire to FileRegistry.getVerifiedRecord / getProposal reads (and the
- * anchor_registry views on Aptos/Sui/Starknet/NEAR). */
+/* EVM FileRegistry reads are wired (lib/registry/reads.ts); TODO: the
+ * anchor_registry views on Aptos/Sui/Starknet/NEAR once those deploy. */
 export const getMockProposal = (cid: string, chainId: ChainId): MockProposal | null => {
   const chain = CHAINS.find((c) => c.id === chainId);
   if (!chain) return null;
@@ -93,14 +91,4 @@ export const getMockProposal = (cid: string, chainId: ChainId): MockProposal | n
     challengeDeadline: verified ? now - 3_600 : now + 86_400,
     verifiedAt: verified ? now - 3_600 : 0,
   };
-};
-
-/**
- * Look up a CID across all supported EVM chains. Returns one record per
- * matching chain, suitable for the explorer view.
- */
-export const getMockCIDRecordsAcrossChains = (cid: string): CIDRegistryRecord[] => {
-  return EVM_CHAIN_IDS.map((chainId) => getMockCIDRecord(cid, chainId)).filter(
-    (r): r is CIDRegistryRecord => r !== null,
-  );
 };

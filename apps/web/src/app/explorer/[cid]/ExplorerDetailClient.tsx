@@ -30,7 +30,7 @@ import type {
   SearchHit,
 } from "@/lib/mock/cid-indexer";
 import { getChunksForFile, getFilesByUploader } from "@/lib/mock/cid-indexer";
-import { getMockProposal } from "@/lib/mock/registry";
+import { getProposalForCID, type RegistryProposal } from "@/lib/registry/reads";
 
 interface DetailProps {
   file: RegisteredFile;
@@ -76,13 +76,25 @@ const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
   // under dispute).
   const anchoredHits = hits.filter((h) => h.status === "anchored" || h.status === "verified");
   // Propose/verify lifecycle of the file anchor on the first protocol chain
-  // that carries it (mock reads until the indexer is wired).
-  const proposal = React.useMemo(() => {
-    for (const hit of hits) {
-      const candidate = getMockProposal(file.cid, hit.chainId);
-      if (candidate) return candidate;
-    }
-    return null;
+  // that carries it — real FileRegistry reads on provisioned chains, mock
+  // elsewhere (see lib/registry/reads.ts).
+  const [proposal, setProposal] = React.useState<RegistryProposal | null>(null);
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      for (const hit of hits) {
+        const candidate = await getProposalForCID(file.cid, hit.chainId);
+        if (cancelled) return;
+        if (candidate) {
+          setProposal(candidate);
+          return;
+        }
+      }
+      if (!cancelled) setProposal(null);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [hits, file.cid]);
   const pendingHits = hits.filter(
     (h) => h.status === "pending" || h.status === "proposed" || h.status === "challenged",
