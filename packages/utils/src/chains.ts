@@ -51,6 +51,12 @@ export interface ChainConfig {
   platformRegistryContract?: string | null;
   governorContract?: string | null;
   timelockContract?: string | null;
+  /**
+   * The USDC token `cacheContract` charges in — the chain's canonical USDC
+   * on mainnets, the deploy script's MockUSDC on testnets. Cache payments
+   * provision only when both this and `cacheContract` are set.
+   */
+  usdcContract?: `0x${string}` | null;
   /** Platform id integrators on this chain default to (FileOnChain = "1"). */
   defaultPlatformId?: string;
   programId: string | null;
@@ -392,6 +398,7 @@ export const CHAINS: readonly ChainConfig[] = [
     platformRegistryContract: "0x00E777c3023DB245a439c6c502046Dc91bC0D53b",
     governorContract: "0x3FC3afAc0A442161e75927DFB6C00136fAdab5A4",
     timelockContract: "0xB723B66A033825f182670B027BfdC550DF7e4885",
+    usdcContract: "0xA449fDB39639a20d3403Be4024c54b35B82F5E4E", // MockUSDC
     defaultPlatformId: "1",
     programId: null,
     moduleAddress: null,
@@ -438,6 +445,7 @@ export const CHAINS: readonly ChainConfig[] = [
     platformRegistryContract: "0x00E777c3023DB245a439c6c502046Dc91bC0D53b",
     governorContract: "0x3FC3afAc0A442161e75927DFB6C00136fAdab5A4",
     timelockContract: "0xB723B66A033825f182670B027BfdC550DF7e4885",
+    usdcContract: "0xA449fDB39639a20d3403Be4024c54b35B82F5E4E", // MockUSDC
     defaultPlatformId: "1",
     programId: null,
     moduleAddress: null,
