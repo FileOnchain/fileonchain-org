@@ -24,8 +24,9 @@ build/
 .DS_Store
 *.pem
 
-# env files (can opt-in for committing if needed)
+# env files (.env.example templates are committed)
 .env*
+!.env.example
 
 # vercel
 .vercel
