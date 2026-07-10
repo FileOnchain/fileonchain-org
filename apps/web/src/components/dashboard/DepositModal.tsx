@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { DEFAULT_CHAIN_ID, type ChainId } from "@fileonchain/sdk";
+import { DEFAULT_CHAIN_ID, getChain, ZERO_ADDRESS, type ChainId } from "@fileonchain/sdk";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { useVisibleChains } from "@/hooks/useVisibleChains";
 import Modal from "@/components/ui/Modal";
@@ -43,10 +43,21 @@ export const DepositModal = ({ open, onOpenChange }: DepositModalProps) => {
   const [amount, setAmount] = React.useState<number>(5);
   const [custom, setCustom] = React.useState("");
   const [pending, setPending] = React.useState<PendingDeposit | null>(null);
+  const [txHash, setTxHash] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const effectiveAmount = custom ? Number(custom) : amount;
+
+  // Chains with a recorded USDC token verify the transfer on-chain — the
+  // confirm call then needs the transfer's tx hash.
+  const pendingChain = pending ? getChain(pending.chainId) : undefined;
+  const verified =
+    !!pendingChain &&
+    pendingChain.family === "evm" &&
+    !!pendingChain.usdcContract &&
+    pendingChain.usdcContract !== ZERO_ADDRESS;
+  const txHashValid = /^0x[0-9a-fA-F]{64}$/.test(txHash.trim());
 
   // Keeps the picked chain/amount across a page refresh while the modal is
   // open (the pending step is server state and recreates cleanly).
@@ -68,6 +79,7 @@ export const DepositModal = ({ open, onOpenChange }: DepositModalProps) => {
     setBusy(false);
     setError(null);
     setCustom("");
+    setTxHash("");
     clearDraft();
   };
 
@@ -105,6 +117,8 @@ export const DepositModal = ({ open, onOpenChange }: DepositModalProps) => {
     try {
       const res = await fetch(`/api/credits/deposit/${pending.id}/confirm`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(verified ? { txHash: txHash.trim() } : {}),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
@@ -159,17 +173,38 @@ export const DepositModal = ({ open, onOpenChange }: DepositModalProps) => {
               Amount: <span className="font-mono">{pending.amountUsdc} USDC</span>
             </p>
           </div>
-          <p className="text-xs text-muted">
-            Demo mode: no transfer is checked yet — confirming credits your
-            account immediately. The production flow watches for the onchain
-            USDC transfer.
-          </p>
+          {verified ? (
+            <>
+              <Input
+                label="Transfer tx hash"
+                placeholder="0x…"
+                value={txHash}
+                onChange={(event) => setTxHash(event.target.value)}
+                fullWidth
+              />
+              <p className="text-xs text-muted">
+                The transaction is verified on-chain: it must carry a USDC
+                transfer to the deposit address covering the amount.
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-muted">
+              Demo mode: no transfer is checked yet — confirming credits your
+              account immediately. The production flow watches for the onchain
+              USDC transfer.
+            </p>
+          )}
           {error && (
             <p role="alert" className="text-sm text-danger">
               {error}
             </p>
           )}
-          <Button fullWidth isLoading={busy} onClick={() => void handleConfirm()}>
+          <Button
+            fullWidth
+            isLoading={busy}
+            disabled={verified && !txHashValid}
+            onClick={() => void handleConfirm()}
+          >
             I&apos;ve sent it — confirm deposit
           </Button>
         </div>
