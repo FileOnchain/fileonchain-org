@@ -29,7 +29,8 @@ export const isProtocolChain = (chain: ChainConfig): boolean =>
 /**
  * What one propose escrows, in whole FOCAT (protocol defaults). The bond
  * returns after unchallenged verification — the tip is the real cost.
- * TODO: read minTip/proposeBond from the chain's registry once provisioned.
+ * Propose-provisioned chains read the live minTip/proposeBond instead via
+ * hooks/useProposeEconomics; these defaults cover everything else.
  */
 export const ANCHOR_ESCROW = { tipFocat: 1, bondFocat: 100 } as const;
 
