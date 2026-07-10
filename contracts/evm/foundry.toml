@@ -26,6 +26,8 @@ number_underscore = "thousands"
 [rpc_endpoints]
 mainnet = "${MAINNET_RPC_URL}"
 sepolia = "${SEPOLIA_RPC_URL}"
+auto_evm = "${AUTO_EVM_RPC_URL}"
+chronos = "${CHRONOS_RPC_URL}"
 base = "${BASE_RPC_URL}"
 optimism = "${OPTIMISM_RPC_URL}"
 arbitrum = "${ARBITRUM_RPC_URL}"

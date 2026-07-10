@@ -21,6 +21,10 @@ parameters change only through governance proposals.
 
 ## Environment
 
+Copy `contracts/evm/.env.example` to `contracts/evm/.env` (gitignored) and
+fill it in — `forge script` loads it automatically. Or export the variables
+directly:
+
 ```bash
 export PRIVATE_KEY=0x...                # deployer key (required)
 export TREASURY_ADDRESS=0x...           # CachePayments/DonationEscrow treasury (required)
@@ -79,6 +83,38 @@ Tier 1B — same command, per chain (mainnet + its testnet):
 
 RPC URLs for every entry live on the chain configs in
 `packages/utils/src/chains.ts` — reuse them as `--rpc-url`.
+
+**Autonomys Auto EVM (870 / Chronos 8700):** a Substrate Frontier chain —
+its block headers omit `mixHash`, so forge fails with
+`` header validation error: `prevrandao` not set `` when pointed at it
+directly. Run the bundled proxy and target that instead:
+
+```bash
+node script/frontier-rpc-proxy.mjs https://auto-evm.chronos.autonomys.xyz/ws 8546 &
+forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8546 --account deployer --broadcast
+```
+
+Gas is paid in AI3 (tAI3 on Chronos — faucet via the Autonomys Discord).
+The explorer is Blockscout, so drop `--verify` and verify everything from
+the broadcast file afterwards:
+
+```bash
+node script/verify-broadcast.mjs broadcast/Deploy.s.sol/8700/run-latest.json \
+  https://explorer.auto-evm.chronos.autonomys.xyz/api
+```
+
+**Partial deploys:** forge's batch simulation underestimates gas for
+cold-storage calls, so a mid-script transaction can run out of gas and abort
+the run (seen on Chronos). `script/FinishDeploy.s.sol` completes an
+interrupted run idempotently — it reads the chain and only sends the missing
+wiring/handover transactions. Pass the deployed proxy addresses as env vars
+(see its header) and run with `--gas-estimate-multiplier 200`. Adding that
+flag to the initial deploy is cheap insurance on any chain.
+
+**Testnet FOCAT supply:** the `TOKEN_INITIAL_SUPPLY=0` remote-chain rule
+exists to keep the *mainnet* global supply fixed via bridges. Testnets have
+no bridges — keep the default mint on every testnet deployment or there is
+no FOCAT for validator stakes, tips, or bonds.
 
 **zkSync Era (324 / 300):** vanilla Foundry cannot broadcast to zkEVM. Use
 [foundry-zksync](https://github.com/matter-labs/foundry-zksync)
