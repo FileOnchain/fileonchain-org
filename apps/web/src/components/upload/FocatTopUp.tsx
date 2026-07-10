@@ -3,12 +3,14 @@
 import * as React from "react";
 import { useSession } from "next-auth/react";
 import { FiDroplet, FiZap } from "react-icons/fi";
-import type { ChainId } from "@fileonchain/sdk";
+import { formatEther } from "viem";
+import { isProposeProvisioned, type ChainId } from "@fileonchain/sdk";
 import { useChain } from "@/hooks/useChain";
+import { useProposeEconomics } from "@/hooks/useProposeEconomics";
+import { useWalletStates } from "@/states/wallet";
 import Button from "@/components/ui/Button";
 import FocatPackModal from "@/components/focat/FocatPackModal";
 import {
-  ANCHOR_ESCROW,
   FOCAT_PACKS,
   formatFocat,
   isProtocolChain,
@@ -30,21 +32,36 @@ interface FocatOrder {
  * purchase itself lives in the shared FocatPackModal, locked to the active
  * chain here; the dashboard offers the same modal with a chain picker.
  *
- * Balance is derived from the user's fulfilled pack orders on this chain.
- * TODO: read the real wallet balance via the SDK (getTokenBalance) once the
- * chain is propose-provisioned.
+ * Tip/bond figures and the wallet balance read from the chain when it is
+ * propose-provisioned (useProposeEconomics / getTokenBalance); otherwise the
+ * documented defaults and the pack-order-derived balance stand in.
  */
 export const FocatTopUp = () => {
   const { status: sessionStatus } = useSession();
   const authed = sessionStatus === "authenticated";
   const { activeChain } = useChain();
+  const evmAddress = useWalletStates((s) => s.evmAddress);
 
   const [open, setOpen] = React.useState(false);
   const [balance, setBalance] = React.useState<number | null>(null);
 
-  const escrowFocat = ANCHOR_ESCROW.tipFocat + ANCHOR_ESCROW.bondFocat;
+  const economics = useProposeEconomics(activeChain);
+  const escrowFocat = economics.tipFocat + economics.bondFocat;
+  const liveBalance =
+    activeChain.family === "evm" && isProposeProvisioned(activeChain) && !!evmAddress;
 
   const refreshBalance = React.useCallback(async () => {
+    // Provisioned chain + connected wallet: the real FOCAT balance.
+    if (liveBalance && evmAddress) {
+      try {
+        const { getTokenBalance } = await import("@fileonchain/sdk/evm");
+        const raw = await getTokenBalance(activeChain.id, evmAddress);
+        setBalance(Number(formatEther(raw)));
+        return;
+      } catch {
+        // Fall through to the pack-derived estimate.
+      }
+    }
     if (!authed) {
       setBalance(null);
       return;
@@ -61,7 +78,7 @@ export const FocatTopUp = () => {
     } catch {
       // Balance is advisory; the panel stays usable without it.
     }
-  }, [authed, activeChain.id]);
+  }, [authed, activeChain.id, liveBalance, evmAddress]);
 
   React.useEffect(() => {
     void refreshBalance();
@@ -81,14 +98,18 @@ export const FocatTopUp = () => {
             FOCAT escrow on {activeChain.name}
           </p>
           <p className="mt-1 text-xs text-muted">
-            Anchoring from your wallet escrows ~{formatFocat(escrowFocat)}:{" "}
-            {ANCHOR_ESCROW.tipFocat} tip (kept, split with validators) +{" "}
-            {ANCHOR_ESCROW.bondFocat} bond{" "}
-            <span className="text-foreground">returned after verification</span>.
+            Anchoring from your wallet escrows {economics.live ? "" : "~"}
+            {formatFocat(escrowFocat)}: {economics.tipFocat} tip (kept, split with
+            validators) + {economics.bondFocat} bond{" "}
+            <span className="text-foreground">returned after verification</span>
+            {economics.live && (
+              <span className="text-muted"> (read from {activeChain.shortName}&apos;s registry)</span>
+            )}
+            .
             {balance !== null && (
               <>
                 {" "}
-                Your pack balance here:{" "}
+                Your {liveBalance ? "wallet" : "pack"} balance here:{" "}
                 <span className="text-foreground">{formatFocat(balance)}</span>.
               </>
             )}

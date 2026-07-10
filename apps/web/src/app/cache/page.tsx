@@ -4,6 +4,7 @@ import * as React from "react";
 import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
+import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import CachePricingTable from "@/components/cache/CachePricingTable";
 import CacheMyList from "@/components/cache/CacheMyList";
@@ -14,7 +15,8 @@ import type { CacheTier } from "@/lib/mock/cache";
 export default function CachePage() {
   const [tab, setTab] = React.useState("pricing");
   const [accessEntryId, setAccessEntryId] = React.useState<`0x${string}` | null>(null);
-  const { pay } = useCachePayment();
+  const [minting, setMinting] = React.useState(false);
+  const { pay, mintTestUsdc, onchainReady, activeChain } = useCachePayment();
   const { toast } = useToast();
 
   const handleChoose = async (tier: CacheTier) => {
@@ -23,7 +25,9 @@ export default function CachePage() {
       const { txHash } = await pay({ fileId, tier });
       toast({
         title: "Cache purchased",
-        description: `Mock tx ${txHash.slice(0, 10)}… — entry visible in My cache.`,
+        description: onchainReady
+          ? `Paid on ${activeChain.name} — tx ${txHash.slice(0, 10)}…`
+          : `Mock tx ${txHash.slice(0, 10)}… — entry visible in My cache.`,
         variant: "success",
       });
       setTab("my");
@@ -33,6 +37,26 @@ export default function CachePage() {
         description: (e as Error).message,
         variant: "danger",
       });
+    }
+  };
+
+  const handleMint = async () => {
+    setMinting(true);
+    try {
+      const { txHash } = await mintTestUsdc(100);
+      toast({
+        title: "Test USDC minted",
+        description: `100 USDC on ${activeChain.name} — tx ${txHash.slice(0, 10)}…`,
+        variant: "success",
+      });
+    } catch (e) {
+      toast({
+        title: "Mint failed",
+        description: (e as Error).message,
+        variant: "danger",
+      });
+    } finally {
+      setMinting(false);
     }
   };
 
@@ -53,6 +77,19 @@ export default function CachePage() {
         </TabsList>
 
         <TabsContent value="pricing">
+          {onchainReady && (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3">
+              <p className="text-xs text-muted">
+                Payments on <span className="font-semibold text-foreground">{activeChain.name}</span> settle
+                on-chain through CachePayments (USDC approve + pay).
+              </p>
+              {activeChain.testnet && (
+                <Button size="sm" variant="secondary" onClick={handleMint} disabled={minting}>
+                  {minting ? "Minting…" : "Mint 100 test USDC"}
+                </Button>
+              )}
+            </div>
+          )}
           <CachePricingTable onChoose={handleChoose} />
         </TabsContent>
 

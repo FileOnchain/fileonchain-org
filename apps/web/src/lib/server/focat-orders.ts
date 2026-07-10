@@ -1,8 +1,15 @@
 import "server-only";
 import { desc, eq } from "drizzle-orm";
 import { keccak256, stringToBytes } from "viem";
-import { getChain, type ChainId } from "@fileonchain/sdk";
+import {
+  fileOnChainAttestationTokenAbi,
+  getChain,
+  isProposeProvisioned,
+  type ChainConfig,
+  type ChainId,
+} from "@fileonchain/sdk";
 import { db, focatOrders } from "@/lib/db";
+import { env } from "@/lib/env";
 import {
   getFocatPack,
   isProtocolChain,
@@ -36,12 +43,61 @@ export interface FocatOrderRequest {
 const FAUCET_DRIP_FOCAT = 110;
 
 /**
+ * Real fulfillment: transfer FOCAT from the server signer's wallet on
+ * propose-provisioned EVM chains. Returns null when the chain can't do a
+ * real send (other family, nothing deployed, or no ANCHOR_EVM_PRIVATE_KEY)
+ * so the caller falls back to the mock seam. The signer must hold FOCAT on
+ * the chain — on testnets that's the deployer, which minted the supply.
+ */
+const sendFocatOnEvm = async (
+  chain: ChainConfig,
+  walletAddress: string,
+  focatAmount: number,
+): Promise<`0x${string}` | null> => {
+  const privateKey = env.anchorEvmPrivateKey;
+  if (chain.family !== "evm" || !isProposeProvisioned(chain) || !privateKey) {
+    return null;
+  }
+  const [
+    { createPublicClient, createWalletClient, http, isAddress, parseEther },
+    { privateKeyToAccount },
+    evm,
+  ] = await Promise.all([
+    import("viem"),
+    import("viem/accounts"),
+    import("@fileonchain/sdk/evm"),
+  ]);
+  if (!isAddress(walletAddress)) {
+    throw new FocatOrderError("walletAddress must be a valid EVM address on this chain");
+  }
+  const viemChain = evm.toViemChain(chain);
+  const account = privateKeyToAccount(privateKey as `0x${string}`);
+  const walletClient = createWalletClient({
+    account,
+    chain: viemChain,
+    transport: http(chain.rpcUrl),
+  });
+  const txHash = await walletClient.writeContract({
+    address: chain.tokenContract as `0x${string}`,
+    abi: fileOnChainAttestationTokenAbi,
+    functionName: "transfer",
+    args: [walletAddress, parseEther(String(focatAmount))],
+  });
+  const publicClient = createPublicClient({ chain: viemChain, transport: http(chain.rpcUrl) });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+  if (receipt.status !== "success") {
+    throw new FocatOrderError("FOCAT transfer reverted on-chain", 502);
+  }
+  return txHash;
+};
+
+/**
  * Sell a fixed-price FOCAT pack (mainnet, paid from account credits) or
- * drip from the faucet (testnet, free — never mixed with the sale). The
- * treasury transfer to the user's wallet on the target chain is a mock
- * seam. TODO: transfer FOCAT from the chain's funded treasury signer
- * (ANCHOR_* keys) and record the real tx hash; fund each spoke treasury
- * from the home-chain allocation via approved bridges.
+ * drip from the faucet (testnet, free — never mixed with the sale). On
+ * propose-provisioned EVM chains with a funded ANCHOR_EVM_PRIVATE_KEY the
+ * transfer to the user's wallet is a real FOCAT send; elsewhere it stays
+ * the mock seam. TODO for the remaining families: transfer from their
+ * ANCHOR_* signers, and fund spoke treasuries via approved bridges.
  */
 export const createFocatOrder = async (userId: string, request: FocatOrderRequest) => {
   const chain = getChain(request.chainId);
@@ -83,10 +139,26 @@ export const createFocatOrder = async (userId: string, request: FocatOrderReques
     priceMicroUsdc = usdcToMicro(packPriceUsd(focatAmount));
   }
 
-  // Deterministic mock transfer hash — replaced by the real treasury send.
-  const txHash = keccak256(
-    stringToBytes(`fileonchain-focat:${userId}:${chain.id}:${request.walletAddress}:${Date.now()}`),
-  );
+  // Real treasury send where the chain + signer support it; deterministic
+  // mock hash otherwise. The send precedes the credit debit — safe today
+  // because real sends only happen on testnets, where packs are free; when
+  // a mainnet provisions, move the debit ahead of the transfer.
+  let txHash: `0x${string}`;
+  try {
+    txHash =
+      (await sendFocatOnEvm(chain, request.walletAddress, focatAmount)) ??
+      keccak256(
+        stringToBytes(
+          `fileonchain-focat:${userId}:${chain.id}:${request.walletAddress}:${Date.now()}`,
+        ),
+      );
+  } catch (error) {
+    if (error instanceof FocatOrderError) throw error;
+    throw new FocatOrderError(
+      `FOCAT transfer failed: ${error instanceof Error ? error.message : "unknown error"}`,
+      502,
+    );
+  }
 
   const [order] = await db
     .insert(focatOrders)

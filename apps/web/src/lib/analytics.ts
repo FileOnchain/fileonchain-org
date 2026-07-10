@@ -23,6 +23,8 @@ export interface AnalyticsEvents {
   cache_purchase: { tier: string };
   /** A donation was submitted. */
   donation: { recipient_type: string };
+  /** A validator staking action (stake / unstake / withdraw / claim) confirmed. */
+  validator_staking_action: { action: string; chain_id: string };
   /** A wallet was connected. */
   wallet_connect: { family: string };
   /** A wallet was linked to (or unlinked from) the user's identity. */

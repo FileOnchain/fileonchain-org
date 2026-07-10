@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/ButtonLink";
+import StakePanel from "@/components/protocol/StakePanel";
 import { siteConfig } from "@/lib/site";
 import {
   MOCK_PLATFORMS,
@@ -243,8 +244,10 @@ const ProtocolPage = () => {
         <p className="mt-1 text-sm text-muted">
           Validators stake FOCAT to join the verification market: they earn the validator share of
           every tip and sit on dispute juries, where voting with the losing side is slashed.
-          Mock data until deployments land; staking UI ships separately.
+          Staking is live on the deployed testnets; the table below is mock data until the
+          indexer lands.
         </p>
+        <StakePanel />
         <Card className="mt-4 overflow-x-auto p-0">
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead className="border-b border-border text-muted">

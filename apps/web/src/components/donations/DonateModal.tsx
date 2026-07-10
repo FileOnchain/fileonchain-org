@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
+import { formatEther } from "viem";
 import ChainSelect from "@/components/chain/ChainSelect";
 import { useDonation } from "@/hooks/useDonation";
 import { useFormDraft } from "@/hooks/useFormDraft";
@@ -25,7 +26,8 @@ const TREASURY_ADDRESS = "0x0001Treasury0000000000000000000000";
 
 /**
  * DonateModal — three-tier donation flow (Platform / Per-CID / Per-chain).
- * Mock submit returns a fake tx hash and adds an entry to the feed.
+ * On chains with DonationEscrow deployed the submit is a real native-value
+ * `donate` transaction; elsewhere it stays the simulated feed entry.
  */
 export const DonateModal = ({ open, onOpenChange, defaultCid }: DonateModalProps) => {
   const [tab, setTab] = React.useState<DonationRecipient>(defaultCid ? "PerCID" : "Platform");
@@ -34,9 +36,34 @@ export const DonateModal = ({ open, onOpenChange, defaultCid }: DonateModalProps
   const [amount, setAmount] = React.useState("5");
   const [memo, setMemo] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
+  const [sending, setSending] = React.useState(false);
+  const [targetTotal, setTargetTotal] = React.useState<bigint | null>(null);
   const { toast } = useToast();
-  const { donate } = useDonation();
+  const { donate, readTargetTotal, onchainReady, activeChain } = useDonation();
   const visibleChains = useVisibleChains();
+
+  const amountUnit = onchainReady ? activeChain.nativeCurrency.symbol : "USDC";
+
+  // Live cumulative total for the selected CID/chain target when the escrow
+  // is deployed on the active chain.
+  React.useEffect(() => {
+    if (!open || tab === "Platform") {
+      setTargetTotal(null);
+      return;
+    }
+    const target = tab === "PerCID" ? cid : chainId;
+    if (tab === "PerCID" && !isValidCID(target)) {
+      setTargetTotal(null);
+      return;
+    }
+    let cancelled = false;
+    readTargetTotal(tab, target).then((total) => {
+      if (!cancelled) setTargetTotal(total);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, tab, cid, chainId, readTargetTotal]);
 
   // Keeps typed values across a page refresh while the modal is open.
   const { clearDraft } = useFormDraft(
@@ -83,17 +110,20 @@ export const DonateModal = ({ open, onOpenChange, defaultCid }: DonateModalProps
       return;
     }
 
+    setSending(true);
     try {
       const target = tab === "Platform" ? "platform" : tab === "PerCID" ? cid : chainId;
       const { txHash } = await donate({
         recipientType: tab,
         target,
-        amount: `${amount} USDC`,
+        amount,
         memo,
       });
       toast({
         title: "Donation sent",
-        description: `Mock tx ${txHash.slice(0, 10)}… — thanks!`,
+        description: onchainReady
+          ? `${amount} ${amountUnit} on ${activeChain.name} — tx ${txHash.slice(0, 10)}…`
+          : `Mock tx ${txHash.slice(0, 10)}… — thanks!`,
         variant: "success",
       });
       close();
@@ -103,6 +133,8 @@ export const DonateModal = ({ open, onOpenChange, defaultCid }: DonateModalProps
         description: (e as Error).message,
         variant: "danger",
       });
+    } finally {
+      setSending(false);
     }
   };
 
@@ -114,14 +146,18 @@ export const DonateModal = ({ open, onOpenChange, defaultCid }: DonateModalProps
         onOpenChange(o);
       }}
       title="Donate to FileOnChain"
-      description={`Treasury: ${TREASURY_ADDRESS.slice(0, 8)}…${TREASURY_ADDRESS.slice(-6)}`}
+      description={
+        onchainReady
+          ? `DonationEscrow on ${activeChain.name}: ${activeChain.donationContract!.slice(0, 8)}…${activeChain.donationContract!.slice(-6)}`
+          : `Treasury: ${TREASURY_ADDRESS.slice(0, 8)}…${TREASURY_ADDRESS.slice(-6)}`
+      }
       footer={
         <>
           <Button variant="ghost" onClick={close}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} leftIcon={<FiHeart size={14} />}>
-            Send donation
+          <Button onClick={handleSubmit} disabled={sending} leftIcon={<FiHeart size={14} />}>
+            {sending ? "Sending…" : "Send donation"}
           </Button>
         </>
       }
@@ -174,9 +210,17 @@ export const DonateModal = ({ open, onOpenChange, defaultCid }: DonateModalProps
       </Tabs>
 
       <div className="mt-4 space-y-3">
+        {targetTotal !== null && (
+          <p className="text-xs text-muted">
+            On-chain total for this target so far:{" "}
+            <span className="font-mono font-semibold text-foreground">
+              {formatEther(targetTotal)} {activeChain.nativeCurrency.symbol}
+            </span>
+          </p>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           <Input
-            label="Amount (USDC)"
+            label={`Amount (${amountUnit})`}
             type="number"
             min="0.01"
             step="0.01"
