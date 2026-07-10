@@ -34,7 +34,7 @@ export const getMockCIDRecord = (
 
   const seed = hashKey(cid, chainId);
   const blockNumber = 18_000_000 + Number(BigInt(seed.slice(0, 8)) % BigInt(5_000_000));
-  const timestamp = Math.floor(Date.now() / 1000) - Number(BigInt(seed.slice(8, 16)) % BigInt(86_400 * 7));
+  const timestamp = Math.floor(Date.now() / 1000) - Number(BigInt(`0x${seed.slice(8, 16)}`) % BigInt(86_400 * 7));
 
   return {
     cid,
