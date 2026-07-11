@@ -1,0 +1,66 @@
+{
+  "description": "FileOnChain Evidence Protocol conformance fixtures. `expectedStatus` is the verifier result WITHOUT subject bytes and WITHOUT online checks; wrong-subject-digest additionally becomes `invalid` when verified with fixtures' run-42 bytes.",
+  "subjectContent": "agent run #42 output: all systems nominal",
+  "fixtures": [
+    {
+      "file": "minimal-hash-only.json",
+      "expectedStatus": "valid-with-warnings",
+      "description": "Unsigned, receipt-free envelope: integrity + time only"
+    },
+    {
+      "file": "signed-artifact.json",
+      "expectedStatus": "valid-with-warnings",
+      "description": "One EIP-191 artifact signature (key status unknown ⇒ warnings)"
+    },
+    {
+      "file": "agent-profile-multi-signer.json",
+      "expectedStatus": "valid-with-warnings",
+      "description": "Agent Evidence Profile, wallet + delegated agent signers"
+    },
+    {
+      "file": "full-receipts-envelope-signed.json",
+      "expectedStatus": "valid-with-warnings",
+      "description": "Storage + settlement + inclusion receipts, organization envelope signature"
+    },
+    {
+      "file": "tampered-receipt.json",
+      "expectedStatus": "invalid",
+      "description": "Receipt modified after finalization — envelope digest mismatch"
+    },
+    {
+      "file": "removed-receipt.json",
+      "expectedStatus": "invalid",
+      "description": "Receipt removed after finalization — envelope digest mismatch"
+    },
+    {
+      "file": "wrong-subject-digest.json",
+      "expectedStatus": "valid-with-warnings",
+      "description": "Digest does not match run-42.txt bytes — invalid only when verified WITH the artifact"
+    },
+    {
+      "file": "invalid-signature.json",
+      "expectedStatus": "invalid",
+      "description": "ed25519 signature bit-flipped"
+    },
+    {
+      "file": "unknown-profile.json",
+      "expectedStatus": "valid-with-warnings",
+      "description": "Unregistered profile — claims preserved, reported unknown"
+    },
+    {
+      "file": "unknown-extension.json",
+      "expectedStatus": "valid-with-warnings",
+      "description": "Unknown extension namespace preserved"
+    },
+    {
+      "file": "legacy-evidence-v1.json",
+      "expectedStatus": "valid-with-warnings",
+      "description": "Pre-separation package, verified via the legacy path"
+    },
+    {
+      "file": "legacy-migrated.json",
+      "expectedStatus": "valid-with-warnings",
+      "description": "The same package after `fileonchain migrate`"
+    }
+  ]
+}

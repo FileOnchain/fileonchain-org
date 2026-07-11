@@ -1,0 +1,70 @@
+{
+  "protocol": "fileonchain-evidence",
+  "version": 1,
+  "subject": {
+    "type": "artifact",
+    "digests": {
+      "sha256": "cf3315e196480491a6eb663f80effcca46536d8c9a9a181ff49d900a4253e3de"
+    },
+    "cid": "bafkreigh2akiscaildcqabsyg3dfr6chu3fgpregiymsck7e7aqa4s52zy",
+    "mediaType": "text/plain",
+    "size": 41,
+    "name": "run-42.txt"
+  },
+  "claims": {
+    "org.fileonchain.legacy": {
+      "metadata": {
+        "model": "claude-fable-5",
+        "runId": 42
+      },
+      "sessionId": "session-42"
+    }
+  },
+  "signatures": [],
+  "receipts": {
+    "storage": [
+      {
+        "type": "storage",
+        "adapter": "fileonchain-storage-legacy/v1",
+        "payload": {
+          "mode": "evidence-only"
+        }
+      }
+    ],
+    "settlement": [
+      {
+        "type": "settlement",
+        "adapter": "fileonchain-anchor-legacy/v1",
+        "system": "eip155:11155111",
+        "payload": {
+          "chainId": "evm:11155111",
+          "txHash": "0xabababababababababababababababababababababababababababababababab",
+          "blockNumber": 123456
+        }
+      }
+    ],
+    "inclusion": []
+  },
+  "extensions": {
+    "org.fileonchain.legacy": {
+      "migration": {
+        "from": "legacy-evidence-v1",
+        "migratedAt": "2026-07-11T12:00:00Z",
+        "note": "Original signatures are preserved verbatim below; they signed the legacy payload shape and are NOT valid protocol artifact signatures."
+      },
+      "signatures": [],
+      "original": {
+        "p": "fileonchain-evidence",
+        "v": 1,
+        "createdAt": "2026-07-11T12:00:00Z"
+      }
+    }
+  },
+  "createdAt": "2026-07-11T12:00:00Z",
+  "envelope": {
+    "digest": {
+      "sha256": "f30ab8f58e11b28be629da8b89519094ec96e992b92f8c7fe183ce1c14525352"
+    },
+    "signatures": []
+  }
+}

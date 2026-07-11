@@ -1,0 +1,30 @@
+{
+  "p": "fileonchain-evidence",
+  "v": 1,
+  "artifact": {
+    "cid": "bafkreigh2akiscaildcqabsyg3dfr6chu3fgpregiymsck7e7aqa4s52zy",
+    "sha256": "cf3315e196480491a6eb663f80effcca46536d8c9a9a181ff49d900a4253e3de",
+    "byteLength": 41,
+    "mediaType": "text/plain",
+    "name": "run-42.txt",
+    "metadata": {
+      "model": "claude-fable-5",
+      "runId": 42
+    }
+  },
+  "signatures": [],
+  "storage": [
+    {
+      "mode": "evidence-only"
+    }
+  ],
+  "settlements": [
+    {
+      "chainId": "evm:11155111",
+      "txHash": "0xabababababababababababababababababababababababababababababababab",
+      "blockNumber": 123456
+    }
+  ],
+  "createdAt": "2026-07-11T12:00:00Z",
+  "sessionId": "session-42"
+}

@@ -1,0 +1,42 @@
+{
+  "name": "@fileonchain/protocol",
+  "version": "0.1.0",
+  "description": "The FileOnChain Evidence Protocol — neutral, dependency-free types, canonical encoding, digests, signing payloads, envelope digests, receipt adapter interfaces, validation, and legacy migration.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FileOnchain/fileonchain-org.git",
+    "directory": "packages/protocol"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "fixtures"
+  ],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsup": "^8.5.0",
+    "typescript": "^5",
+    "vitest": "^2"
+  }
+}
