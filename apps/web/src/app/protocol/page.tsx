@@ -1,325 +1,219 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/ButtonLink";
-import StakePanel from "@/components/protocol/StakePanel";
 import { siteConfig } from "@/lib/site";
-import {
-  MOCK_PLATFORMS,
-  MOCK_PROTOCOL_STATS,
-  MOCK_VALIDATORS,
-} from "@/lib/mock/protocol";
 
 export const metadata: Metadata = {
   title: "Protocol",
   description:
-    "How FileOnChain's optimistic anchor protocol works: propose with a FOCAT tip and bond, a challenge window, staked validator juries, and a 60/25/15 fee split between validators, platforms, and the protocol treasury.",
+    "How the FileOnChain v1 protocol works: one anchor payload vocabulary across twelve chain families, evidence packages anyone can verify against public infrastructure, and an honestly staged roadmap for the economic verification layer.",
   alternates: { canonical: `${siteConfig.url}/protocol` },
 };
 
-const shortAddress = (address: string): string => `${address.slice(0, 8)}…${address.slice(-6)}`;
-
-const STEPS = [
+const ANCHOR_STEPS = [
   {
-    title: "1 · Propose",
-    body: "A file-level anchor escrows a FOCAT tip plus a propose bond and names the originating platform (the app, a partner API, an MCP client). Chunk anchors stay free — only the file CID enters the protocol.",
+    title: "1 · Chunk",
+    body: "The file is split client-side into chunks sized to the storage chain's per-transaction budget; each chunk is hashed into a CIDv1 and forward-chained — every chunk anchor names the CID of the next.",
   },
   {
-    title: "2 · Challenge window",
-    body: "For 24 hours anyone can challenge the proposal with a counter-bond. Most anchors are honest, so most sail through untouched — that is the optimistic fast path.",
+    title: "2 · Anchor the chunks",
+    body: "One versioned JSON payload per chunk, written through the chain's most native channel — a contract event, a remark, a memo, transaction metadata, or a consensus message. On the storage chain the payload carries the chunk's bytes.",
   },
   {
-    title: "3 · Verify (fast path)",
-    body: "After the window anyone may finalize: the anchor becomes Verified — first verified wins per CID — the bond returns, and the tip splits 60% to staked validators, 25% to the originating platform's treasury, and 15% to the protocol treasury.",
+    title: "3 · Anchor the file — last",
+    body: "The file-level anchor names the root CID, an optional SHA-256, an optional storage URI pointing at the bytes, and the originating platform id. Indexers rely on chunks-first ordering to finalize the record in one pass.",
   },
   {
-    title: "4 · Dispute (slow path)",
-    body: "A challenge draws a five-member jury at random from the staked validator set. The majority decides; the losing side's bond is slashed to the winners, jurors who voted with the losing side are slashed from stake, and ties default to the optimistic outcome.",
+    title: "4 · Assemble the evidence package",
+    body: "The CID, the payloads, and the transaction receipts (chain id, tx hashes, block, timestamp) form a portable bundle. It is a file — hand it to whoever needs to check it.",
   },
 ] as const;
 
-const CONTRACTS = [
+const VERIFY_STEPS = [
   {
-    name: "FileOnChainAttestationToken (FOCAT)",
-    role: "The protocol token: pays tips and bonds, is staked by validators, and votes in governance on EVM. Bridgeable — approved bridges burn it on one chain and mint it on another.",
+    title: "Recompute the CID",
+    body: "Hash the bytes you were given and confirm they encode to the CID in the package. Content addressing makes the bytes self-authenticating — wherever they came from.",
   },
+  {
+    title: "Fetch the receipts",
+    body: "Look up each transaction hash on any public node or block explorer of its chain. The block and timestamp are the chain's own record — no FileOnChain endpoint involved.",
+  },
+  {
+    title: "Decode the payloads",
+    body: "The anchor payload is an open, versioned JSON vocabulary (p: \"fileonchain\", v: 1) — parseAnchorPayload in the MIT-licensed SDK decodes it identically on every family, or read the JSON by eye.",
+  },
+  {
+    title: "Optionally, rebuild the bytes",
+    body: "If the file was stored on-chain, walk the chunk trail on the storage chain, base64-decode each data field, and verify every chunk's CID. The file reassembles from public history alone.",
+  },
+] as const;
+
+const V1_CONTRACTS = [
   {
     name: "FileRegistry",
-    role: "The anchor protocol itself: free anchorChunk events for chunks; proposeAnchor escrows tip + bond for file CIDs, runs the challenge window, draws juries, resolves disputes, and splits fees as pull payments (withdraw).",
+    role: "The anchor registry on contract runtimes (EVM, Aptos, Sui, Starknet, NEAR): anchorCID / anchorChunk write the payload as events, free beyond gas. Memo families (Cosmos, TRON, Cardano, TON) and native channels (Substrate remarks, Solana Memo, Hedera HCS) need no deployment at all.",
   },
   {
-    name: "ValidatorStaking",
-    role: "Validators stake FOCAT above a minimum to join the active set. Holds tip rewards (claimed pro-rata), enforces an unbonding cooldown that stays slashable, and executes the registry's slashes on losing jurors.",
+    name: "CachePayments",
+    role: "USDC payments for the private cache tier: encrypted chunks served at CDN speeds for the duration paid. An adjacent service — retrieval acceleration, never a replacement for the chain.",
   },
   {
-    name: "PlatformRegistry",
-    role: "Registered integrators with a fee-bps cap each. proposeAnchor names a platform id; when the anchor verifies, that platform's treasury earns the platform share of the tip.",
-  },
-  {
-    name: "Governor + Timelock",
-    role: "FOCAT holders vote; passed proposals execute through the timelock, which owns every protocol contract, holds the protocol treasury, and owns each proxy's admin — so parameter changes, treasury spends, and upgrades are all the same motion.",
-  },
-  {
-    name: "CachePayments · DonationEscrow",
-    role: "Adjacent services: USDC payments for the private cache tier and native-coin donations to public infrastructure. Same proxy + treasury pattern, outside the anchor fee split.",
+    name: "DonationEscrow",
+    role: "Native-coin donations routed to public cache node operators — the free pin for research data, archives, and open-source releases.",
   },
 ] as const;
 
-const TOKEN_POINTS = [
+const ROADMAP_ITEMS = [
   {
-    title: "One supply, every chain",
-    body: "FOCAT exists natively on each runtime the FileRegistry deploys to (ERC-20 on EVM, Fungible Asset on Aptos, Coin<FOCAT> on Sui, Cairo ERC-20 on Starknet, NEP-141 on NEAR). The initial supply mints once on the home chain; every other deployment starts at zero.",
+    title: "Staked verification market",
+    body: "File-level anchors could graduate from timestamps to economically backed claims: a proposer escrows a token tip and bond, the claim survives a challenge window, and staked validators earn the tip for policing it.",
   },
   {
-    title: "Bridgeable by governance, not by vendor",
-    body: "Supply moves by burning on the source chain and minting on the destination, through bridges that governance explicitly approves. On EVM each bridge gets mint/burn rate limits that refill linearly over a day — the cap on damage if a bridge is ever compromised. No bridge vendor is baked into the token.",
+    title: "Dispute juries",
+    body: "Contested claims resolved by juries drawn from the validator set, with losing bonds and losing jurors slashed.",
   },
   {
-    title: "What it does day to day",
-    body: "Every file anchor escrows a FOCAT tip and bond. Validators stake FOCAT to earn the 60% tip share and sit on juries; platforms earn the 25% share on anchors they originate; the remaining 15% accrues to the treasury that FOCAT holders govern.",
+    title: "Token bridging",
+    body: "One global token supply moved across runtimes by governance-approved burn/mint bridges (ERC-7802 on EVM).",
   },
   {
-    title: "Upgradeable, owned by the DAO",
-    body: "On EVM every protocol contract sits behind a transparent proxy whose admin is owned by the timelock — upgrading a contract is a governance proposal like any parameter change. The other runtimes upgrade through their native mechanisms, executed by the admin that mirrors EVM governance decisions.",
+    title: "Token governance",
+    body: "Parameters, treasury, and upgrades owned by token holders through an on-chain Governor and timelock.",
   },
-] as const;
-
-const ACQUISITION_POINTS = [
-  {
-    title: "Most people: never touch the token",
-    body: "Sign in and pay with USD credits — FileOnChain's worker holds the FOCAT and anchors for you. You see \u201cverified anchor on Base \u2014 $X\u201d, not \u201cbuy 101 FOCAT\u201d. This is the recommended default in the app and the API.",
-  },
-  {
-    title: "Wallet anchoring: fixed-price anchor packs",
-    body: "Pay-as-you-go escrows the tip and refundable bond from your own wallet, so it needs FOCAT on that chain. The upload flow offers a fixed-price anchor pack — enough for one propose, paid from credits, delivered to your connected wallet. A verification fee, not a trading desk.",
-  },
-  {
-    title: "Validators: earn, don't buy",
-    body: "Validators and jurors earn FOCAT continuously — the 60% share of every verified tip plus slashed bonds from lost disputes. A validator starter pack (min stake + one propose) exists for bootstrapping, but purchase is optional.",
-  },
-  {
-    title: "Testnets: faucet only",
-    body: "Test networks drip FOCAT for free for QA. The faucet and the mainnet sale are never mixed.",
-  },
-] as const;
-
-const GOVERNANCE_POINTS = [
-  "The FOCAT token votes through an on-chain Governor + timelock on EVM: fee split, platform caps and registration, bonds, tip minimums, windows, jury parameters, validator stake minimums, and treasury spends.",
-  "The timelock is the protocol treasury — spending tip revenue is itself a governance proposal.",
-  "Aptos, Sui, Starknet, and NEAR run the same protocol with parameters held by an admin account that executes EVM governance decisions.",
-  "Governance decides protocol rules, never per-file outcomes — individual anchors are settled by the optimistic window and staked juries.",
 ] as const;
 
 /**
- * /protocol — how the propose/verify anchor protocol works, plus read-only
- * validator and platform tables. Data comes from the mock protocol layer
- * (TODO: real ValidatorStaking / PlatformRegistry reads); interactive
- * staking and dispute voting ship separately.
+ * /protocol — what the v1 protocol actually is (the anchor payload
+ * vocabulary and the evidence packages it produces, verifiable by anyone
+ * against public infrastructure) plus the honestly staged roadmap for the
+ * economic verification layer, which is previewed on testnets only.
  */
-const ProtocolPage = () => {
-  const stats = MOCK_PROTOCOL_STATS;
-  const split = stats.feeSplit;
-  return (
-    <PageShell size="wide" padding="lg" atmosphere>
-      <PageHeader
-        className="mb-8"
-        index="07"
-        kicker="Verification market"
-        title="The anchor protocol"
-        lede="Anchors are verified claims, not just transactions: every file anchor posts a FOCAT tip and a bond, survives a challenge window policed by staked validators, and pays the network that verified it."
-        actions={
-          <ButtonLink href="/docs" variant="secondary">
-            Read the docs →
-          </ButtonLink>
-        }
-      />
+const ProtocolPage = () => (
+  <PageShell size="wide" padding="lg" atmosphere>
+    <PageHeader
+      className="mb-8"
+      index="07"
+      kicker="Protocol"
+      title="Evidence packages, verifiable by anyone"
+      lede="One developer interface writes one anchor payload vocabulary across twelve chain families. What comes back is an evidence package — CID, payloads, receipts — that anyone can verify against public infrastructure, with no FileOnChain service in the loop."
+      actions={
+        <ButtonLink href="/docs" variant="secondary">
+          Read the docs →
+        </ButtonLink>
+      }
+    />
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: "FOCAT staked", value: stats.totalStakedFoc.toLocaleString() },
-          { label: "Active validators", value: String(stats.activeValidators) },
-          { label: "Anchors verified", value: stats.proposalsVerified.toLocaleString() },
-          { label: "Disputes resolved", value: String(stats.disputesResolved) },
-        ].map((stat) => (
-          <Card key={stat.label} className="p-4">
-            <p className="text-sm text-muted">{stat.label}</p>
-            <p className="mt-1 text-2xl font-semibold">{stat.value}</p>
+    <section>
+      <h2 className="text-lg font-semibold">From file to evidence package</h2>
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        {ANCHOR_STEPS.map((step) => (
+          <Card key={step.title} className="p-5">
+            <h3 className="font-medium">{step.title}</h3>
+            <p className="mt-2 text-sm text-muted">{step.body}</p>
           </Card>
         ))}
-      </section>
+      </div>
+      <p className="mt-4 max-w-[70ch] text-sm text-muted">
+        Storage is opt-in: most evidence use cases anchor proof-only, and the raw bytes never
+        leave the caller&apos;s machine. When the bytes belong on-chain, the same payloads carry
+        them — the{" "}
+        <Link href="/whitepaper" className="text-primary underline underline-offset-2">
+          white paper
+        </Link>{" "}
+        covers storage chains and per-family budgets.
+      </p>
+    </section>
 
-      <section className="mt-10">
-        <h2 className="text-lg font-semibold">How an anchor verifies</h2>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          {STEPS.map((step) => (
-            <Card key={step.title} className="p-5">
-              <h3 className="font-medium">{step.title}</h3>
-              <p className="mt-2 text-sm text-muted">{step.body}</p>
-            </Card>
-          ))}
-        </div>
-      </section>
+    <section className="mt-10">
+      <h2 className="text-lg font-semibold">How anyone verifies one</h2>
+      <p className="mt-1 max-w-[70ch] text-sm text-muted">
+        Verification is mechanical and needs no permission, no wallet, and no FileOnChain
+        endpoint — the package outlives the service that produced it.
+      </p>
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        {VERIFY_STEPS.map((step) => (
+          <Card key={step.title} className="p-5">
+            <h3 className="font-medium">{step.title}</h3>
+            <p className="mt-2 text-sm text-muted">{step.body}</p>
+          </Card>
+        ))}
+      </div>
+    </section>
 
-      <section className="mt-10">
-        <h2 className="text-lg font-semibold">The fee split</h2>
-        <Card className="mt-4 p-5">
-          <div className="flex h-4 w-full overflow-hidden rounded-full" aria-hidden>
-            <div className="bg-success" style={{ width: `${split.validatorBps / 100}%` }} />
-            <div className="bg-warning" style={{ width: `${split.platformBps / 100}%` }} />
-            <div className="bg-accent" style={{ width: `${split.protocolBps / 100}%` }} />
+    <section className="mt-10">
+      <h2 className="text-lg font-semibold">What an anchor does — and does not — prove</h2>
+      <Card className="mt-4 p-5">
+        <p className="text-sm leading-relaxed text-muted">
+          An anchor proves that specific content <span className="font-medium text-foreground">existed</span>{" "}
+          at a specific time and has <span className="font-medium text-foreground">not changed</span> since.
+          It does not establish identity, authorship, signatures, retention policy, or admissibility —
+          those belong to the e-signature, identity, and records-management systems layered on top.
+          The evidence package is designed to slot into those systems as the integrity layer, not to
+          replace them.
+        </p>
+      </Card>
+    </section>
+
+    <section className="mt-10">
+      <h2 className="text-lg font-semibold">The contracts in v1</h2>
+      <p className="mt-1 text-sm text-muted">
+        v1 keeps the on-chain surface deliberately small — and most families need no deployment
+        at all, anchoring through the chain&apos;s native channel.
+      </p>
+      <Card className="mt-4 divide-y divide-border/60 p-0">
+        {V1_CONTRACTS.map((contract) => (
+          <div key={contract.name} className="p-4">
+            <h3 className="font-mono text-sm font-medium">{contract.name}</h3>
+            <p className="mt-1 text-sm text-muted">{contract.role}</p>
           </div>
-          <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
-            <p>
-              <span className="font-medium">{split.validatorBps / 100}% validators</span>
-              <span className="block text-muted">pro-rata across active stake</span>
-            </p>
-            <p>
-              <span className="font-medium">{split.platformBps / 100}% platform</span>
-              <span className="block text-muted">the integrator that originated the anchor</span>
-            </p>
-            <p>
-              <span className="font-medium">{split.protocolBps / 100}% protocol</span>
-              <span className="block text-muted">treasury governed by FOCAT holders</span>
-            </p>
-          </div>
-        </Card>
-      </section>
+        ))}
+      </Card>
+    </section>
 
-      <section className="mt-10">
-        <h2 className="text-lg font-semibold">The FOCAT token</h2>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          {TOKEN_POINTS.map((point) => (
-            <Card key={point.title} className="p-5">
-              <h3 className="font-medium">{point.title}</h3>
-              <p className="mt-2 text-sm text-muted">{point.body}</p>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      <section className="mt-10">
-        <h2 className="text-lg font-semibold">Getting FOCAT</h2>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          {ACQUISITION_POINTS.map((point) => (
-            <Card key={point.title} className="p-5">
-              <h3 className="font-medium">{point.title}</h3>
-              <p className="mt-2 text-sm text-muted">{point.body}</p>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      <section className="mt-10">
-        <h2 className="text-lg font-semibold">The contracts</h2>
-        <p className="mt-1 text-sm text-muted">
-          The protocol is a small suite of contracts deployed together on every chain (module and
-          contract names vary per runtime; the roles do not).
-        </p>
-        <Card className="mt-4 divide-y divide-border/60 p-0">
-          {CONTRACTS.map((contract) => (
-            <div key={contract.name} className="p-4">
-              <h3 className="font-mono text-sm font-medium">{contract.name}</h3>
-              <p className="mt-1 text-sm text-muted">{contract.role}</p>
-            </div>
-          ))}
-        </Card>
-      </section>
-
-      <section className="mt-10">
-        <h2 className="text-lg font-semibold">Governance</h2>
-        <ul className="mt-4 space-y-2 text-sm text-muted">
-          {GOVERNANCE_POINTS.map((point) => (
-            <li key={point} className="flex gap-2">
-              <span aria-hidden className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-              {point}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="mt-10">
-        <h2 className="text-lg font-semibold">Validators</h2>
-        <p className="mt-1 text-sm text-muted">
-          Validators stake FOCAT to join the verification market: they earn the validator share of
-          every tip and sit on dispute juries, where voting with the losing side is slashed.
-          Staking is live on the deployed testnets; the table below is mock data until the
-          indexer lands.
-        </p>
-        <StakePanel />
-        <Card className="mt-4 overflow-x-auto p-0">
-          <table className="w-full min-w-[560px] text-left text-sm">
-            <thead className="border-b border-border text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">Validator</th>
-                <th className="px-4 py-3 font-medium">Stake (FOCAT)</th>
-                <th className="px-4 py-3 font-medium">Rewards (FOCAT)</th>
-                <th className="px-4 py-3 font-medium">Jury duties</th>
-                <th className="px-4 py-3 font-medium">Slashes</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {MOCK_VALIDATORS.map((validator) => (
-                <tr key={validator.address} className="border-b border-border/60 last:border-0">
-                  <td className="px-4 py-3 font-mono text-xs">{shortAddress(validator.address)}</td>
-                  <td className="px-4 py-3">{validator.stake.toLocaleString()}</td>
-                  <td className="px-4 py-3">{validator.rewardsEarned.toLocaleString()}</td>
-                  <td className="px-4 py-3">{validator.juryDuties}</td>
-                  <td className="px-4 py-3">{validator.slashes}</td>
-                  <td className="px-4 py-3">
-                    <Badge variant={validator.active ? "success" : "warning"} size="sm">
-                      {validator.active ? "active" : "below min stake"}
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-      </section>
-
-      <section className="mt-10">
-        <h2 className="text-lg font-semibold">Platforms</h2>
-        <p className="mt-1 text-sm text-muted">
-          Registered integrators earn the platform share of every anchor they originate — the
-          FileOnChain app, partner APIs, and MCP clients all attribute uploads to their platform
-          id. Registration is governance-gated.
-        </p>
-        <Card className="mt-4 overflow-x-auto p-0">
-          <table className="w-full min-w-[560px] text-left text-sm">
-            <thead className="border-b border-border text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">Id</th>
-                <th className="px-4 py-3 font-medium">Platform</th>
-                <th className="px-4 py-3 font-medium">Fee share</th>
-                <th className="px-4 py-3 font-medium">Anchors originated</th>
-                <th className="px-4 py-3 font-medium">Revenue (FOCAT)</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {MOCK_PLATFORMS.map((platform) => (
-                <tr key={platform.platformId} className="border-b border-border/60 last:border-0">
-                  <td className="px-4 py-3 font-mono text-xs">{platform.platformId}</td>
-                  <td className="px-4 py-3">{platform.name}</td>
-                  <td className="px-4 py-3">{platform.feeBps / 100}%</td>
-                  <td className="px-4 py-3">{platform.anchorsOriginated.toLocaleString()}</td>
-                  <td className="px-4 py-3">{platform.revenueFoc.toLocaleString()}</td>
-                  <td className="px-4 py-3">
-                    <Badge variant={platform.active ? "success" : "danger"} size="sm">
-                      {platform.active ? "active" : "inactive"}
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-      </section>
-    </PageShell>
-  );
-};
+    <section className="mt-10">
+      <div className="flex flex-wrap items-center gap-3">
+        <h2 className="text-lg font-semibold">Roadmap — deliberately not in v1</h2>
+        <Badge variant="warning" size="sm">
+          testnet preview only
+        </Badge>
+      </div>
+      <p className="mt-1 max-w-[70ch] text-sm text-muted">
+        Earlier drafts bundled an economic verification layer into v1. It is now explicitly out of
+        scope — staged as roadmap, to ship only where real usage proves the demand. Contract
+        suites implementing the design exist in the repository and run on testnets as previews;
+        no v1 flow requires a token, and every evidence package produced today remains verifiable
+        unchanged if and when this layer ships.
+      </p>
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        {ROADMAP_ITEMS.map((item) => (
+          <Card key={item.title} className="p-5">
+            <h3 className="font-medium">{item.title}</h3>
+            <p className="mt-2 text-sm text-muted">{item.body}</p>
+          </Card>
+        ))}
+      </div>
+      <p className="mt-4 text-sm text-muted">
+        The full design lives in the{" "}
+        <a
+          href="https://github.com/FileOnchain/fileonchain-org/blob/main/docs/governance.md"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary underline underline-offset-2"
+        >
+          governance specification
+        </a>{" "}
+        and the{" "}
+        <Link href="/whitepaper#roadmap" className="text-primary underline underline-offset-2">
+          white paper&apos;s roadmap section
+        </Link>
+        .
+      </p>
+    </section>
+  </PageShell>
+);
 
 export default ProtocolPage;
