@@ -24,14 +24,9 @@ export type ChainFamily =
 export type ChainId = `${ChainFamily}:${string}`;
 
 /**
- * Resolved on-chain registry record for a CID anchor.
- *
- * `status` carries both vocabularies: memo/remark families (no contract)
- * only ever report "anchored" | "pending" | "missing", while contract
- * families running the optimistic propose/verify protocol also report the
- * proposal lifecycle — "proposed" (challenge window open), "challenged"
- * (dispute running), "verified" (finalized, fees distributed), and
- * "rejected" (dispute lost or race lost).
+ * Resolved on-chain registry record for a CID anchor: "anchored" once the
+ * anchoring transaction is included, "pending" while in flight, "missing"
+ * when the CID has no anchor on the chain.
  */
 export interface CIDRegistryRecord {
   cid: string;
@@ -40,8 +35,8 @@ export interface CIDRegistryRecord {
   /**
    * Transaction hash / block of the anchoring send. Event-derived — present
    * on records resolved from logs or an indexer, absent when the record was
-   * read straight from contract storage (which only keeps the verified
-   * proposal, not the tx that created it).
+   * read straight from contract storage (which only keeps the first-write
+   * record, not the tx that created it).
    */
   txHash?: string;
   blockNumber?: number;
@@ -49,5 +44,5 @@ export interface CIDRegistryRecord {
   submitter: string;
   contentHash: string;
   uri: string;
-  status: "anchored" | "pending" | "missing" | "proposed" | "challenged" | "verified" | "rejected";
+  status: "anchored" | "pending" | "missing";
 }
