@@ -1,7 +1,14 @@
 # FileOnChain
 
-Upload files permanently to any chain — EVM, Substrate, Solana, and Aptos.
-Anchor CIDs onchain, pay for private encrypted cache, and fund public infrastructure through donations.
+**One developer interface that creates portable, independently verifiable
+evidence packages across storage and settlement systems.**
+
+Hash an artifact (an agent's report, a build output, a tool-call log), sign
+it with an agent, wallet, or organization key, anchor it on public chains,
+and hand back one portable evidence package — validated locally by the
+open-source verifier (`fileonchain-verify evidence.json`), with no
+FileOnChain service in the loop. Storage is optional and off by default;
+there is no token anywhere in v1.
 
 ## Stack
 
@@ -28,7 +35,8 @@ fileonchain-org/
 │           ├── types/       Web-only types
 │           └── utils/       File processing helpers (generateCIDs, readFileContent, …)
 ├── packages/
-│   ├── utils/          @fileonchain/utils — networks, contract addresses, CID + anchor payload core
+│   ├── utils/          @fileonchain/utils — networks, evidence-package + manifest schemas, CID + anchor payload core
+│   ├── verify/         @fileonchain/verify — deterministic local verifier (library + fileonchain-verify CLI)
 │   ├── sdk-<family>/   @fileonchain/sdk-evm … sdk-hedera — one anchor client per chain family (×12)
 │   ├── api/            @fileonchain/api — typed client for the hosted HTTP API
 │   ├── sdk/            @fileonchain/sdk — umbrella re-exporting utils + every family + the API client
@@ -54,17 +62,26 @@ import { anchorCID } from "@fileonchain/sdk/evm";      // or the standalone @fil
 | `@fileonchain/sdk` | You want everything under one install (each family stays behind a subpath) |
 | `@fileonchain/utils` | You only need chain metadata, CID validation, or payload parsing |
 | `@fileonchain/sdk-<family>` | You anchor on one family and want the smallest dependency surface |
+| `@fileonchain/verify` | You need to validate an evidence package — locally, without trusting FileOnChain |
 | `@fileonchain/api` | You anchor through the hosted API with a dashboard key (`fok_…`) |
 | `@fileonchain/mcp` | You want FileOnChain tools in an MCP-capable AI agent |
 
-## Supported chains (v2)
+## v1 integrations — honest statuses
 
-| Family | Chains |
-|---|---|
-| **EVM** | Ethereum, Base, Optimism, Arbitrum One, Polygon |
-| **Substrate** | Autonomys Mainnet, Autonomys Taurus (testnet), Polkadot Asset Hub |
-| **Solana** | Mainnet, Devnet |
-| **Aptos** | Mainnet, Testnet |
+Every network in the registry carries an explicit `integrationStatus`
+(designed → … → audited); product surfaces never describe a network beyond
+it. The launch set:
+
+| System | Role | Status |
+|---|---|---|
+| **Autonomys** (mainnet + Taurus) | Primary permanent-storage system | Integrated into the webapp |
+| **Solana** (mainnet + devnet) | Non-EVM portability demonstration | Integrated into the webapp |
+| **EVM** (Sepolia, Auto EVM Chronos) | Contract-based settlement (anchor-only FileRegistry) | Testnet deployed |
+| Aptos · Sui · Starknet · NEAR · Cosmos · TRON · Cardano · TON · Hedera | Roadmap adapters | Implemented (SDK clients) |
+
+An earlier experimental verification-market design (FOCAT token, staking,
+juries, governance) was removed from v1 and is preserved, unmaintained, on
+the [`archive/focat-verification-market`](https://github.com/FileOnchain/fileonchain-org/tree/archive/focat-verification-market) branch.
 
 ## Getting started
 

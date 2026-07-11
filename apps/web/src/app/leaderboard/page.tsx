@@ -84,9 +84,7 @@ const LoadingRows = () => (
 /**
  * LeaderboardShell — the uploader board: identities ranked by public anchors,
  * bytes kept alive, and public-cache donations. Data comes from the mock
- * profile layer (TODO: real indexer reads). Rankings for roadmap roles
- * (validators, platforms, token holders) ship with the verification market,
- * if and when it leaves the testnet-preview stage.
+ * profile layer (TODO: real indexer reads).
  */
 const LeaderboardShell = () => {
   const [profiles, setProfiles] = React.useState<PublicProfile[]>([]);

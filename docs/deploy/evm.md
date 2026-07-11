@@ -1,15 +1,13 @@
 # Deploy: EVM chains
 
-Deploys the anchor-protocol suite — `FileOnChainAttestationToken`, `FileOnChainTimelock`,
-`FileOnChainGovernor`, `ValidatorStaking`, `PlatformRegistry`, `FileRegistry` —
-plus `CachePayments` / `DonationEscrow` from `contracts/evm/` with Foundry's
-`script/Deploy.s.sol`. One run per chain.
+Deploys the anchor-only v1 suite — `FileRegistry`, `CachePayments`,
+`DonationEscrow` (plus `MockUSDC` on testnets) — from `contracts/evm/` with
+Foundry's `script/Deploy.s.sol`. One run per chain.
 
-The script wires governance completely: the governor becomes the timelock's
-only proposer, every protocol contract's owner becomes the timelock (which is
-also the protocol treasury), FileOnChain is registered as platform id 1, and
-the deployer's timelock admin role is renounced. After a run, protocol
-parameters change only through governance proposals.
+Every contract deploys behind an OZ `TransparentUpgradeableProxy` whose
+auto-created `ProxyAdmin` is owned by `ADMIN_ADDRESS` (default: the
+deployer). `ADMIN_ADDRESS` is also the `FileRegistry` owner. Anchoring is
+free beyond gas — there is no token, staking, or governance to wire.
 
 ## Prerequisites
 
@@ -26,15 +24,11 @@ fill it in — `forge script` loads it automatically. Or export the variables
 directly:
 
 ```bash
-export PRIVATE_KEY=0x...                # deployer key (required)
-export TREASURY_ADDRESS=0x...           # CachePayments/DonationEscrow treasury (required)
-export PLATFORM_TREASURY_ADDRESS=0x...  # FileOnChain platform-fee treasury (optional, default: TREASURY_ADDRESS)
-export TOKEN_INITIAL_SUPPLY=...         # FOCAT minted to deployer (optional, default 1e27 = 1B FOCAT)
-export TIMELOCK_MIN_DELAY=...           # seconds (optional, default 172800 = 2 days)
-export GOVERNOR_VOTING_DELAY=...        # blocks (optional, default 7200 ≈ 1 day)
-export GOVERNOR_VOTING_PERIOD=...       # blocks (optional, default 50400 ≈ 1 week)
-export GOVERNOR_PROPOSAL_THRESHOLD=...  # FOCAT base units (optional, default 100k FOCAT)
-export USDC_ADDRESS=0x...               # the chain's canonical USDC (optional)
+export PRIVATE_KEY=0x...       # deployer key (optional — leave unset to sign
+                               # with a Foundry keystore via `--account <name>`)
+export TREASURY_ADDRESS=0x...  # CachePayments/DonationEscrow treasury (required)
+export ADMIN_ADDRESS=0x...     # proxy-admin owner + registry owner (optional, default: deployer)
+export USDC_ADDRESS=0x...      # the chain's canonical USDC (optional)
 ```
 
 `USDC_ADDRESS` is read with `vm.envOr` — leave it unset on testnets and the
@@ -52,10 +46,9 @@ forge script script/Deploy.s.sol \
 ```
 
 Drop `--verify` if the chain's explorer isn't Etherscan-compatible and verify
-manually afterwards. The script logs the deployed addresses:
-`FileOnChainAttestationToken`, `FileOnChainTimelock`, `FileOnChainGovernor`,
-`ValidatorStaking`, `PlatformRegistry`, `FileRegistry`, `MockUSDC`
-(testnets only), `CachePayments`, `DonationEscrow`.
+manually afterwards. The script logs **proxy and implementation** addresses
+for `FileRegistry`, `CachePayments`, and `DonationEscrow`, plus the
+`MockUSDC` address when it deploys one.
 
 ## Networks
 
@@ -103,67 +96,47 @@ node script/verify-broadcast.mjs broadcast/Deploy.s.sol/8700/run-latest.json \
   https://explorer.auto-evm.chronos.autonomys.xyz/api
 ```
 
-**Partial deploys:** forge's batch simulation underestimates gas for
-cold-storage calls, so a mid-script transaction can run out of gas and abort
-the run (seen on Chronos). `script/FinishDeploy.s.sol` completes an
-interrupted run idempotently — it reads the chain and only sends the missing
-wiring/handover transactions. Pass the deployed proxy addresses as env vars
-(see its header) and run with `--gas-estimate-multiplier 200`. Adding that
-flag to the initial deploy is cheap insurance on any chain.
-
-**Testnet FOCAT supply:** the `TOKEN_INITIAL_SUPPLY=0` remote-chain rule
-exists to keep the *mainnet* global supply fixed via bridges. Testnets have
-no bridges — keep the default mint on every testnet deployment or there is
-no FOCAT for validator stakes, tips, or bonds.
+**Gas estimation:** forge's batch simulation can underestimate gas for
+cold-storage calls and abort a run mid-script (seen on Chronos). Adding
+`--gas-estimate-multiplier 200` to the deploy is cheap insurance on any
+chain.
 
 **zkSync Era (324 / 300):** vanilla Foundry cannot broadcast to zkEVM. Use
 [foundry-zksync](https://github.com/matter-labs/foundry-zksync)
 (`forge script ... --zksync`) or zkSync's own tooling; the Solidity itself
 needs no changes.
 
-**Jury randomness caveat:** dispute juries are drawn from
-`block.prevrandao` + the parent blockhash. On Ethereum L1 that is beacon
-randomness; on OP-stack chains (Base, Blast, ...) it is sequencer-derived and
-on Arbitrum it is a constant — the sequencer can influence jury selection
-there. Accepted v1 limitation; a VRF draw is the documented follow-up.
-
 ## After deploying
 
-If the contracts changed since the last deploy, regenerate the SDK ABIs:
+If the contracts changed since the last deploy, regenerate the SDK ABIs
+from the Foundry build output:
 
 ```bash
-cd packages/sdk-evm && node scripts/extract-abis.mjs
+cd contracts/evm && forge build
+cd ../../packages/sdk-evm && node scripts/extract-abis.mjs
 ```
 
 Then run `pnpm build` from the repo root and confirm it is green.
 
 Record the result in `packages/utils/src/chains.ts` on the chain's
-`evm:<chainId>` entry: set `registryContract` plus the new protocol fields —
-`tokenContract`, `stakingContract`, `platformRegistryContract`,
-`governorContract`, `timelockContract` (and `cacheContract` /
-`donationContract` if you deployed them), replacing `ZERO_ADDRESS`.
-`isChainProvisioned` flips on from `registryContract` alone; the propose
-path additionally needs `tokenContract` (see `isProposeProvisioned`).
+`evm:<chainId>` entry — always the **proxy** addresses, never the
+implementations (proxies survive upgrades): set `registryContract`,
+`cacheContract`, `donationContract`, and `usdcContract` (the real USDC on
+mainnets, the deployed `MockUSDC` on testnets), replacing `ZERO_ADDRESS`.
+`isChainProvisioned` flips on from `registryContract` alone; cache payments
+additionally need `cacheContract` + `usdcContract`. Set the entry's
+`integrationStatus` to match reality (`"testnet-deployed"`,
+`"mainnet-deployed"`, `"webapp-integrated"` once QA'd end-to-end) — never
+above what is actually deployed and verified.
 
 Fund the server signer: the account behind `ANCHOR_EVM_PRIVATE_KEY` needs
-native gas on every EVM chain it serves, **and FOCAT** for tips and propose
-bonds (plus a one-time ERC-20 approval to the registry, which the SDK
-handles automatically on first propose).
+native gas on every EVM chain it serves. Anchoring itself is permissionless
+and free beyond gas.
 
-Bootstrap the validator set: challenges revert while fewer than `jurySize`
-(default 5) validators are staked. Stake FileOnChain-operated validators
-(`ValidatorStaking.stake`, min 1000 FOCAT each) right after deploying.
+## Proxies and upgrades
 
-
-## Proxies, bridges, remote chains
-
-Every protocol contract deploys behind a TransparentUpgradeableProxy; the
-script logs **proxy and implementation** addresses — record the *proxy*
-addresses in `chains.ts` (they never change across upgrades). Each proxy's
-ProxyAdmin is owned by the timelock: upgrades are governance proposals
-calling `ProxyAdmin.upgradeAndCall`.
-
-On every chain except the home chain, set `TOKEN_INITIAL_SUPPLY=0` — FOCAT
-arrives through bridges only. To connect a bridge, governance proposes
-`token.setBridgeLimits(bridge, mintLimit, burnLimit)`; limits replenish
-linearly over one day and are the per-bridge blast-radius cap.
+Every contract deploys behind a `TransparentUpgradeableProxy`; each proxy's
+auto-created `ProxyAdmin` is owned by `ADMIN_ADDRESS`. Upgrades are
+`ProxyAdmin.upgradeAndCall` transactions from that owner — deploy the new
+implementation, then point the proxy at it; the proxy address in `chains.ts`
+never changes.

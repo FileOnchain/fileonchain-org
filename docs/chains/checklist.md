@@ -25,14 +25,10 @@ when every box is checked.
   NEAR), `palletContract` (Substrate), `memoAnchoring` (Cosmos, TRON,
   Cardano, TON), `hcsTopicId` (Hedera). Solana is always provisioned. Set it
   per the runbook in `docs/deploy/`.
-- [ ] **Propose path provisioned** (contract families only) — the anchor
-  protocol fields are recorded on the entry so `isProposeProvisioned` flips
-  on: `tokenContract` (all five), plus `stakingContract` /
-  `platformRegistryContract` / `governorContract` / `timelockContract` on
-  EVM, the AnchorRegistry shared-object id in `registryContract` on Sui,
-  and the AnchorRegistry contract in `stakingContract` on Starknet. The
-  server signer holds FOCAT (tips + bonds), and at least `jurySize` (5)
-  validators are staked so challenges can draw a jury.
+- [ ] **Integration status** — set `integrationStatus` on the entry
+  honestly (never above what is actually deployed and verified): a deploy
+  moves it to `"testnet-deployed"` / `"mainnet-deployed"`, and only an
+  end-to-end QA'd webapp flow justifies `"webapp-integrated"` or above.
 - [ ] **PAYG anchor is real on testnet** — a browser-wallet upload on the
   chain's testnet sends real transactions through `apps/web/src/lib/anchor/*`
   (no `ChainNotProvisionedError` fallback to the mock), and the anchor
