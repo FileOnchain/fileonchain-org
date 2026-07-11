@@ -5,35 +5,71 @@ architecture or conventions change.
 
 ## What this is
 
-FileOnChain — **one developer interface that creates portable, independently
-verifiable evidence packages across storage and settlement systems** — a pnpm
-workspace monorepo:
+FileOnChain — portable, independently verifiable evidence — organized as
+**four named layers** (never blur them):
 
-- **`apps/web`** — Next.js webapp: uploads (evidence-only by default,
-  optional on-chain or external storage), an explorer, private-cache
-  payments, donations, and a credits dashboard.
+1. **FileOnChain Evidence Protocol** — the neutral, application-independent
+   spec (`docs/protocol/evidence-protocol.md`, implemented in
+   `packages/protocol`). Assumes nothing about files, AI, or chains.
+2. **Agent Evidence Profile** — the first official application profile
+   (`docs/profiles/agent-evidence-v1.md`, `packages/agent-profile`):
+   opinionated AI-agent claims under `org.fileonchain.agent`.
+3. **FileOnChain Cloud** — the hosted commercial product
+   (`docs/product/fileonchain-cloud.md`): hosted API, MCP server,
+   dashboard, billing. Cloud-only concerns never leak into the protocol.
+4. **Reference implementations** — the SDKs, verifier, CLI, adapters, and
+   webapp. They must not define undocumented protocol behavior.
+
+Guiding rule: *the protocol is neutral, the application profile is
+opinionated, the hosted product is convenient.*
+
+The pnpm workspace monorepo:
+
+- **`apps/web`** — Next.js webapp: agent-evidence marketing + creation
+  flow, the public `/verify` page (no account, no wallet), an explorer,
+  private-cache payments, donations, and a credits dashboard.
 - **`packages/`** — the publishable `@fileonchain/*` packages:
-  - `utils/` — `@fileonchain/utils`, the dependency-free core. **Single
-    source of truth** for supported networks and their honest
-    `integrationStatus`, CID validation, the anchor payload vocabulary,
-    the **evidence-package schema** (`evidence.ts` — canonical JSON,
-    signatures/identity, storage + settlement receipts), **manifests and
-    Merkle batching** (`manifest.ts`), a dependency-free `sha256`, and the
-    orchestration helpers the family clients build on.
+  - `protocol/` — `@fileonchain/protocol`, the standalone (zero-dep)
+    Evidence Protocol core: envelope types, canonical JSON, sha256,
+    Merkle, artifact/envelope signing payloads (context-bound: protocol id
+    + version + profile + purpose + scope), envelope digest (canonical
+    envelope minus the `envelope` member), tagged adapter receipts,
+    profile/adapter registries, validation, and `legacy-evidence-v1`
+    migration. Conformance fixtures live in `packages/protocol/fixtures/`.
+    MUST NOT import MCP/API/DB/wallet/framework code.
+  - `agent-profile/` — `@fileonchain/agent-profile`, the Agent Evidence
+    Profile (`org.fileonchain.agent/v1`): run/model/tool-call/approval/
+    policy claims, validation (runId + agentId required), and
+    `buildAgentEvidence`. Registers itself with the protocol on import.
   - `verify/` — `@fileonchain/verify`, the deterministic local verifier:
-    library + `fileonchain-verify` CLI. Validates hashes, signatures
-    (EIP-191, ed25519), Merkle inclusion, and receipts without calling any
-    FileOnChain service. The most important product component — treat its
-    correctness accordingly.
+    **isomorphic** core (EIP-191 via viem, ed25519 via @noble/curves — no
+    node:crypto; the webapp uses it client-side) + the `fileonchain` CLI
+    (`verify` / `migrate` subcommands; `fileonchain-verify` is an alias).
+    Structured results: `valid | valid-with-warnings | incomplete |
+    invalid`, grouped checks, artifact vs envelope signatures reported
+    separately, unknown adapters/profiles reported *unknown* never failed.
+    The most important product component — treat its correctness
+    accordingly.
+  - `utils/` — `@fileonchain/utils`, the dependency-free chain core:
+    network registry with honest `integrationStatus`, CID validation, the
+    anchor payload vocabulary, storage budgets, orchestration helpers —
+    plus the **legacy** `evidence.ts`/`manifest.ts` (the pre-separation
+    `legacy-evidence-v1` format; kept verifiable + migratable, do not
+    extend it — new work targets `packages/protocol`).
   - `sdk-<family>/` ×12 — `@fileonchain/sdk-evm` … `sdk-hedera`, one anchor
     client per chain family. `sdk-evm` also owns the generated ABIs.
-  - `api/` — `@fileonchain/api`, typed client for the hosted HTTP API
-    (`/api/v1/*`, `fok_` key auth).
-  - `sdk/` — `@fileonchain/sdk`, the umbrella: root = utils + EVM ABIs,
-    `./<family>` subpaths re-export the family packages, `./api` re-exports
-    the API client. The webapp depends only on this, via `workspace:*`.
-  - `mcp/` — `@fileonchain/mcp`, stdio MCP server for AI agents (registry
-    lookups + API-backed anchoring; see `packages/mcp/README.md`).
+  - `api/` — `@fileonchain/api`, typed client for the FileOnChain Cloud
+    HTTP API (`/api/v1/*`, `fok_` key auth).
+  - `sdk/` — `@fileonchain/sdk`, the **reference SDK** umbrella: root =
+    utils + EVM ABIs, `./<family>` subpaths for the anchor clients,
+    `./api` for the Cloud client, and the evidence surface —
+    `./protocol`, `./agent-profile`, and `./evidence` (high-level
+    `createEvidence` / `sealAgentRun` / `signEnvelope` /
+    `settlementReceiptFromAnchor`). The webapp depends only on this.
+  - `mcp/` — `@fileonchain/mcp`, stdio MCP server — a **Cloud + SDK
+    integration, not part of the protocol**: local registry/verify tools
+    (including `verify_evidence`, fully in-process) + Cloud-backed
+    anchoring tools behind `FILEONCHAIN_API_KEY`.
 - **`contracts/`** — one directory per runtime (`evm/` Foundry, `aptos/` +
   `sui/` Move, `starknet/` Cairo, `near/` Rust) — see `contracts/README.md`.
   All five are **anchor-only**: free event-carrier writes for the versioned
@@ -89,6 +125,18 @@ There is no unit-test runner for the webapp. **Verify changes with
 `pnpm build`** — it typechecks and lints everything and catches
 server/client boundary errors that `tsc` alone misses.
 
+The protocol layer DOES have tests (vitest) and conformance fixtures —
+run them whenever touching `packages/protocol`, `packages/agent-profile`,
+or `packages/verify`:
+
+```bash
+pnpm --filter @fileonchain/protocol test
+pnpm --filter @fileonchain/verify test     # includes the fixture conformance run
+# Regenerate fixtures ONLY on intentional protocol changes (they are
+# deterministic; a diff means the protocol's bytes changed):
+cd packages/verify && node scripts/generate-fixtures.mjs
+```
+
 Contracts (only when touching them):
 
 ```bash
@@ -143,22 +191,15 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
   `useVisibleChains()`. **To add or change a chain or a deployed address,
   edit `chains.ts` — never hardcode chain data in webapp components** (see
   `docs/chains/checklist.md`).
-- `src/evidence.ts` — the **evidence-package schema v1**
-  (`p: "fileonchain-evidence"`), a core protocol spec: `ArtifactDescriptor`
-  (CID + sha256 + provenance metadata), `EvidenceSignature` /
-  `SignerIdentity` (wallet/organization/agent/human/service kinds, EIP-191 +
-  ed25519 schemes, `onBehalfOf` delegation, `keyStatusUrl`), storage +
-  settlement receipts, `MerkleInclusion`, `canonicalStringify`
-  (deterministic JSON — sorted keys, no whitespace), `signingPayload` /
-  `signingPayloadHash`, `buildEvidencePackage` / `validateEvidencePackage` /
-  `parseEvidencePackage`. The SDK, API, MCP server, and webapp must all use
-  this schema — never fork it locally.
-- `src/manifest.ts` — signed manifests + Merkle batching: one settlement
-  transaction anchors a whole workflow's artifacts (`buildManifest`,
-  `buildMerkleTree`, `verifyMerkleInclusion`, `op: "manifest"` payload with
-  root/count/manifest-hash/session id).
+- `src/evidence.ts` + `src/manifest.ts` — **legacy-evidence-v1**, the
+  pre-separation evidence format (`p: "fileonchain-evidence", v: 1`).
+  Frozen: kept so old packages stay verifiable (`verifyLegacyPackage` in
+  @fileonchain/verify) and migratable (`migrateLegacyEvidence` in
+  @fileonchain/protocol, `fileonchain migrate` CLI). Do not extend —
+  new evidence work targets `packages/protocol`.
 - `src/sha256.ts` — dependency-free synchronous SHA-256 + hex helpers
-  (browser/Node/edge identical).
+  (browser/Node/edge identical; `packages/protocol` carries its own copy
+  so the protocol package stays standalone).
 - `src/types.ts` — `ChainFamily`, `ChainId` (template-literal
   `` `${ChainFamily}:${string}` ``), `CIDRegistryRecord`.
 - `src/anchor.ts` — the chain-agnostic anchoring vocabulary: versioned JSON
@@ -177,14 +218,18 @@ to keep the API surface consistent — don't remove them casually (see Gotchas).
   **last** — indexers rely on that ordering), `runSequentialChunkedAnchor`.
 
 `@fileonchain/verify` (`packages/verify`) — the deterministic local
-verifier: `verifyEvidencePackage` / `verifyEvidenceJson` return a
-`VerificationReport` of named checks (`pass`/`fail`/`skipped`/`unknown`);
-the `fileonchain-verify` CLI wraps them
-(`evidence.json [--artifact <file>] [--online]`). Offline checks are
-deterministic; `--online` confirms EVM settlement receipts against public
-RPCs only. tsup bundles `@fileonchain/utils` into its dist (`noExternal`)
-so the CLI runs standalone; `viem` is a real dependency (EIP-191
-verification + RPC reads).
+verifier: `verifyEvidenceJson` (format auto-detect) / `verifyEnvelope` /
+`verifyLegacyPackage` return a `VerificationReport` — overall status
+`valid | valid-with-warnings | incomplete | invalid`, grouped checks
+(`pass`/`fail`/`warning`/`unknown`/`skipped`) covering subject integrity,
+artifact signatures, claimed identities/delegations, envelope digest +
+envelope signatures, receipts per kind via the adapter registry, and key
+status. CLI: `fileonchain verify <file> [--artifact <bytes>] [--online]
+[--json]` and `fileonchain migrate <legacy> [-o out]`
+(`fileonchain-verify` is a compatible alias). Isomorphic — ed25519 via
+@noble/curves, EIP-191 via viem, no node:crypto — so the webapp's /verify
+page runs the same core in the browser. tsup bundles the workspace deps
+(`noExternal`) so the CLI bins run standalone.
 
 Family clients, one package each (`packages/sdk-<family>`, all twelve), all
 exposing `anchorChunkedFile` with the same progress/receipt shape plus a
@@ -212,9 +257,15 @@ server: read-only registry tools + API-backed anchoring tools (env
 `FILEONCHAIN_API_KEY` / `FILEONCHAIN_API_URL`); its dist bundles the
 workspace deps so `node packages/mcp/dist/index.js` runs from the repo.
 
-`@fileonchain/sdk` (`packages/sdk`) is the umbrella the webapp consumes:
-root entry = utils + the EVM ABIs, `./<family>` subpaths re-export the
-family packages, `./api` re-exports the API client. Wiring conventions
+`@fileonchain/sdk` (`packages/sdk`) is the reference-SDK umbrella the
+webapp consumes: root entry = utils + the EVM ABIs (legacy vocabulary —
+kept for compatibility), `./<family>` subpaths re-export the family
+packages, `./api` the Cloud client, `./protocol` and `./agent-profile`
+the evidence layers, and `./evidence` the high-level DX
+(`createEvidence`, `sealAgentRun`, `signEnvelope`, `subjectFromBytes`,
+`settlementReceiptFromAnchor`, `storageReceipt` — protocol/profile names
+stay behind subpaths so they never collide with the root's legacy
+exports). Wiring conventions
 shared by all packages: tsconfig extends `packages/tsconfig.base.json`;
 `exports` point at `src/*.ts` for the workspace — so **every package the
 umbrella re-exports must be listed in the webapp's `transpilePackages`**
@@ -227,9 +278,12 @@ semver ranges. Repo-level Claude Code skills live in `.claude/skills/`
 
 - **`@/*` path alias** → `apps/web/src/*`. Shared chain types/metadata import
   from `@fileonchain/sdk`; only web-specific code uses `@/...`.
-- **`src/app/`** — App Router. Routes: `/` (upload), `/explorer` (+ `/explorer/[cid]`),
-  `/cache`, `/donations`, `/protocol` (the six protocol layers + local
-  verifier explainer), `/whitepaper`, `/leaderboard` (uploaders only),
+- **`src/app/`** — App Router. Routes: `/` (agent-evidence homepage +
+  creation flow), `/agent-evidence` (product page), `/verify` (public
+  browser verifier — no account, no wallet), `/integrations` (honest
+  statuses), `/protocol` (envelope + layers explainer), `/whitepaper`
+  (documents index), `/explorer` (+ `/explorer/[cid]`), `/cache`,
+  `/donations`, `/leaderboard` (uploaders only),
   `/profile/[address]`, `/login`, and the auth-guarded `/dashboard`
   (+ `logs`, `credits`, `keys`, `byok`, `preferences` subroutes). API routes
   under `app/api/`: the mock trio (`cid`, `search-file`, `upload-fallback`)
@@ -334,22 +388,37 @@ URLs or titles.
 
 ## Language & claims policy
 
-Terminology is part of the protocol's honesty:
+Terminology is part of the protocol's honesty. The standardized terms:
 
-- Say **multi-chain anchoring / multi-system receipts / independently
-  verifiable settlement receipts** — never "cross-chain proof" (no chain
-  verifies another chain's consensus here).
-- An evidence package proves existence, integrity, signing keys, and
-  timing — **never claim it proves truth, legal validity, factual
-  accuracy, or legal authorship**.
+| Say | Never |
+| --- | --- |
+| evidence **envelope** (protocol term; "evidence package" ok user-facing) | — |
+| subject / artifact | "file" as the protocol concept |
+| storage **system** / settlement **system** | storage chain / anchoring chain |
+| multi-system settlement receipts / multi-chain anchoring | cross-chain proof |
+| locally verified evidence | verified claim |
+| FileOnChain Cloud | "the FileOnChain product/v1 product" |
+| reference SDK / reference implementations | "the protocol SDK" |
+| Agent Evidence Profile claims | AI metadata in the generic schema |
+
+- An envelope proves existence, integrity, signing keys, and timing —
+  **never claim it proves truth, legal validity, factual accuracy, or
+  legal authorship**. Signed claims are assertions by the signer.
+- Artifact signatures ≠ envelope signatures: who signed the subject vs
+  who assembled the complete envelope. Report and describe them
+  separately; never collapse verification results into one green
+  "verified".
+- Generic protocol surfaces must stay AI-free: agent semantics live only
+  in the Agent Evidence Profile. Cloud-only fields (DB ids, billing,
+  retention, access rules) must never be inserted into portable envelopes.
 - Durability claims must name their dependency: retrieval works "provided
   the underlying storage history is available"; an indexer is still
-  normally required for efficient CID-to-transaction discovery.
-- Never describe a chain beyond its `integrationStatus`; mocked flows are
-  never "shipped".
+  normally required for efficient discovery.
+- Never describe a chain beyond its `integrationStatus`
+  (`docs/integrations/status.md`); mocked flows are never "shipped".
 - Legacy market vocabulary (FOCAT, validator, jury, challenge, bond,
   slash, governor, timelock, bridge, fee split, verification market) must
-  not reappear outside the archive-branch reference.
+  not reappear outside the archive-branch reference and ADR 0001.
 
 ## Gotchas
 
