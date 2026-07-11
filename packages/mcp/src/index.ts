@@ -170,7 +170,7 @@ server.registerTool(
         .regex(/^[0-9]+$/)
         .optional()
         .describe(
-          "Registered platform id to attribute the anchor to (fee-split rev share); defaults to FileOnChain's platform",
+          "Platform id to attribute the anchor to in the payload; defaults to FileOnChain's platform",
         ),
     },
   },
@@ -194,7 +194,7 @@ server.registerTool(
   {
     title: "Get an anchor job",
     description:
-      "Fetch an anchor job by id (status, cost, per-chain transaction hashes, and the propose/verify verification state with its challenge-window deadline). Requires FILEONCHAIN_API_KEY.",
+      "Fetch an anchor job by id (status, cost, and per-chain transaction hashes). Requires FILEONCHAIN_API_KEY.",
     inputSchema: {
       jobId: z.string(),
       wait: z.boolean().optional().describe("Poll until the job completes or fails (up to 2 minutes)"),
