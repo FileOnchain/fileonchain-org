@@ -18,7 +18,7 @@ export interface CIDPreviewData {
   explorerUrl: string;
   explorerTxPath: string;
   explorerAddressPath: string;
-  status?: "anchored" | "pending" | "missing" | "proposed" | "challenged" | "verified" | "rejected";
+  status?: "anchored" | "pending" | "failed";
 }
 
 interface CIDPreviewPanelProps {
@@ -49,9 +49,9 @@ const CIDPreviewPanel = ({ data }: CIDPreviewPanelProps) => {
   const txUrl = `${data.explorerUrl}${data.explorerTxPath}${data.txHash}`;
   const registryUrl = `${data.explorerUrl}${data.explorerAddressPath}${data.registryAddress}`;
   const statusVariant =
-    data.status === "anchored" || data.status === "verified"
+    data.status === "anchored"
       ? "success"
-      : data.status === "pending" || data.status === "proposed"
+      : data.status === "pending"
         ? "warning"
         : "danger";
 

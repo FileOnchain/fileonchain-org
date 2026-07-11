@@ -14,7 +14,7 @@ export const siteConfig = {
   ),
   title: "FileOnChain — Verifiable Onchain Evidence Packages",
   description:
-    "One developer interface that creates portable, independently verifiable evidence packages across storage and settlement systems — one SDK, API, and MCP server; twelve chain families behind it.",
+    "One developer interface that creates portable, independently verifiable evidence packages across storage and settlement systems — hash, sign, anchor, and verify locally with an open-source verifier. No token required.",
   ogDescription:
     "One developer interface. Portable, independently verifiable evidence packages across storage and settlement systems.",
   twitter: "@fileonchain",

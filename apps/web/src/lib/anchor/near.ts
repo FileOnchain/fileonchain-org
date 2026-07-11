@@ -5,19 +5,16 @@ import type { AnchorRequest } from "./types";
 
 /**
  * NEAR sender — sequential free `anchor_cid` contract calls through the
- * injected `window.near` provider (Sender / Meteor), then a paid
- * `ft_transfer_call` on the FOCAT token for the file CID (tip + bond
- * escrowed via the registry's ft_on_transfer) when the chain is
- * propose-provisioned. Until a registry contract account lands in the SDK
- * chain registry, anchorChunkedFile throws ChainNotProvisionedError and
- * the uploader falls back to the simulated flow.
+ * injected `window.near` provider (Sender / Meteor), with the file-level
+ * anchor last. Until a registry contract account lands in the SDK chain
+ * registry, anchorChunkedFile throws ChainNotProvisionedError and the
+ * uploader falls back to the simulated flow.
  */
 export const sendNearAnchor = async ({
   chain,
   fileCid,
   chunks,
   platformId,
-  tip,
   includeData,
   uri,
   onProgress,
@@ -60,15 +57,7 @@ export const sendNearAnchor = async ({
       accountId: nearAddress,
       callAnchor: (contractId, cid, payload) =>
         sendFunctionCall(contractId, ANCHOR_METHOD, { cid, payload }, "0", "30000000000000"),
-      callMethod: (contractId, method, args, options) =>
-        sendFunctionCall(
-          contractId,
-          method,
-          args,
-          options?.attachedDeposit ?? "0",
-          options?.gas ?? "30000000000000",
-        ),
     },
-    { chainId: chain.id, fileCid, chunks, platformId, tip, includeData, uri, onProgress },
+    { chainId: chain.id, fileCid, chunks, platformId, includeData, uri, onProgress },
   );
 };

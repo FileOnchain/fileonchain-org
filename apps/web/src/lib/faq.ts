@@ -5,16 +5,20 @@
  */
 export const FAQ = [
   {
-    q: "What file types can I upload?",
-    a: "Anything that fits in a browser file input — images, video, JSON, text, binaries. We do not parse or restrict content. Files are split into chunks sized to the storage chain's per-transaction data budget, so any file can ride any storage-capable chain.",
+    q: "What is an evidence package?",
+    a: "A portable JSON document bundling an artifact's CID and SHA-256, the signatures of whoever (or whatever) produced it, storage receipts for where the bytes live, and settlement receipts from the public chains that anchored it. It travels as a file, and the open-source verifier (fileonchain-verify) validates it locally — hashes, signatures, Merkle inclusion, receipts — without calling FileOnChain.",
   },
   {
-    q: "Where are the bytes actually stored?",
-    a: "On-chain, by default: chunk bytes are embedded in the anchor transactions on the storage chain you pick — the anchoring chain itself when it can carry them, or Autonomys, the permanent-storage network suggested for larger files. You can also opt out and anchor proof-only, optionally pointing the anchor at a copy you host elsewhere (IPFS, Auto Drive, any URI). Paid cache nodes can additionally pin encrypted chunks for fast retrieval.",
+    q: "Do I need a token?",
+    a: "No. There is no token anywhere in v1 — no staking, no tips, no governance. Anchoring costs each chain's ordinary transaction fee, and hosted anchoring is paid with account credits (fiat or USDC).",
   },
   {
-    q: "Can I switch chains after anchoring?",
-    a: "Yes — re-write the same root CID on a different chain. The CIDs are content-addressed and remain valid forever, so any new chain that reads them can verify the same file. The dashboard shows which chains currently anchor a given CID.",
+    q: "Are my files stored on-chain?",
+    a: "Only if you choose that. The default mode is evidence-only: hash, signatures, and timestamp — your bytes never leave your custody, which is the right default for agent logs and anything sensitive. You can opt into permanent on-chain storage (Autonomys is the suggested home) or link an external copy you host; either way the package stays verifiable because integrity is bound to hashes, not locations.",
+  },
+  {
+    q: "What does anchoring on several chains actually prove?",
+    a: "Each anchor is an independent, chain-native receipt saying this hash existed at this time on this system — portable evidence that survives any one chain becoming unavailable. It is not a cross-chain proof: no chain verifies another chain's consensus, and we deliberately never claim otherwise.",
   },
   {
     q: "What does the donation flow do?",
@@ -22,6 +26,6 @@ export const FAQ = [
   },
   {
     q: "How does paid private cache differ from free public cache?",
-    a: "Paid cache is encrypted with a key only you (and your sharees) hold. The cache node never sees the bytes in plaintext — it just stores ciphertext for the duration you paid. Public cache is unencrypted and free, intended for non-sensitive archives.",
+    a: "Paid cache is encrypted client-side with a key only you (and your sharees) hold. The cache node never sees the bytes in plaintext — it just stores ciphertext for the duration you paid. Public cache is unencrypted and free, intended for non-sensitive archives. Note that losing your encryption key makes encrypted permanent data unrecoverable.",
   },
 ] as const;

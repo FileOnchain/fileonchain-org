@@ -118,24 +118,12 @@ export const perChunkCost = (est: ChainCostEstimate) => {
   };
 };
 
-/**
- * Per-file verification tip on propose/verify chains: the file-level anchor
- * escrows a FOCAT tip that splits 60/25/15 between validators, the
- * originating platform, and the protocol treasury once the anchor verifies.
- * TODO: replace the mock FOCAT→USD rate with a price feed.
- */
-const PROTOCOL_FAMILY_PREFIXES = ["evm:", "aptos:", "sui:", "starknet:", "near:"];
-export const verificationTipUsd = (chainId: ChainId): number =>
-  PROTOCOL_FAMILY_PREFIXES.some((prefix) => chainId.startsWith(prefix)) ? 0.05 : 0;
-
-/** Total cost for a file with `chunkCount` chunks on `est` (tip included once). */
+/** Total cost for a file with `chunkCount` chunks on `est` — gas only. */
 export const totalCostFor = (est: ChainCostEstimate, chunkCount: number) => {
   const one = perChunkCost(est);
-  const tipUsd = verificationTipUsd(est.chainId);
   return {
-    usd: one.usd * chunkCount + tipUsd,
+    usd: one.usd * chunkCount,
     native: one.native * chunkCount,
-    tipUsd,
   };
 };
 

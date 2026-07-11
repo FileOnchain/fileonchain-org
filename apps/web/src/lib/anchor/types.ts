@@ -11,13 +11,11 @@ export interface AnchorRequest {
   fileCid: string;
   chunks: AnchorChunk[];
   /**
-   * Originating platform id for the propose/verify fee split. Defaults to
-   * NEXT_PUBLIC_FILEONCHAIN_PLATFORM_ID, then the chain's
-   * `defaultPlatformId`, then platform 1 (FileOnChain).
+   * Originating platform id carried in the anchor payload (attribution
+   * only). Defaults to NEXT_PUBLIC_FILEONCHAIN_PLATFORM_ID, then
+   * platform 1 (FileOnChain).
    */
   platformId?: string;
-  /** FOCAT tip in base units; contract families default to the on-chain minTip. */
-  tip?: bigint;
   /**
    * Embed the chunk bytes in the anchor payloads — on-chain storage.
    * Defaults to the chain's `embedsChunkData` flag (Autonomys stores by

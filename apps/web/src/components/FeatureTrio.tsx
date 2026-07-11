@@ -16,31 +16,31 @@ const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 
 const FEATURES = [
   {
-    Icon: FiLock,
-    eyebrow: "Permanence",
-    title: "Anchored forever",
-    body:
-      "Once the registry tx is included in a block, the chunk's CID and its tx hash are as durable as the chain itself. No central pinning service that can disappear overnight.",
-    iconBg: "bg-success/10 text-success",
-    indicator: "live",
-  },
-  {
     Icon: FiInbox,
-    eyebrow: "Verifiability",
+    eyebrow: "Integrity",
     title: "Content-addressed",
     body:
-      "Each chunk's CID is a SHA-256 of its bytes. Retrieval proves you're getting the exact bytes you anchored — bit-for-bit, no surprises.",
+      "Every artifact is bound to a SHA-256 digest and a CIDv1. Anyone holding the bytes can recompute the hash and know, bit-for-bit, that nothing changed — wherever the bytes came from.",
     iconBg: "bg-info/10 text-info",
     indicator: "sha-256",
   },
   {
-    Icon: FiRepeat,
-    eyebrow: "Choice",
-    title: "Pick one chain — or several",
+    Icon: FiLock,
+    eyebrow: "Attribution",
+    title: "Signed by whoever made it",
     body:
-      "Anchor the file to the chain you want. One chain is enough to retrieve. You can repeat the anchor on more chains for redundancy — each chain charges its own gas.",
+      "Agent keys, wallets, and organization keys sign the evidence — including an agent signing on behalf of an organization. A hash says what; signatures say who; settlement receipts say when.",
+    iconBg: "bg-success/10 text-success",
+    indicator: "eip-191 · ed25519",
+  },
+  {
+    Icon: FiRepeat,
+    eyebrow: "Portability",
+    title: "Receipts that outlive us",
+    body:
+      "Anchor on one public chain or several — each receipt is an independent, chain-native attestation anyone can check. The package is a file; the open verifier validates it without calling FileOnChain.",
     iconBg: "bg-primary/10 text-primary",
-    indicator: "10 chains",
+    indicator: "multi-system receipts",
   },
 ] as const;
 
@@ -51,7 +51,7 @@ const FeatureTrio = () => (
         What you get
       </p>
       <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-        Three guarantees every file inherits.
+        Three guarantees every evidence package carries.
       </h2>
     </header>
 

@@ -34,12 +34,9 @@ const reportAnchoredUpload = (request: AnchorRequest, receipt: ChunkedAnchorRece
   });
 };
 
-/** Platform attribution for the propose/verify fee split (25% of the tip). */
+/** Platform attribution carried in the anchor payload. */
 const defaultPlatformId = (request: AnchorRequest): string =>
-  request.platformId ??
-  process.env.NEXT_PUBLIC_FILEONCHAIN_PLATFORM_ID ??
-  request.chain.defaultPlatformId ??
-  "1";
+  request.platformId ?? process.env.NEXT_PUBLIC_FILEONCHAIN_PLATFORM_ID ?? "1";
 
 /**
  * Anchor a chunked file on the request's chain with real transactions,

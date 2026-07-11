@@ -13,7 +13,6 @@ import ChunkProgressList from "@/components/upload/ChunkProgressList";
 import CostEstimatePanel from "@/components/upload/CostEstimatePanel";
 import StorageSelector from "@/components/upload/StorageSelector";
 import PaymentMethodSelector from "@/components/upload/PaymentMethodSelector";
-import FocatTopUp from "@/components/upload/FocatTopUp";
 import UploadManifest from "@/components/upload/UploadManifest";
 import UploadAdvisor, { type AdvisorApplyPayload } from "@/components/upload/UploadAdvisor";
 import { useChain } from "@/hooks/useChain";
@@ -297,19 +296,13 @@ const FileUploader = () => {
             {/* 03 · PAYMENT --------------------------------------------- */}
             <section>
               <StepHeader n="03" label="Who pays" />
-              <div className="space-y-4">
-                <PaymentMethodSelector
-                  value={paymentMethod}
-                  byokKeyId={byokKeyId}
-                  chunkCount={Math.max(1, cids.length)}
-                  onChange={setPaymentMethod}
-                  onByokKeyChange={setByokKeyId}
-                />
-                {/* FOCAT enters the flow only where the wallet path requires
-                    it: PAYG on a propose/verify chain escrows tip + bond from
-                    the user's wallet. Credits users never see the token. */}
-                {paymentMethod === "payg" && <FocatTopUp />}
-              </div>
+              <PaymentMethodSelector
+                value={paymentMethod}
+                byokKeyId={byokKeyId}
+                chunkCount={Math.max(1, cids.length)}
+                onChange={setPaymentMethod}
+                onByokKeyChange={setByokKeyId}
+              />
             </section>
 
             {/* 04 · COST ------------------------------------------------ */}

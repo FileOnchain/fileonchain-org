@@ -15,7 +15,6 @@ const TYPE_LABELS: Record<ActivityType, { label: string; variant: BadgeVariant }
   wallet_linked: { label: "Wallet linked", variant: "primary" },
   wallet_unlinked: { label: "Wallet unlinked", variant: "default" },
   credit_deposit: { label: "Deposit", variant: "success" },
-  focat_pack_purchase: { label: "FOCAT pack", variant: "success" },
   credit_debit: { label: "Debit", variant: "default" },
   upload_anchor: { label: "Anchor", variant: "accent" },
   api_call: { label: "API call", variant: "outline" },

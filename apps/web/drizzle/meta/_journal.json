@@ -43,6 +43,13 @@
       "when": 1783539653807,
       "tag": "0005_useful_hellion",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783773815997,
+      "tag": "0006_fuzzy_magus",
+      "breakpoints": true
     }
   ]
 }

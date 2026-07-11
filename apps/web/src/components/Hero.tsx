@@ -7,7 +7,7 @@ import ChunkFlowVisual from "@/components/ChunkFlowVisual";
 import ChainBadge from "@/components/ui/ChainBadge";
 import MagneticButton from "@/components/MagneticButton";
 import WordReveal from "@/components/WordReveal";
-import LiveLedgerTicker, { StatCounter, compactNumber } from "@/components/LiveLedgerTicker";
+import LiveLedgerTicker, { StatCounter } from "@/components/LiveLedgerTicker";
 import Link from "next/link";
 import { ACTIVE_CHAINS } from "@fileonchain/sdk";
 
@@ -37,8 +37,8 @@ const EASE_OUT = [0.16, 1, 0.3, 1] as const;
  */
 const Hero = ({
   activeChain,
-  // "Chains live" means open for anchoring — planned entries don't count.
-  chainCount = ACTIVE_CHAINS.filter((c) => !c.testnet).length,
+  // "Networks live" means open for anchoring — roadmap adapters don't count.
+  chainCount = ACTIVE_CHAINS.length,
 }: HeroProps) => (
   <section className="relative w-full">
     <div className="grid w-full items-center gap-10 md:gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
@@ -65,7 +65,7 @@ const Hero = ({
         {/* Headline — word-by-word reveal, no italic, no gradient */}
         <WordReveal
           as="h1"
-          text={`Upload files permanently.\nPin them onchain.`}
+          text={`Turn any artifact into\nverifiable evidence.`}
           className="text-balance whitespace-pre-line text-[44px] font-bold leading-[0.98] tracking-tight md:text-6xl lg:text-[72px] text-foreground"
         />
 
@@ -76,10 +76,12 @@ const Hero = ({
           transition={{ duration: 0.5, delay: 0.9, ease: EASE_OUT }}
           className="max-w-xl text-pretty text-base leading-relaxed text-muted md:text-lg"
         >
-          Pick a chain, drop a file. We split it into 64&nbsp;KB chunks, send each chunk
-          as a separate transaction, and write the tx-hash <span className="font-semibold text-foreground">into
-          the registry contract</span> under each chunk&apos;s CID. The platform takes a
-          small fee at contract level — that&apos;s it. The cost depends on the chain&apos;s gas.
+          One developer interface hashes what your agent or workflow produced,
+          signs it, anchors it on public chains, and hands back a{" "}
+          <span className="font-semibold text-foreground">portable evidence package</span>{" "}
+          — verifiable by anyone with the open-source local verifier, no
+          FileOnChain account in the loop. Storage is optional; hash-only is
+          the default.
         </motion.p>
 
         {/* CTAs — magnetic primary + ghost outline */}
@@ -127,20 +129,18 @@ const Hero = ({
         >
           <StatCounter
             value={chainCount}
-            label="Chains live"
-            hint="Ethereum · Base · Auto EVM"
+            label="Networks live"
+            hint="Autonomys · Solana · EVM testnets"
           />
           <StatCounter
-            value={4821043}
-            format={compactNumber}
-            label="Files anchored"
-            hint="Across every runtime"
+            value={12}
+            label="Family adapters"
+            hint="One interface in front"
           />
           <StatCounter
-            value={99}
-            suffix=".9%"
-            label="Uptime · 30d"
-            hint="Anchor pipeline"
+            value={3}
+            label="Storage modes"
+            hint="Evidence-only by default"
           />
         </motion.div>
 

@@ -17,30 +17,30 @@ const STEPS = [
   {
     n: "01",
     Icon: FiLayers,
-    title: "Split & hash",
+    title: "Hash & describe",
     body:
-      "We slice your file into 64KB chunks and SHA-256 each one. The chunks are linked so the root CID commits to the whole file, in order. 64KB is small enough to fit any chain's tx payload, large enough to keep tx count down.",
+      "Your artifact is hashed client-side — SHA-256 and a CIDv1 — with provenance metadata (model, run id, tool versions) alongside. Batching many artifacts? A signed manifest and a Merkle root reduce a whole workflow to one hash.",
   },
   {
     n: "02",
-    Icon: FiLink,
-    title: "Send as transactions",
+    Icon: FiShield,
+    title: "Sign it",
     body:
-      "On the chain you picked, each chunk is sent as a separate transaction. The chunk bytes go in the tx calldata — every chunk is its own on-chain write. Number of transactions = number of chunks.",
+      "An agent key, a wallet, or an organization key signs the canonical descriptor — including delegated signing, where an agent signs on behalf of an organization. Signatures answer who; the next step answers when.",
   },
   {
     n: "03",
-    Icon: FiShield,
-    title: "Register in the contract",
+    Icon: FiLink,
+    title: "Anchor it",
     body:
-      "The registry smart contract takes each tx hash and stores it against the chunk's CID. The platform charges a small fee at the contract level — paid once per chunk, in the chain's native token.",
+      "The hash (or Merkle root) is written to the public chains you choose, for the chain's ordinary transaction fee — no token, no extra economics. Storing the actual bytes on-chain is optional; hash-only is the default.",
   },
   {
     n: "04",
     Icon: FiSearch,
-    title: "Retrieve from one chain",
+    title: "Hand over the package",
     body:
-      "To rebuild the file you only need one chain — read the chunk CIDs from the registry, fetch the chunks by their tx hashes, verify, and reassemble. Anchoring the same file on a second chain is optional, and pays the chain's gas again.",
+      "Out comes one portable evidence package: hashes, signatures, storage receipts, settlement receipts. Anyone can validate it locally with the open-source verifier — fileonchain-verify evidence.json — without trusting us.",
   },
 ] as const;
 
@@ -54,7 +54,7 @@ const HowItWorks = () => (
           The pipeline
         </p>
         <h2 className="text-balance text-3xl font-bold tracking-tight md:text-4xl text-foreground">
-          Four steps from file to onchain.
+          Four steps from artifact to evidence.
         </h2>
       </div>
       <p className="max-w-sm text-sm text-muted">

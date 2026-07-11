@@ -11,22 +11,14 @@ interface StatusPillProps {
 
 /**
  * StatusPill — colored badge used by the explorer to communicate an
- * anchor's on-chain state. Settled states are green (verified — the
- * challenge window closed and fees were distributed — and plain anchored
- * on memo chains), in-flight states are amber (proposed inside its
- * challenge window, or a plain pending anchor), and bad states are red
- * (challenged by a counter-bond, rejected by a jury or CID race, or
- * missing entirely). The shape is identical across surfaces so users
- * learn the codes.
+ * anchor's on-chain state. Landed anchors are green, in-flight sends are
+ * amber, and failed sends are red. The shape is identical across surfaces
+ * so users learn the codes.
  */
 const STATUS_VARIANTS: Record<StatusPillProps["status"], "success" | "warning" | "danger"> = {
   anchored: "success",
-  verified: "success",
   pending: "warning",
-  proposed: "warning",
-  challenged: "danger",
-  rejected: "danger",
-  missing: "danger",
+  failed: "danger",
 };
 
 const StatusPill = ({ status, size = "sm" }: StatusPillProps) => {

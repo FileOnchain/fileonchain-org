@@ -89,8 +89,8 @@ const Footer = () => (
           </Link>
           <p className="max-w-xs text-sm leading-relaxed text-muted">
             One developer interface for portable, independently verifiable
-            evidence packages — {CHAIN_FAMILIES.length} chain families behind
-            it, from EVM and Substrate to Cardano, TON, and Hedera.
+            evidence packages — live on Autonomys and Solana today, with{" "}
+            {CHAIN_FAMILIES.length} chain-family adapters in the SDK.
           </p>
           <div className="flex items-center gap-3">
             {ORG_SOCIALS.map(({ href, label, Icon }) => (

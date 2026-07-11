@@ -4,7 +4,7 @@ import { useWalletStates } from "@/states/wallet";
 
 /**
  * Chain-aware EVM client helpers shared by the wallet-interactive flows
- * (cache payments, donations, staking). Mirrors the pattern in
+ * (cache payments, donations). Mirrors the pattern in
  * lib/anchor/evm.ts: viem is dynamic-imported so it stays out of the client
  * bundle until a flow actually needs it, the wallet handle comes from
  * useWalletStates, and the injected wallet is moved onto the target chain
