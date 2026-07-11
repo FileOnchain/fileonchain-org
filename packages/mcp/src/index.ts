@@ -14,15 +14,20 @@ import {
   type ChainFamily,
   type ChainId,
 } from "@fileonchain/utils";
+import { verifyEvidenceJson } from "@fileonchain/verify";
 
 /**
- * FileOnChain MCP server (stdio).
+ * FileOnChain MCP server (stdio) — a FileOnChain Cloud + reference-SDK
+ * integration, not part of the Evidence Protocol itself.
  *
- * Read-only tools run locally off the @fileonchain/utils registry. Anchoring
- * and account tools call the hosted HTTP API and need FILEONCHAIN_API_KEY
- * (a dashboard `fok_…` key) in the environment — no private keys ever live
- * here. FILEONCHAIN_API_URL overrides the API origin for self-hosted
- * deployments.
+ * Tool classes, honestly separated:
+ * - Local tools (registry lookups, CID/payload parsing, `verify_evidence`)
+ *   run entirely in-process — nothing is sent anywhere.
+ * - Hosted tools (anchoring, jobs, credits) call the FileOnChain Cloud
+ *   HTTP API and need FILEONCHAIN_API_KEY (a dashboard `fok_…` key). They
+ *   are hash-only: artifact bytes never leave the caller. No private keys
+ *   ever live here; delegated execution is Cloud's, verification is yours.
+ * FILEONCHAIN_API_URL overrides the API origin for self-hosted deployments.
  */
 
 const server = new McpServer({ name: "fileonchain", version: "0.1.0" });
@@ -202,6 +207,40 @@ server.registerTool(
   },
   async ({ jobId, wait }) =>
     runApiTool((client) => (wait ? client.waitForJob(jobId) : client.getJob(jobId))),
+);
+
+server.registerTool(
+  "verify_evidence",
+  {
+    title: "Verify an evidence envelope",
+    description:
+      "Deterministic LOCAL verification of a FileOnChain evidence envelope (or legacy package): schema, canonical encoding, artifact and envelope signatures, Merkle inclusion, and receipt structure. Runs entirely in-process — no FileOnChain service is called; optional online receipt confirmation talks only to public RPC endpoints. Returns the structured report (valid / valid-with-warnings / incomplete / invalid).",
+    inputSchema: {
+      evidenceJson: z.string().describe("The evidence envelope or legacy package, as JSON text"),
+      subjectSha256Bytes: z
+        .string()
+        .optional()
+        .describe("Base64 of the subject/artifact bytes, to also check content integrity"),
+      online: z
+        .boolean()
+        .optional()
+        .describe("Also confirm settlement receipts against public RPC endpoints (default false)"),
+    },
+  },
+  async ({ evidenceJson, subjectSha256Bytes, online }) => {
+    try {
+      const subjectBytes = subjectSha256Bytes
+        ? Uint8Array.from(Buffer.from(subjectSha256Bytes, "base64"))
+        : undefined;
+      const report = await verifyEvidenceJson(evidenceJson, {
+        subjectBytes,
+        checkReceiptsOnline: online ?? false,
+      });
+      return json(report);
+    } catch (error) {
+      return toolError(error instanceof Error ? error.message : String(error));
+    }
+  },
 );
 
 server.registerTool(

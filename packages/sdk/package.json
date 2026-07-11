@@ -1,7 +1,7 @@
 {
   "name": "@fileonchain/sdk",
   "version": "0.1.0",
-  "description": "Anchor file and folder CIDs on-chain with the FileOnChain contracts — supported networks, contract addresses, ABIs, and chain clients.",
+  "description": "The FileOnChain reference SDK \u2014 evidence creation and agent-run sealing on the FileOnChain Evidence Protocol, plus the chain registry, anchor clients per family, and the hosted API client.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -27,7 +27,10 @@
     "./cardano": "./src/cardano.ts",
     "./ton": "./src/ton.ts",
     "./hedera": "./src/hedera.ts",
-    "./api": "./src/api.ts"
+    "./api": "./src/api.ts",
+    "./protocol": "./src/protocol.ts",
+    "./agent-profile": "./src/agent-profile.ts",
+    "./evidence": "./src/evidence.ts"
   },
   "publishConfig": {
     "access": "public",
@@ -101,6 +104,21 @@
         "types": "./dist/api.d.ts",
         "import": "./dist/api.js",
         "require": "./dist/api.cjs"
+      },
+      "./protocol": {
+        "types": "./dist/protocol.d.ts",
+        "import": "./dist/protocol.js",
+        "require": "./dist/protocol.cjs"
+      },
+      "./agent-profile": {
+        "types": "./dist/agent-profile.d.ts",
+        "import": "./dist/agent-profile.js",
+        "require": "./dist/agent-profile.cjs"
+      },
+      "./evidence": {
+        "types": "./dist/evidence.d.ts",
+        "import": "./dist/evidence.js",
+        "require": "./dist/evidence.cjs"
       }
     }
   },
@@ -123,7 +141,9 @@
     "@fileonchain/sdk-sui": "workspace:^",
     "@fileonchain/sdk-ton": "workspace:^",
     "@fileonchain/sdk-tron": "workspace:^",
-    "@fileonchain/utils": "workspace:^"
+    "@fileonchain/utils": "workspace:^",
+    "@fileonchain/protocol": "workspace:^",
+    "@fileonchain/agent-profile": "workspace:^"
   },
   "peerDependencies": {
     "@polkadot/api": ">=15",
