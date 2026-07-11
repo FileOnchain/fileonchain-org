@@ -514,6 +514,25 @@ importers:
         specifier: ^5
         version: 5.9.3
 
+  packages/verify:
+    dependencies:
+      '@fileonchain/utils':
+        specifier: workspace:^
+        version: link:../utils
+      viem:
+        specifier: ^2.53.1
+        version: 2.53.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+    devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.43
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.16)(tsx@4.23.0)(typescript@5.9.3)(yaml@2.9.0)
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
 packages:
 
   '@0no-co/graphql.web@1.3.2':
