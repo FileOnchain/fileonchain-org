@@ -1,8 +1,8 @@
 # FileOnChain
 
-## Permanent on-chain file storage with cross-chain proofs
+## One developer interface for portable, independently verifiable evidence packages across storage and settlement systems
 
-**White paper · Version 1.0 · July 2026**
+**White paper · Version 1.1 · July 2026**
 
 Marc-Aurèle Besner — [fileonchain.org](https://fileonchain.org) —
 [github.com/FileOnchain](https://github.com/FileOnchain)
@@ -11,105 +11,143 @@ Marc-Aurèle Besner — [fileonchain.org](https://fileonchain.org) —
 
 ## Abstract
 
-FileOnChain is an open protocol for storing files on public blockchains and
-proving them everywhere. A file is split into chunks sized to a chain's
-per-transaction budget, and the chunk bytes themselves are embedded in
-anchor transactions on a **storage chain** the user chooses — the chain they
-were anchoring on anyway when it can carry data, or Autonomys, a
-permanent-storage network, suggested for anything large. The file is then
-**anchored** — its content identifier (CID) committed with a pointer to the
-stored copy — on any number of the twelve supported chain families, from EVM
-and Substrate to Cardano, TON, and Hedera, using one versioned payload
-vocabulary that any indexer can read back regardless of chain. On chains
-with smart-contract runtimes, anchors graduate from timestamps to *verified
-claims* through an optimistic verification market: a proposer escrows a
-token tip and bond, the claim survives a 24-hour challenge window policed by
-staked validators, and the tip is split between the validators who secure
-the market, the platform that originated the anchor, and a
-community-governed treasury. Users who already host their bytes elsewhere
-can opt out of on-chain storage and point their anchors at any external
-location. The entire stack — contracts on five runtimes, twelve TypeScript
-clients, a hosted API, and an MCP server for AI agents — is open source
-under the MIT license.
+FileOnChain is one developer interface — a TypeScript SDK, a hosted API, and
+an MCP server for AI agents — that turns a file or record into an **evidence
+package**: a portable bundle of its content identifier (CID), versioned
+anchor payloads, and transaction receipts on the public settlement systems
+the caller chooses. Anyone holding the package can verify it independently
+against public infrastructure — recompute the CID from the bytes, look up
+the receipts on any node or explorer, decode the payloads with an open
+vocabulary — without trusting FileOnChain or any other service. Behind the
+interface, one payload format is written identically across twelve chain
+families, from EVM and Substrate to Cardano, TON, and Hedera; that breadth
+is an implementation detail the integrator never has to manage. When the
+use case genuinely wants the bytes on-chain, the same interface embeds
+chunk data in the anchors on a storage-capable chain (Autonomys, a
+permanent-storage network, is the suggested home); callers who host bytes
+elsewhere anchor proof-only and point at their copy. Version 1 is
+deliberately narrow: it ships anchoring, evidence packages, optional
+on-chain storage, and retrieval — and it does **not** ship the staked
+validator market, dispute juries, token bridges, or token governance, which
+are documented as a staged roadmap and previewed on testnets only. The
+entire stack is open source under the MIT license.
 
 ---
 
 ## 1. Motivation
 
-The web forgets. Links rot, platforms shut down, files are silently edited,
-and there is rarely a way to prove that a document existed in a particular
-form at a particular time — let alone to still *retrieve* it years later.
-Public blockchains are the most durable, tamper-evident storage medium ever
-deployed, yet using them for files remains fragmented:
+The web forgets, and evidence doesn't travel. Links rot, platforms shut
+down, files are silently edited, and there is rarely a way to prove that a
+record existed in a particular form at a particular time — let alone a way
+to hand that proof to an auditor, a counterparty, or a court and have them
+check it themselves. Public blockchains are the most durable,
+tamper-evident timestamping medium ever deployed, yet using them for
+evidence remains fragmented:
 
-- **Files don't actually live on chain.** Most "on-chain storage" projects
-  write a hash and store the bytes somewhere else — a pinning service, a
-  gateway, a company server. When that host disappears, the hash proves a
-  file existed that nobody can read anymore. A protocol named FileOnChain
-  should put the file on the chain.
-- **Every chain is a silo.** Bytes stored via one ecosystem's conventions
-  are invisible to tooling built for another; each chain reinvents its own
-  ad-hoc format for both data and proofs.
-- **Proofs are unverified.** A transaction proves *someone wrote a hash at
-  a time* — it says nothing about whether the claim is well-formed,
-  attributable, or worth trusting. No economic layer puts skin in the game
-  behind it.
+- **Receipts are not portable.** A notarization from one service is a row
+  in that service's database, verified through that service's endpoint.
+  When the service changes or disappears, so does the ability to verify.
+- **Every chain is a silo.** A hash written via one ecosystem's conventions
+  is invisible to tooling built for another; each chain reinvents its own
+  ad-hoc format, and each integration is a new project.
+- **Integration cost lands on the developer.** Teams that just want
+  "tamper-evident proof of this record" end up evaluating wallets, RPC
+  providers, and payload formats per chain — complexity that has nothing to
+  do with their product.
 
-FileOnChain addresses all three. It **stores the file on chain by
-default** — chunk bytes embedded in the same anchor transactions that prove
-it, on whichever supported chain the user picks as the storage home. It
-defines **one payload vocabulary** for data and proofs that works
-identically across twelve chain families, so anchors on every other chain
-can point back at the stored copy. And it adds an **optimistic verification
-protocol** that turns anchors into economically backed claims on
-contract-capable chains.
+FileOnChain addresses all three with one narrow product: a single
+developer interface that produces **evidence packages** — self-contained,
+vendor-independent, verifiable by anyone against public infrastructure —
+and one payload vocabulary that makes the same evidence readable on every
+supported settlement system.
 
-## 2. Design principles
+## 2. Who FileOnChain serves — and who it does not
 
-1. **The chain is the storage medium.** By default the file's bytes are
-   written into the chain's own history — no pinning service, no canonical
-   host, no company that can turn it off. Retrieval needs nothing but a
-   node (or archive) of the storage chain.
-2. **The user picks where bytes live.** Any storage-capable chain can be
-   the file's home. The anchoring chain is the default; Autonomys — a
-   network purpose-built for permanent data storage, whose anchors embed
-   bytes natively — is the suggested home for medium and large files, where
-   it is cheapest. Users who already host bytes elsewhere opt out and link
-   their copy instead.
-3. **Content addressing over location addressing.** Files are identified by
-   CIDv1 hashes. A CID is valid forever and verifiable by anyone holding
-   the bytes, wherever they were found.
+Different customers need very different things from "proof". Version 1 is
+scoped honestly against those needs:
+
+- **Developers and platform builders — the primary customer.** What they
+  need is a simple API and SDK, not a survey of twelve ecosystems. The
+  interface is one call: hand it bytes or a CID, get back an evidence
+  package. Which chains sit behind that call is configuration, not
+  homework — the twelve-family support exists so the integrator never has
+  to migrate, not so they have to choose twelve times.
+- **AI-agent platforms — the primary early use case.** Agents need
+  tamper-evident action logs and reproducible evidence of what they did and
+  when. The right shape is anchoring the *hash* of each log segment or
+  decision record as it is produced — not replicating every artifact across
+  chains. Evidence packages are exactly that: cheap, per-event,
+  independently checkable.
+- **Legal and compliance teams — served through integrators, with the
+  boundary stated plainly.** An anchor proves that specific content existed
+  at a specific time, and its integrity ever since. It does **not**
+  establish identity, authorship, signature, retention policy, or
+  admissibility — those come from the systems layered on top (e-signature,
+  identity providers, records management). The evidence package is designed
+  to slot into those systems as the integrity layer, not to replace them.
+- **NFT and media platforms.** Supported where genuinely-on-chain media is
+  the point of the product. Where a simpler storage option fits, use it —
+  FileOnChain does not pretend to be the cheapest place to put a JPEG.
+- **Researchers and archives.** Long-term preservation and public
+  retrieval are what the donation-funded public cache and the on-chain
+  storage path are for. This is a public-goods commitment, not a
+  commercial pillar.
+- **Ordinary consumers — not the v1 audience.** Permanent public
+  blockchain storage is the wrong default for personal files; consumers
+  need privacy, recovery, and Dropbox-grade usability. Consumer products
+  may be built on this interface by others; FileOnChain itself does not
+  sell to consumers in v1.
+
+## 3. Design principles
+
+1. **One interface, many systems.** The integrator writes to one SDK/API
+   surface with one payload vocabulary and one receipt shape. Chains are
+   configuration behind it. Supporting twelve families is FileOnChain's
+   maintenance burden, never the caller's.
+2. **Evidence must outlive the service.** An evidence package is complete
+   in itself: the CID, the payloads, the receipts. Verifying one needs
+   public infrastructure only — a node or explorer of the settlement chain
+   and an open decoding vocabulary — never a FileOnChain endpoint.
+3. **Content addressing over location addressing.** Files and records are
+   identified by CIDv1 hashes. A CID is valid forever and verifiable by
+   anyone holding the bytes, wherever they were found.
 4. **Chain-agnostic by construction.** The payload written on-chain is
    byte-identical on every family. Chains differ only in the transaction
    envelope — a contract call, a remark, a memo, transaction metadata, or a
    consensus message — and in how many bytes one transaction can carry.
-5. **Optimistic verification.** Most anchors are honest, so the fast path
-   is cheap: propose, wait out a challenge window, finalize. Disputes are
-   the expensive exception, resolved by juries drawn from staked
-   validators.
-6. **Open everything.** Contracts, SDKs, the webapp, the API surface, and
+5. **Storage is opt-in, not the point.** Anchoring proves; storage
+   preserves. The interface stores bytes on-chain when the use case wants
+   it and anchors proof-only when it doesn't — most evidence use cases
+   don't.
+6. **Ship the narrow thing first.** v1 contains no token requirement, no
+   staking, no governance vote. Economic layers are roadmap (§8), added
+   only if and where demand proves them out.
+7. **Open everything.** Contracts, SDKs, the webapp, the API surface, and
    this document are MIT-licensed and developed in the open.
 
-## 3. System overview
+## 4. The evidence package
 
-### 3.1 Content addressing and chunking
+### 4.1 What a package contains
 
-A file (or folder — a folder is handled exactly like a file, via the CID of
-its DAG root) is processed client-side:
+Producing evidence for a file (or folder — a folder is handled exactly like
+a file, via the CID of its DAG root) yields a portable bundle:
 
-1. The bytes are split into chunks **sized to the storage chain's
-   per-transaction data budget** (§4.2) — 64 KiB where the chain allows it,
-   smaller where the transport is tighter.
-2. Each chunk is hashed with SHA-256 and encoded as a **CIDv1**.
-3. Chunk CIDs are linked into a forward-chained sequence — each chunk
-   anchor names the CID of the next — and the file itself is identified by
-   its root CID.
+- **The CID** — a CIDv1 over SHA-256, recomputable by anyone holding the
+  bytes.
+- **The anchor payloads** — the versioned JSON documents written on-chain
+  (§4.2), identical on every family.
+- **The receipts** — for each settlement system used: chain id,
+  transaction hash(es), and the block/timestamp the chain assigned.
+- **Optionally, a storage URI** — where the bytes live (§4.4), on-chain or
+  external.
 
-Hashing and slicing happen in the browser or the caller's own process; for
-proof-only anchors the raw bytes never leave the uploader's machine, and
-for storage the bytes go directly from the user's wallet to the chain.
+Verification is mechanical and needs no permission: recompute the CID from
+the bytes, fetch the referenced transactions from any public node or
+explorer of each chain, decode the payloads with the open vocabulary, and
+check that the CIDs match. The package is a file; hand it to whoever needs
+to check it.
 
-### 3.2 The anchor payload
+### 4.2 The anchor payload
 
 Every anchor — data-carrying or proof-only, on every chain — is the same
 versioned JSON document, identified by the protocol tag
@@ -138,13 +176,13 @@ chain is the storage home:
 | `op` | `"anchor"` | Operation |
 | `cid` | string | CIDv1 of the file or folder DAG root |
 | `sha256` | string, optional | SHA-256 (hex) of the raw content |
-| `uri` | string, optional | Where the bytes live (§3.3) |
+| `uri` | string, optional | Where the bytes live (§4.4) |
 | `pid` | string, optional | Originating platform id (integrator attribution) |
 
 Three properties follow from this design:
 
-- **The file is reconstructible from the chain alone.** On the storage
-  chain, walking the chunk trail (`fileCid` + `idx`/`next` ordering) and
+- **The file is reconstructible from the chain alone** when stored
+  on-chain: walking the chunk trail (`fileCid` + `idx`/`next` ordering) and
   base64-decoding each `d` field rebuilds the file, and every chunk's CID
   verifies its bytes. No off-chain index is required.
 - **One indexer reads every chain.** `parseAnchorPayload` decodes an anchor
@@ -154,7 +192,23 @@ Three properties follow from this design:
   originating platform on every family — including memo-only chains with no
   contract to enforce it.
 
-### 3.3 Storage URIs — proofs point at the bytes
+### 4.3 Chunking, for storage
+
+When bytes are stored on-chain, the file is processed client-side:
+
+1. The bytes are split into chunks **sized to the storage chain's
+   per-transaction data budget** (§5.2) — 64 KiB where the chain allows it,
+   smaller where the transport is tighter.
+2. Each chunk is hashed with SHA-256 and encoded as a **CIDv1**.
+3. Chunk CIDs are linked into a forward-chained sequence — each chunk
+   anchor names the CID of the next — and the file itself is identified by
+   its root CID.
+
+Hashing and slicing happen in the browser or the caller's own process; for
+proof-only anchors the raw bytes never leave the caller's machine, and for
+storage the bytes go directly from the user's wallet to the chain.
+
+### 4.4 Storage URIs — evidence points at the bytes
 
 When the bytes live on one chain and proofs on others, every file-level
 anchor carries a `uri` naming the storage home:
@@ -165,20 +219,20 @@ fileonchain://<chainId>/<fileCid>      e.g. fileonchain://substrate:autonomys-ma
 
 A reader who finds the anchor on, say, Base resolves the URI to the storage
 chain, walks the chunk trail there, and verifies the rebuilt bytes against
-the anchored CID. Users who opted out of on-chain storage may set the `uri`
-to any external location instead — `ipfs://…`, an Auto Drive CID, `https://…`
-— or omit it entirely for a pure existence proof.
+the anchored CID. Callers who host bytes elsewhere set the `uri` to any
+external location instead — `ipfs://…`, an Auto Drive CID, `https://…` —
+or omit it entirely for a pure existence proof.
 
-### 3.4 Anchoring order
+### 4.5 Anchoring order
 
 Chunk anchors are always written **first**, and the file-level anchor
 **last**. Indexers rely on this ordering: when a file-level anchor appears,
 its chunk trail — and, on the storage chain, the file's full data — is
 already on-chain, so the file record can be finalized in a single pass.
 
-## 4. Chain families, transports, and storage budgets
+## 5. Chain families, transports, and storage budgets
 
-### 4.1 Transports
+### 5.1 Transports
 
 FileOnChain v1 spans **twelve chain families** — at the time of writing, 55
 registered networks (28 mainnets and 27 testnets). Each family anchors
@@ -186,20 +240,20 @@ through the most native channel its runtime offers:
 
 | Family | Transport | Deployment required |
 | --- | --- | --- |
-| EVM | `FileRegistry` contract call per chunk + file; paid `proposeAnchor` for verification | Contract suite |
+| EVM | `FileRegistry` contract call per chunk + file | Contract |
 | Substrate | `system.remarkWithEvent`, batched via `utility.batchAll` | None (native remarks) |
 | Solana | SPL Memo program | None (native program) |
-| Aptos | Move module `file_registry::anchor_cid`; `anchor_registry` for the protocol | Move package |
+| Aptos | Move module `file_registry::anchor_cid` | Move package |
 | Cosmos | Transaction memo, one payload per transaction | None (native memo) |
 | Sui | Move calls batched into one programmable transaction block | Move package |
-| Starknet | `anchor_cid` multicalls on the Cairo `FileRegistry` | Cairo contracts |
-| NEAR | `anchor_cid` on the WASM registry contract | Rust contracts |
-| TRON | Transaction data/memo field (the EVM Solidity suite compiles for TVM as an upgrade path) | None in memo mode |
+| Starknet | `anchor_cid` multicalls on the Cairo `FileRegistry` | Cairo contract |
+| NEAR | `anchor_cid` on the WASM registry contract | Rust contract |
+| TRON | Transaction data/memo field | None in memo mode |
 | Cardano | CIP-20 transaction metadata (label 674) | None (native metadata) |
 | TON | Text comment on a minimal self-transfer | None (native comment) |
 | Hedera | Consensus Service message on a registry topic | HCS topic |
 
-### 4.2 Storage budgets
+### 5.2 Storage budgets
 
 Any chain whose transport can carry a meaningful slice of data is a valid
 **storage chain** — the user picks, guided by per-chain cost estimates. The
@@ -230,7 +284,7 @@ for every candidate before anything is signed. Tiny budgets make storage
 suggested path stores medium and large files on Autonomys and anchors
 proofs wherever the user needs them.
 
-### 4.3 The chain registry
+### 5.3 The chain registry
 
 The chain registry — `packages/utils/src/chains.ts` — is the protocol's
 single source of truth: every network entry carries its RPC endpoints,
@@ -241,180 +295,7 @@ by default). A chain is **provisioned** when its entry carries a live
 deployment (or needs none); anchoring against an unprovisioned chain fails
 fast with a typed error so callers can fall back or choose another network.
 
-## 5. The optimistic anchor protocol
-
-On contract-capable runtimes (EVM, Aptos, Sui, Starknet, NEAR), file-level
-anchors are upgraded from timestamps to **verified claims** through a
-propose/verify market denominated in the protocol token, FOCAT (§6). Chunk
-anchors — including the data-carrying ones — remain free event emissions;
-only the file-level CID enters the paid protocol.
-
-### 5.1 Roles
-
-- **Proposer** — anyone anchoring a file. Escrows a FOCAT tip plus a
-  refundable bond.
-- **Validator** — stakes FOCAT above a governance-set minimum to join the
-  active set. Earns the validator share of every verified tip and serves on
-  dispute juries. Unbonding is subject to a cooldown that remains slashable.
-- **Platform** — a registered integrator (the FileOnChain app itself is
-  platform 1; partner apps, APIs, and MCP clients register their own ids).
-  Earns the platform share of tips on anchors it originates, capped by a
-  governance-set fee ceiling.
-- **Challenger** — anyone who believes a proposal is invalid. Posts a
-  counter-bond to open a dispute.
-
-### 5.2 Lifecycle
-
-1. **Propose.** `proposeAnchor` escrows the tip + bond and records the CID,
-   the storage URI, and the originating platform id.
-2. **Challenge window.** For **24 hours** (governance-configurable) anyone
-   may challenge with a counter-bond. Most anchors are honest, so most pass
-   through untouched — this is the optimistic fast path.
-3. **Verify (fast path).** After an unchallenged window, finalization is
-   **permissionless** — anyone may call it. The anchor becomes *Verified*
-   ("first verified wins" per CID), the proposer's bond returns, and the tip
-   splits per §5.3.
-4. **Dispute (slow path).** A challenge draws a **five-member jury** at
-   random from the staked validator set. Majority decides; ties default to
-   the optimistic outcome. The losing side's bond is slashed to the winners,
-   and jurors who voted with the losing side are slashed from stake.
-
-Verification settles *per file, per chain*. The same CID — stored once — can
-be anchored and independently verified on any number of chains, and the
-record on each remains readable by anyone, wallet-free.
-
-### 5.3 Fee split
-
-The tip of every verified anchor splits three ways (basis points set by
-governance; defaults shown):
-
-| Share | Recipient | Default |
-| --- | --- | --- |
-| Validators | Pro-rata across active stake, claimed as pull payments | **60%** |
-| Platform | The registered integrator that originated the anchor | **25%** |
-| Protocol | The treasury held by the governance timelock | **15%** |
-
-The split aligns the three parties the market needs: validators are paid to
-stake and police claims, integrators are paid to bring anchors into the
-protocol, and the treasury funds whatever FOCAT holders vote for.
-
-### 5.4 The contract suite
-
-The protocol is a small suite deployed together on every contract runtime
-(names vary per runtime; roles do not):
-
-- **FOCAT** (`FileOnChainAttestationToken`) — the protocol token (§6).
-- **FileRegistry** — the anchor protocol itself: free chunk events (with or
-  without embedded data), paid `proposeAnchor`, the challenge window, jury
-  draws, dispute resolution, and pull-payment fee splits.
-- **ValidatorStaking** — the active validator set: minimum stake, pro-rata
-  tip rewards, slashable unbonding cooldown, and execution of jury slashes.
-- **PlatformRegistry** — registered integrators and their fee caps.
-- **Governor + Timelock** (EVM only) — parameter changes, treasury spends,
-  and upgrades (§7).
-- **CachePayments · DonationEscrow** — the retrieval-acceleration services
-  (§8), outside the anchor fee split.
-
-## 6. The FOCAT token
-
-FOCAT (FileOnChain Attestation Token) is the unit of account of the
-verification market: tips, bonds, validator stakes, and — on EVM —
-governance votes. Storage itself is paid in each chain's native fees; FOCAT
-prices the *verification* of the file-level claim.
-
-### 6.1 One global supply
-
-FOCAT exists natively on every contract runtime: an ERC-20 with ERC20Votes
-on EVM, a Fungible Asset on Aptos, `Coin<FOCAT>` on Sui, a Cairo ERC-20 on
-Starknet, and a NEP-141 token on NEAR. The initial supply mints **once, on
-the home chain**; every other deployment starts at zero and receives FOCAT
-exclusively through bridges, so the global supply stays fixed.
-
-### 6.2 Bridging by governance, not by vendor
-
-Supply moves by **burn on the source chain, mint on the destination**,
-through bridges that governance explicitly approves — no bridge vendor is
-hard-coded into the token. On EVM the token implements ERC-7802
-(`crosschainMint` / `crosschainBurn`) with per-bridge mint/burn rate limits
-that replenish linearly over one day: the rate limit is the blast-radius cap
-if a bridge is ever compromised. Non-EVM tokens carry admin-managed bridge
-allowlists with the same burn/mint pair (per-bridge rate limits are EVM-only
-in v1 — a documented gap, see §10).
-
-### 6.3 Acquiring FOCAT
-
-The token is designed to stay out of the way:
-
-- **Most users never touch it.** Signing in and paying with USD credits
-  lets FileOnChain's hosted worker hold the FOCAT and anchor on the user's
-  behalf. The user sees "verified anchor on Base — $X," not "buy 101
-  FOCAT."
-- **Wallet anchoring uses fixed-price anchor packs.** Pay-as-you-go
-  anchoring escrows the tip and refundable bond from the user's own wallet,
-  so the upload flow offers a fixed-price pack — enough FOCAT for one
-  propose, paid from credits, delivered to the connected wallet. A
-  verification fee, not a trading desk.
-- **Validators earn rather than buy.** The 60% tip share plus slashed bonds
-  from lost disputes flow to validators continuously; a starter pack
-  (minimum stake + one propose) exists purely for bootstrapping.
-- **Testnets are faucet-only.** Test networks drip FOCAT for free; the
-  faucet and any mainnet distribution are never mixed.
-
-## 7. Governance
-
-### 7.1 The EVM hub
-
-Protocol governance lives on EVM as a standard OpenZeppelin
-Governor + Timelock pair:
-
-- **FileOnChainGovernor** — FOCAT (ERC20Votes) holders vote. Deploy-time
-  defaults: 1-day voting delay, 1-week voting period, 100,000 FOCAT
-  proposal threshold, 4% quorum.
-- **FileOnChainTimelock** — 2-day minimum delay. The Governor is its only
-  proposer and canceller; execution is open.
-
-The timelock **owns everything**: every parameter setter on FileRegistry,
-ValidatorStaking, and PlatformRegistry is owner-only, the timelock *is* the
-protocol treasury (the 15% tip share accrues to it, and spending it is a
-proposal), and each contract's proxy admin is owned by the timelock. A
-parameter change, a treasury spend, and a contract upgrade are all the same
-motion: delegate → propose → vote → queue → wait out the timelock →
-execute. The deployer renounces its timelock admin role at the end of the
-deployment run.
-
-Governance sets **protocol rules, never per-file outcomes**: the fee-split
-basis points, platform fee caps and registration, bond sizes, minimum tips,
-window durations, jury size and slash amounts, validator stake minimums, and
-treasury spends. Whether an individual CID verifies is decided by the
-optimistic window and, on dispute, a staked jury — not by token votes.
-
-### 7.2 The non-EVM mirror
-
-Aptos, Sui, Starknet, and NEAR run the same protocol — same lifecycle, same
-60/25/15 split, same defaults — but do not port the Governor. Each runtime
-keeps its parameters behind an admin (an account, an `AdminCap` object, or
-an admin storage slot) that **executes EVM governance decisions**: when a
-proposal passes on EVM, the admin replays the equivalent setter on each
-non-EVM runtime. Every registry exposes the same setter vocabulary, so
-decisions map one-to-one.
-
-This is a trust seam by design in v1: non-EVM parameter changes are only as
-trustworthy as the admin's fidelity to EVM outcomes. The admin is a
-FileOnChain-operated account today, hardening to a multisig and eventually a
-cross-chain message executor as the protocol matures.
-
-### 7.3 Upgradeability
-
-Every EVM protocol contract sits behind an OpenZeppelin transparent
-upgradeable proxy whose admin is owned by the timelock — an upgrade is a
-governance proposal like any parameter change. The Governor and Timelock
-themselves are deliberately **not** proxied: a governor migration is a
-proposer-role rotation on the timelock, and the timelock is the root of
-trust. The other runtimes upgrade through their native mechanisms (Move
-package upgrades, Cairo `replace_class`, NEAR re-deploys), executed by the
-same governance-mirroring admin.
-
-## 8. Retrieval and the cache tiers
+## 6. Retrieval and the cache tiers
 
 The storage chain is the file's home; the cache tiers exist to make
 retrieval *fast* and, when wanted, *private* — they accelerate, they never
@@ -438,16 +319,11 @@ node — or any mirror — can vanish without loss: the chain still holds the
 file, and anyone holding bytes that hash to the anchored CID holds the
 file.
 
-## 9. Access paths
+## 7. Access paths
 
-Everything on fileonchain.org runs on the same open-source packages anyone
-can use:
+The product **is** the interface. Everything on fileonchain.org runs on the
+same open-source packages anyone can use:
 
-- **The webapp** — wallet-signed uploads across all twelve families: pick
-  the storage chain (cost and transaction count shown per candidate),
-  anchor on the chain of your choice, or opt out and link an existing copy.
-  Plus an explorer over anchored CIDs, cache payments, donations, and a
-  credits-based dashboard.
 - **`@fileonchain/sdk`** — the umbrella TypeScript SDK: the chain registry,
   payload vocabulary, and storage budgets at the root, one client per
   family behind subpaths (`/evm`, `/substrate`, … `/hedera`). Every family
@@ -461,16 +337,50 @@ can use:
   Autonomys).
 - **`@fileonchain/mcp`** — a Model Context Protocol server exposing registry
   lookups, CID validation, and API-backed anchoring as tools, so AI agents
-  can anchor files without holding private keys.
+  can produce evidence packages without holding private keys.
+- **The webapp** — the same interface with a UI: wallet-signed uploads,
+  proof-only or stored, an explorer over anchored CIDs, cache payments,
+  donations, and a credits-based dashboard.
 
-## 10. Security considerations and known limitations
+## 8. Roadmap — deliberately not in v1
+
+Earlier drafts of this protocol bundled an economic verification layer into
+version 1. It is now explicitly out of scope for v1 and staged as roadmap,
+to be shipped only where real usage proves the demand:
+
+- **A staked verification market.** File-level anchors could graduate from
+  timestamps to economically backed claims: a proposer escrows a token tip
+  and bond, the claim survives a challenge window, and staked validators
+  earn the tip for policing it.
+- **Dispute juries.** Contested claims resolved by juries drawn from the
+  validator set, with losing bonds and losing jurors slashed.
+- **Token bridging.** A single global token supply moved across runtimes by
+  governance-approved burn/mint bridges (ERC-7802 on EVM).
+- **Token governance.** Parameters, treasury, and upgrades owned by token
+  holders through an on-chain Governor and timelock.
+
+Contract suites implementing this design exist in the repository and run on
+**testnets as previews**; the design is specified in
+[`docs/governance.md`](https://github.com/FileOnchain/fileonchain-org/blob/main/docs/governance.md).
+Nothing in v1 depends on them: no v1 flow requires a token, and every
+evidence package produced today remains verifiable unchanged if and when
+the market layer ships.
+
+## 9. Security considerations and known limitations
 
 Design choices and their trade-offs, stated plainly:
 
+- **Anchoring proves existence and integrity, not authorship or
+  truthfulness.** An evidence package shows that specific bytes existed at
+  a specific time and are unchanged. It does not establish who authored
+  them, whether a signature is valid, or whether the contents are true —
+  identity, signatures, and retention policy belong to the systems layered
+  on top.
 - **On-chain bytes are public and permanent.** Anything stored unencrypted
   is world-readable forever — that is the point, and also the warning.
   Sensitive content belongs in the encrypted private cache, or encrypted
-  client-side before storage.
+  client-side before storage — or should be anchored proof-only, which is
+  the right default for most evidence use cases.
 - **Data durability equals the storage chain's history retention.** On a
   purpose-built storage network (Autonomys) archival is the protocol; on
   general-purpose chains, embedded bytes live in transaction history (e.g.
@@ -480,57 +390,48 @@ Design choices and their trade-offs, stated plainly:
   file is ~16 transactions on Autonomys and ~2,000 on Hedera. The uploader
   surfaces transaction counts and costs before signing; the suggested
   default avoids the pathological cases.
-- **Anchoring proves existence and integrity, not authorship or
-  truthfulness.** The verification market adds economic weight to
-  well-formedness and attribution of the claim — it does not fact-check
-  file contents.
-- **Jury randomness is chain-dependent** (v1): native randomness on Aptos
-  and Sui; `prevrandao` plus parent blockhash on EVM (sequencer-influenceable
-  on most L2s); a two-step block-hash draw on Starknet (the weakest); the
-  block producer's `random_seed` on NEAR.
-- **Jury votes are public** — no commit-reveal — and non-voting jurors are
-  not slashed. **Platform registration is governance-gated** rather than
-  permissionless in v1. **Validator stake is not delegatable**, and juries
-  are uniform rather than stake-weighted.
-- **The non-EVM governance mirror is a trust seam** (§7.2), and bridge rate
-  limits are EVM-only in v1 (§6.2).
+- **Roadmap contracts are previews.** The verification-market suite runs on
+  testnets only; its threat model (jury randomness, vote privacy, bridge
+  rate limits) is documented with the roadmap and must be hardened before
+  any mainnet deployment.
 
-Each limitation has a documented follow-up path; the contracts target ≥95%
-test coverage per runtime.
+The contracts target ≥95% test coverage per runtime.
 
-## 11. Implementation status
+## 10. Implementation status
 
-FileOnChain ships honestly: **storage and anchoring are real wherever a
+FileOnChain ships honestly: **anchoring and storage are real wherever a
 chain is provisioned**, and the registry's provisioning flags — not
 marketing copy — are the switch. At the time of writing:
 
 - The payload vocabulary (including data-carrying chunks), the per-family
   storage budgets, all twelve family clients with the `includeData` storage
-  switch, the contract suites for the five contract runtimes
-  (Solidity/Foundry, Move on Aptos and Sui, Cairo, Rust/NEAR), the hosted
-  API, and the MCP server are built and open source.
+  switch, the hosted API, and the MCP server are built and open source.
 - Per-chain rollout is tracked in the chain registry: each network flips to
   real storage and anchoring when its contracts, modules, topics, or native
   channels are deployed, recorded, and QA'd. Memo-based anchoring on
   mainnets (Cosmos, TRON, Cardano, TON) is enabled deliberately per network
   after testnet QA.
+- The roadmap contract suites (§8) exist for five runtimes
+  (Solidity/Foundry, Move on Aptos and Sui, Cairo, Rust/NEAR) and run on
+  testnets as previews; they are not part of the v1 product surface.
 - Surfaces not yet wired to live deployments (registry reads in the
-  explorer, cache fulfillment, protocol statistics) run against a clearly
-  marked deterministic mock layer whose call signatures match the real
-  integrations, so the seams swap without breaking callers.
+  explorer, cache fulfillment) run against a clearly marked deterministic
+  mock layer whose call signatures match the real integrations, so the
+  seams swap without breaking callers.
 
-## 12. Conclusion
+## 11. Conclusion
 
-FileOnChain puts the file on the chain — and the proof on every chain. One
-payload vocabulary carries both bytes and claims across twelve chain
-families; a user-chosen storage chain, with a permanent-storage network as
-the suggested home, makes the file itself retrievable from public
-infrastructure forever; `fileonchain://` pointers let a proof on any chain
-lead back to the bytes; and an optimistic propose/verify market, paid in a
-token with one global governance-bridged supply, makes the claims worth
-trusting. The protocol is deliberately minimal at its core — a JSON
-document, a hash, and the bytes themselves — and deliberately honest at its
-edges, shipping real storage chain by chain as deployments land.
+FileOnChain is one developer interface that creates portable, independently
+verifiable evidence packages across storage and settlement systems. One
+payload vocabulary makes the same evidence readable on twelve chain
+families; receipts and CIDs make every package checkable against public
+infrastructure with no service in the loop; optional on-chain storage —
+with a permanent-storage network as the suggested home — keeps the bytes
+themselves retrievable where a use case wants that. The protocol is
+deliberately minimal at its core — a JSON document, a hash, and a receipt —
+and deliberately honest at its edges: the economic verification layer is a
+staged roadmap, not a v1 promise, and each chain flips to real only as its
+deployment lands.
 
 ---
 
@@ -540,18 +441,16 @@ edges, shipping real storage chain by chain as deployments land.
 - Chain registry (single source of truth): [`packages/utils/src/chains.ts`](https://github.com/FileOnchain/fileonchain-org/blob/main/packages/utils/src/chains.ts)
 - Anchor payload vocabulary: [`packages/utils/src/anchor.ts`](https://github.com/FileOnchain/fileonchain-org/blob/main/packages/utils/src/anchor.ts)
 - Storage budgets and URIs: [`packages/utils/src/storage.ts`](https://github.com/FileOnchain/fileonchain-org/blob/main/packages/utils/src/storage.ts)
-- Contract suites (five runtimes): [`contracts/`](https://github.com/FileOnchain/fileonchain-org/tree/main/contracts)
-- Governance specification: [`docs/governance.md`](https://github.com/FileOnchain/fileonchain-org/blob/main/docs/governance.md)
+- Contract suites, including roadmap previews (five runtimes): [`contracts/`](https://github.com/FileOnchain/fileonchain-org/tree/main/contracts)
+- Roadmap: verification market & governance design: [`docs/governance.md`](https://github.com/FileOnchain/fileonchain-org/blob/main/docs/governance.md)
 - SDK documentation: <https://fileonchain.org/docs>
 - Protocol overview: <https://fileonchain.org/protocol>
 - Autonomys (permanent storage network): <https://www.autonomys.xyz/>
 - CIDs / content addressing: <https://docs.ipfs.tech/concepts/content-addressing/>
-- ERC-7802 (crosschain token interface): <https://eips.ethereum.org/EIPS/eip-7802>
 - CIP-20 (Cardano transaction message metadata): <https://cips.cardano.org/cip/CIP-20>
-- OpenZeppelin Governor: <https://docs.openzeppelin.com/contracts/governance>
 
 ---
 
 *FileOnChain is open source under the MIT license. This document describes
-protocol version 1 and will be revised as governance evolves the
-parameters it documents; the values shown are deploy-time defaults.*
+protocol version 1; the verification-market design referenced in §8 is a
+roadmap that will be specified fully in a future revision if it ships.*
