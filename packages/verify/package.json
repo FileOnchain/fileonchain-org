@@ -1,7 +1,7 @@
 {
   "name": "@fileonchain/verify",
   "version": "0.1.0",
-  "description": "Deterministic local verifier for FileOnChain evidence packages — hashes, signatures, Merkle inclusion, and settlement receipts, with no FileOnChain service in the loop.",
+  "description": "Deterministic local verifier for FileOnChain evidence \u2014 envelopes and legacy packages: hashes, artifact and envelope signatures, Merkle inclusion, adapter receipts. Isomorphic core, CLI included; no FileOnChain service required.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -14,6 +14,7 @@
     "dist"
   ],
   "bin": {
+    "fileonchain": "./dist/cli.js",
     "fileonchain-verify": "./dist/cli.js"
   },
   "exports": {
@@ -32,15 +33,21 @@
   "scripts": {
     "build": "tsup",
     "lint": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@fileonchain/agent-profile": "workspace:^",
+    "@fileonchain/protocol": "workspace:^",
     "@fileonchain/utils": "workspace:^",
+    "@noble/curves": "^1.6.0",
     "viem": "^2.53.1"
   },
   "devDependencies": {
     "@types/node": "^20",
     "tsup": "^8.5.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2",
+    "@fileonchain/sdk": "workspace:^"
   }
 }

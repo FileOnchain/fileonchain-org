@@ -6,7 +6,7 @@ export default defineConfig({
   dts: { entry: { index: "src/index.ts" } },
   sourcemap: true,
   clean: true,
-  // The workspace resolves @fileonchain/utils to its .ts sources; bundle it
-  // so the published dist (and the CLI bin) runs standalone.
-  noExternal: ["@fileonchain/utils"],
+  // The workspace resolves internal packages to their .ts sources; bundle
+  // them so the published dist (and the CLI bins) run standalone.
+  noExternal: ["@fileonchain/utils", "@fileonchain/protocol", "@fileonchain/agent-profile"],
 });
