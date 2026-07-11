@@ -85,7 +85,7 @@ const UploadManifest = ({
   const done = anchorStatus === "done";
   const twoPass = storageChain !== null && storageChain.id !== anchorChain.id;
 
-  // Estimated total: proof anchors on the anchoring chain, plus the storage
+  // Estimated total: proof anchors on the settlement chain, plus the storage
   // pass when the bytes go to a different chain. Same rough model as the
   // cost panel — the panel remains the place to inspect it per chain.
   const estimate = React.useMemo(() => {

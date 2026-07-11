@@ -19,28 +19,28 @@ const STEPS = [
     Icon: FiLayers,
     title: "Hash & describe",
     body:
-      "Your artifact is hashed client-side — SHA-256 and a CIDv1 — with provenance metadata (model, run id, tool versions) alongside. Batching many artifacts? A signed manifest and a Merkle root reduce a whole workflow to one hash.",
+      "An agent output, a tool call log, or any artifact is hashed client-side — SHA-256 — with provenance claims alongside: run id, agent id, model metadata, approvals. Manifests batch a whole session into one root.",
   },
   {
     n: "02",
     Icon: FiShield,
     title: "Sign it",
     body:
-      "An agent key, a wallet, or an organization key signs the canonical descriptor — including delegated signing, where an agent signs on behalf of an organization. Signatures answer who; the next step answers when.",
+      "Agent keys, wallets, or organization keys sign the canonical descriptor — including delegated signing, where an agent signs on behalf of an organization. Signatures answer who; the next step answers when.",
   },
   {
     n: "03",
     Icon: FiLink,
     title: "Anchor it",
     body:
-      "The hash (or Merkle root) is written to the public chains you choose, for the chain's ordinary transaction fee — no token, no extra economics. Storing the actual bytes on-chain is optional; hash-only is the default.",
+      "The hash (or Merkle root) is settled on the public systems you choose, for each system's ordinary transaction fee. The settlement receipts fix the record in time. Hash-only by default — raw bytes never required.",
   },
   {
     n: "04",
     Icon: FiSearch,
-    title: "Hand over the package",
+    title: "Hand over the envelope",
     body:
-      "Out comes one portable evidence package: hashes, signatures, storage receipts, settlement receipts. Anyone can validate it locally with the open-source verifier — fileonchain-verify evidence.json — without trusting us.",
+      "Out comes one portable evidence package: subject digests, claims, signatures, receipts. Anyone can validate it locally — fileonchain verify evidence.json — without trusting us or opening an account.",
   },
 ] as const;
 
@@ -54,13 +54,13 @@ const HowItWorks = () => (
           The pipeline
         </p>
         <h2 className="text-balance text-3xl font-bold tracking-tight md:text-4xl text-foreground">
-          Four steps from artifact to evidence.
+          Four steps from agent run to evidence.
         </h2>
       </div>
       <p className="max-w-sm text-sm text-muted">
-        Each chunk is its own transaction on the chain you pick. The registry
-        contract stores the mapping from chunk CID to its tx hash; the platform
-        takes a fee at contract level per chunk registration.
+        The same pipeline the SDK, the hosted API, and the MCP server run
+        through — whether the artifact is one agent output or a whole
+        session batched behind a signed manifest.
       </p>
     </header>
 
@@ -118,22 +118,22 @@ const HowItWorks = () => (
       <div className="flex items-center gap-2">
         <FiSearch size={14} className="text-primary" />
         <span>
-          Cost reminder — every chain charges its own gas, so anchoring the same
-          file on N chains costs roughly N× more. Use the{" "}
+          Received an evidence package? You don&apos;t need an account — or us — to
+          check it. Paste it into the{" "}
           <Link
-            href="/explorer"
+            href="/verify"
             className="font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
           >
-            explorer
+            verifier
           </Link>{" "}
-          to check what&apos;s already public before paying for a duplicate anchor.
+          or run the open-source CLI locally.
         </span>
       </div>
       <Link
-        href="/explorer"
+        href="/verify"
         className="inline-flex items-center gap-1 font-mono text-foreground hover:text-primary"
       >
-        bafy…zdi
+        fileonchain verify
         <FiArrowRight size={12} />
       </Link>
     </motion.div>

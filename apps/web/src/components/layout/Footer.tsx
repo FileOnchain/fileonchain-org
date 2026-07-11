@@ -11,20 +11,23 @@ const GITHUB_REPO = "https://github.com/FileOnchain/fileonchain-org";
 const ACTIVE_MAINNET_CHAINS = MAINNET_CHAINS.filter(isChainActive);
 
 const PRODUCT_LINKS = [
-  { href: "/", label: "Upload" },
+  { href: "/", label: "Create evidence" },
+  { href: "/agent-evidence", label: "Agent Evidence" },
+  { href: "/verify", label: "Verify a package" },
+  { href: "/integrations", label: "Integrations" },
   { href: "/explorer", label: "Explorer" },
-  { href: "/leaderboard", label: "Leaderboard" },
-  { href: "/cache", label: "Private cache" },
-  { href: "/donations", label: "Donations" },
   { href: "/dashboard", label: "Dashboard" },
 ] as const;
 
 const RESOURCE_LINKS = [
-  { href: "/whitepaper", label: "White paper", internal: true },
+  { href: "/protocol", label: "Protocol", internal: true },
+  { href: "/whitepaper", label: "Documents", internal: true },
   { href: "/docs", label: "SDK documentation", internal: true },
+  {
+    href: `${GITHUB_REPO}/blob/main/docs/protocol/evidence-protocol.md`,
+    label: "Protocol spec",
+  },
   { href: GITHUB_REPO, label: "GitHub repository" },
-  { href: `${GITHUB_REPO}/tree/main/packages/sdk`, label: "SDK · @fileonchain/sdk" },
-  { href: `${GITHUB_REPO}/tree/main/contracts`, label: "Contracts" },
   { href: "/#faq", label: "FAQ", internal: true },
 ] as const;
 
@@ -90,7 +93,8 @@ const Footer = () => (
           <p className="max-w-xs text-sm leading-relaxed text-muted">
             One developer interface for portable, independently verifiable
             evidence packages — live on Autonomys and Solana today, with{" "}
-            {CHAIN_FAMILIES.length} chain-family adapters in the SDK.
+            {CHAIN_FAMILIES.length} chain-family adapters in the SDK. Open
+            protocol · local verifier · no account needed to verify.
           </p>
           <div className="flex items-center gap-3">
             {ORG_SOCIALS.map(({ href, label, Icon }) => (
@@ -179,7 +183,7 @@ const Footer = () => (
           </a>
         </p>
         <p className="font-mono text-[11px]">
-          {MAINNET_CHAINS.length} chains · anchored forever
+          evidence envelopes · independently verifiable
         </p>
         <div className="flex items-center gap-3">
           <span>Built by Marc-Aurèle Besner</span>

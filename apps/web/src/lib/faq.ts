@@ -6,7 +6,11 @@
 export const FAQ = [
   {
     q: "What is an evidence package?",
-    a: "A portable JSON document bundling an artifact's CID and SHA-256, the signatures of whoever (or whatever) produced it, storage receipts for where the bytes live, and settlement receipts from the public chains that anchored it. It travels as a file, and the open-source verifier (fileonchain-verify) validates it locally — hashes, signatures, Merkle inclusion, receipts — without calling FileOnChain.",
+    a: "A portable JSON envelope bundling a subject's SHA-256 digest, provenance claims (run id, agent id, tool calls, approvals), the signatures of whoever — or whatever — produced and assembled it, and storage and settlement receipts from public systems. It travels as a file: paste it into the /verify page or run the open-source CLI (fileonchain verify evidence.json) and it validates locally, without calling FileOnChain.",
+  },
+  {
+    q: "Is this an AI observability platform?",
+    a: "No. FileOnChain complements tracing systems like OpenTelemetry, Langfuse, and LangSmith rather than replacing them: it seals evidence about a run — hashing and referencing traces, outputs, and approvals — into a tamper-evident, portable envelope. Your observability stack stays the system of record for debugging; the evidence package is what you hand to someone who needs independent proof.",
   },
   {
     q: "Do I need a token?",

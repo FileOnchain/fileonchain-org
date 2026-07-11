@@ -9,53 +9,56 @@ import { siteConfig } from "@/lib/site";
 export const metadata: Metadata = {
   title: "Protocol",
   description:
-    "How the FileOnChain protocol works: six independent layers — content integrity, identity and signatures, storage, settlement, evidence packaging, and deterministic local verification. No token, no market.",
+    "The FileOnChain Evidence Protocol: a neutral, independently implementable envelope format — subject, claims, artifact and envelope signatures, receipt adapters, application profiles — verified locally by an open verifier. No token, no market.",
   alternates: { canonical: `${siteConfig.url}/protocol` },
 };
 
+const GITHUB_REPO = "https://github.com/FileOnchain/fileonchain-org";
+const PROTOCOL_SPEC = `${GITHUB_REPO}/blob/main/docs/protocol/evidence-protocol.md`;
+
 const LAYERS = [
   {
-    title: "1 · Content integrity",
-    body: "SHA-256 digests and CIDv1 identifiers bind bytes to names; signed manifests and Merkle trees bind a whole workflow's artifacts to one root, so one settlement transaction can anchor thousands of artifacts with individual inclusion proofs.",
+    title: "1 · The envelope",
+    body: "One portable JSON document: a subject (digests, size, media type), namespaced claims about it, artifact and envelope signatures, receipts, and extensions — sealed by an envelope digest computed over the canonical encoding, so any implementation produces byte-identical output.",
   },
   {
-    title: "2 · Identity & attribution",
-    body: "Wallet signatures (EIP-191), agent and service keys (ed25519), organization keys, multiple signers, and delegated signing — an agent signing on behalf of an organization. Key-status URLs let a verifier check rotation and revocation.",
+    title: "2 · Artifact vs envelope signatures",
+    body: "Two distinct questions, two distinct signature sets. Artifact signatures cover the subject and claims — who made or approved the thing, including delegated signing. Envelope signatures cover the finalized envelope digest — who assembled the evidence. The verifier reports them separately.",
   },
   {
-    title: "3 · Storage",
-    body: "Three explicit modes per artifact: evidence-only (default — nothing stored), permanent on-chain storage (chunk bytes embedded in anchors, Autonomys suggested), or external storage (any URI you host). Each mode has its own receipt.",
+    title: "3 · Receipt adapters",
+    body: "Storage, settlement, and inclusion receipts each name the adapter that produced them and the system they point at. Verification of a receipt is delegated to its adapter, so new storage or settlement systems plug in without changing the envelope format.",
   },
   {
-    title: "4 · Settlement & timestamping",
-    body: "One versioned anchor payload written through each chain's most native channel — a registry event, a remark, a memo. The transaction receipt (chain, hash, block, timestamp) is the evidence package's settlement receipt.",
+    title: "4 · Application profiles",
+    body: "The core protocol is neutral; profiles are opinionated. A profile defines required claims in its namespace and their validation — the Agent Evidence Profile (org.fileonchain.agent/v1), covering agent runs, tool calls, approvals, and policies, is the first.",
   },
   {
-    title: "5 · Evidence packaging",
-    body: "A portable, canonically-encoded JSON bundle of everything above: artifact descriptor, signatures, storage receipts, settlement receipts, Merkle inclusion. It travels as a file — hand it to whoever needs to check it.",
+    title: "5 · Reference implementations",
+    body: "The spec is normative; the packages are one implementation of it. @fileonchain/protocol (envelope building and validation), @fileonchain/agent-profile, the SDK's sealing helpers, and @fileonchain/verify are all MIT — and anyone can implement the protocol without them.",
   },
   {
     title: "6 · Verification",
-    body: "fileonchain-verify evidence.json — deterministic, local, open source. Recomputes hashes, checks signatures and inclusion proofs, and optionally confirms receipts against public RPC endpoints. Never calls FileOnChain.",
+    body: "fileonchain verify evidence.json — deterministic, local, open source. Recomputes digests, checks both signature sets and inclusion proofs, dispatches receipts to their adapters, and optionally confirms settlement receipts against public RPC endpoints. Never calls FileOnChain.",
   },
 ] as const;
 
 const VERIFY_STEPS = [
   {
-    title: "Recompute the hashes",
-    body: "Hash the bytes you were given: the SHA-256 must match the artifact descriptor, and for batched artifacts the digest must prove into the anchored Merkle root through the package's inclusion proof.",
+    title: "Recompute the digests",
+    body: "Hash the bytes you were given: the SHA-256 must match the envelope's subject, and for batched artifacts the digest must prove into the anchored Merkle root through the envelope's inclusion receipt.",
   },
   {
-    title: "Check the signatures",
-    body: "Each signature verifies against the public key embedded in the package, over the canonical signing payload. The verifier reports who signed — and whether a delegation is proven or merely claimed.",
+    title: "Check both signature sets",
+    body: "Artifact signatures verify against the keys embedded in the envelope, over the canonical signing payload; envelope signatures verify over the envelope digest. The verifier reports who signed, who assembled — and whether a delegation is proven or merely claimed.",
   },
   {
     title: "Confirm the receipts",
-    body: "Look up each settlement transaction on any public node or explorer of its chain. The block and timestamp are the chain's own record — no FileOnChain endpoint involved.",
+    body: "Each receipt is checked by its adapter; settlement transactions can be looked up on any public node or explorer of their system. The block and timestamp are the system's own record — no FileOnChain endpoint involved.",
   },
   {
-    title: "Optionally, fetch the bytes",
-    body: "Storage receipts say where copies live. If stored on-chain, walk the chunk trail and rebuild the file from public history — possible whenever the storage chain's history is available.",
+    title: "Run it yourself",
+    body: "fileonchain verify evidence.json in a terminal, or paste the envelope into the /verify page — the same isomorphic verifier runs in your browser. The report never collapses to a single green check: valid, valid with warnings, incomplete, and invalid stay distinct.",
   },
 ] as const;
 
@@ -75,9 +78,10 @@ const V1_CONTRACTS = [
 ] as const;
 
 /**
- * /protocol — the six protocol layers, how independent verification works,
- * and the deliberately small v1 contract surface. No token, no staking, no
- * market: the earlier experiment lives on the archive branch only.
+ * /protocol — the FileOnChain Evidence Protocol: the neutral envelope
+ * format, artifact vs envelope signatures, receipt adapters, application
+ * profiles, reference implementations, and honest verification limits.
+ * The Agent Evidence Profile builds on it; FileOnChain Cloud hosts it.
  */
 const ProtocolPage = () => (
   <PageShell size="wide" padding="lg" atmosphere>
@@ -85,22 +89,38 @@ const ProtocolPage = () => (
       className="mb-8"
       index="07"
       kicker="Protocol"
-      title="Six layers, one portable package"
-      lede="Content integrity, identity, storage, settlement, packaging, verification — each layer independent, each receipt checkable on its own system. The output is an evidence package anyone can validate locally with the open verifier, no FileOnChain service in the loop."
+      title="A neutral protocol, one portable envelope"
+      lede="The FileOnChain Evidence Protocol defines an evidence envelope — subject, claims, signatures, receipts — that anyone can produce and anyone can verify locally with the open verifier, no FileOnChain service in the loop. Application profiles like the Agent Evidence Profile make it opinionated; the core stays neutral and independently implementable."
       actions={
-        <ButtonLink href="/docs" variant="secondary">
-          Read the docs →
-        </ButtonLink>
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink href="/agent-evidence">Agent Evidence →</ButtonLink>
+          <ButtonLink
+            href={PROTOCOL_SPEC}
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="secondary"
+          >
+            Read the spec →
+          </ButtonLink>
+        </div>
       }
     />
 
     <section>
-      <h2 className="text-lg font-semibold">The layers</h2>
+      <h2 className="text-lg font-semibold">The architecture</h2>
       <p className="mt-1 max-w-[70ch] text-sm text-muted">
-        &ldquo;Verification&rdquo; is used precisely: each layer has its own check, and the
-        layers compose without requiring each other — an unsigned hash-only package is valid
-        evidence of integrity and time; signatures, storage, and more receipts extend the same
-        schema.
+        Each concept has its own check, and they compose without requiring each other — an
+        unsigned hash-only envelope is valid evidence of integrity and time; signatures,
+        receipts, and profile claims extend the same schema. The normative specification lives{" "}
+        <a
+          href={PROTOCOL_SPEC}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary underline underline-offset-2"
+        >
+          on GitHub
+        </a>
+        .
       </p>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         {LAYERS.map((layer) => (
@@ -113,12 +133,16 @@ const ProtocolPage = () => (
     </section>
 
     <section className="mt-10">
-      <h2 className="text-lg font-semibold">How anyone verifies a package</h2>
+      <h2 className="text-lg font-semibold">How anyone verifies an envelope</h2>
       <p className="mt-1 max-w-[70ch] text-sm text-muted">
         Deterministic and local:{" "}
-        <code className="font-mono text-xs">fileonchain-verify evidence.json --artifact file</code>{" "}
-        runs every offline check; <code className="font-mono text-xs">--online</code> additionally
-        confirms settlement receipts against public RPC endpoints of your choosing.
+        <code className="font-mono text-xs">fileonchain verify evidence.json</code> runs every
+        offline check; the online pass additionally confirms settlement receipts against public
+        RPC endpoints of your choosing. The{" "}
+        <Link href="/verify" className="text-primary underline underline-offset-2">
+          /verify page
+        </Link>{" "}
+        runs the same verifier in your browser — no account, no wallet.
       </p>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         {VERIFY_STEPS.map((step) => (
@@ -131,17 +155,21 @@ const ProtocolPage = () => (
     </section>
 
     <section className="mt-10">
-      <h2 className="text-lg font-semibold">What a package does — and does not — prove</h2>
+      <h2 className="text-lg font-semibold">What cannot be verified</h2>
       <Card className="mt-4 p-5">
         <p className="text-sm leading-relaxed text-muted">
           A passing verification shows that specific bytes{" "}
           <span className="font-medium text-foreground">existed</span> at a specific time, are{" "}
           <span className="font-medium text-foreground">unchanged</span>, and were{" "}
           <span className="font-medium text-foreground">signed by specific keys</span> — with
-          receipts on public systems anyone can consult. It does not prove that the content is
-          true, legally valid, or factually accurate; it does not prove who controls a key beyond
-          the key itself; and repeated anchors on several chains are independent receipts, not a
-          cross-chain proof — no chain verifies another chain&apos;s consensus in this design.
+          receipts on public systems anyone can consult. It cannot verify{" "}
+          <span className="font-medium text-foreground">truthfulness</span> (signed claims are
+          attested, not fact-checked), <span className="font-medium text-foreground">legal
+          validity</span> (an envelope is not, by itself, a legal instrument), or{" "}
+          <span className="font-medium text-foreground">identity beyond the key</span> (who
+          controls a key is a claim unless an external attestation proves it). And multiple
+          settlement receipts are independent attestations, not a proof that one system verified
+          another — no system verifies another&apos;s consensus in this design.
         </p>
       </Card>
     </section>
@@ -150,7 +178,7 @@ const ProtocolPage = () => (
       <h2 className="text-lg font-semibold">The contracts in v1</h2>
       <p className="mt-1 text-sm text-muted">
         The on-chain surface is deliberately small — and most families need no deployment at
-        all, anchoring through the chain&apos;s native channel.
+        all, anchoring through the system&apos;s native channel.
       </p>
       <Card className="mt-4 divide-y divide-border/60 p-0">
         {V1_CONTRACTS.map((contract) => (
@@ -168,20 +196,21 @@ const ProtocolPage = () => (
         <p className="text-sm leading-relaxed text-muted">
           No token, no validator staking, no tips or bonds, no challenge windows, no juries, no
           slashing, no bridges, no token governance, no fee splits — anywhere: contracts, SDKs,
-          API, database, or UI. Anchoring costs each chain&apos;s ordinary transaction fee, and
+          API, database, or UI. Anchoring costs each system&apos;s ordinary transaction fee, and
           hosted services charge account credits or USDC. An earlier experimental design for a
           staked verification market is preserved, unmaintained, on the{" "}
           <a
-            href="https://github.com/FileOnchain/fileonchain-org/tree/archive/focat-verification-market"
+            href={`${GITHUB_REPO}/tree/archive/focat-verification-market`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary underline underline-offset-2"
           >
             archive branch
           </a>{" "}
-          — nothing in v1 depends on it. The full protocol specification lives in the{" "}
+          — nothing in v1 depends on it. The specification, the profiles, and the product
+          overview are collected on the{" "}
           <Link href="/whitepaper" className="text-primary underline underline-offset-2">
-            white paper
+            documents page
           </Link>
           .
         </p>

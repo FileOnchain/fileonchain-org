@@ -65,7 +65,7 @@ const Hero = ({
         {/* Headline — word-by-word reveal, no italic, no gradient */}
         <WordReveal
           as="h1"
-          text={`Turn any artifact into\nverifiable evidence.`}
+          text={`Tamper-evident audit trails\nfor AI agents.`}
           className="text-balance whitespace-pre-line text-[44px] font-bold leading-[0.98] tracking-tight md:text-6xl lg:text-[72px] text-foreground"
         />
 
@@ -76,12 +76,10 @@ const Hero = ({
           transition={{ duration: 0.5, delay: 0.9, ease: EASE_OUT }}
           className="max-w-xl text-pretty text-base leading-relaxed text-muted md:text-lg"
         >
-          One developer interface hashes what your agent or workflow produced,
-          signs it, anchors it on public chains, and hands back a{" "}
-          <span className="font-semibold text-foreground">portable evidence package</span>{" "}
-          — verifiable by anyone with the open-source local verifier, no
-          FileOnChain account in the loop. Storage is optional; hash-only is
-          the default.
+          Seal agent runs, outputs, approvals, and tool activity into{" "}
+          <span className="font-semibold text-foreground">portable evidence packages</span>{" "}
+          that anyone can independently verify — with an open protocol and a
+          local verifier, no FileOnChain account required.
         </motion.p>
 
         {/* CTAs — magnetic primary + ghost outline */}
@@ -92,13 +90,13 @@ const Hero = ({
           className="mt-1 flex flex-wrap items-center gap-3"
         >
           <MagneticButton href="#dropzone" rightIcon={<FiArrowRight size={16} />}>
-            Drop a file
+            Create evidence
           </MagneticButton>
           <Link
-            href="/explorer"
+            href="/verify"
             className="group inline-flex h-11 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium text-foreground transition-all hover:gap-2 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            Open the explorer
+            Verify a package
             <span
               aria-hidden
               className="transition-transform duration-base group-hover:translate-x-0.5"
@@ -133,14 +131,14 @@ const Hero = ({
             hint="Autonomys · Solana · EVM testnets"
           />
           <StatCounter
-            value={12}
-            label="Family adapters"
-            hint="One interface in front"
+            value={1}
+            label="Open protocol"
+            hint="Independently implementable"
           />
           <StatCounter
             value={3}
             label="Storage modes"
-            hint="Evidence-only by default"
+            hint="Hash-only by default"
           />
         </motion.div>
 

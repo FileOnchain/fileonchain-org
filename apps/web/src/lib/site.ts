@@ -12,11 +12,11 @@ export const siteConfig = {
     /\/$/,
     ""
   ),
-  title: "FileOnChain — Verifiable Onchain Evidence Packages",
+  title: "FileOnChain — Tamper-Evident Audit Trails for AI Agents",
   description:
-    "One developer interface that creates portable, independently verifiable evidence packages across storage and settlement systems — hash, sign, anchor, and verify locally with an open-source verifier. No token required.",
+    "Seal agent runs, outputs, approvals, and tool activity into portable evidence packages that anyone can independently verify. Open protocol, local verifier, hash-only by default.",
   ogDescription:
-    "One developer interface. Portable, independently verifiable evidence packages across storage and settlement systems.",
+    "Portable evidence packages for AI agents — open protocol, local verifier, independently verifiable.",
   twitter: "@fileonchain",
   /** Public profiles — Organization JSON-LD `sameAs` and footer links. */
   socials: {

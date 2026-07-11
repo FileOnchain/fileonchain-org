@@ -7,8 +7,8 @@ import ScrollReveal from "@/components/ScrollReveal";
 
 /**
  * FeatureTrio — three callouts stacked side-by-side that explain the
- * platform's three core promises: permanence, verifiability, and
- * multichain. Each card has a hover-lift, an icon that scales+rotates,
+ * three guarantees an evidence envelope carries: integrity, attribution,
+ * and portability. Each card has a hover-lift, an icon that scales+rotates,
  * an animated underline, and a tiny live indicator.
  */
 
@@ -20,16 +20,16 @@ const FEATURES = [
     eyebrow: "Integrity",
     title: "Content-addressed",
     body:
-      "Every artifact is bound to a SHA-256 digest and a CIDv1. Anyone holding the bytes can recompute the hash and know, bit-for-bit, that nothing changed — wherever the bytes came from.",
+      "Every subject is bound to a SHA-256 digest. Anyone holding the bytes can recompute the hash and know, bit-for-bit, that nothing changed — wherever the bytes came from, whoever produced them.",
     iconBg: "bg-info/10 text-info",
     indicator: "sha-256",
   },
   {
     Icon: FiLock,
     eyebrow: "Attribution",
-    title: "Signed by whoever made it",
+    title: "Two kinds of signatures",
     body:
-      "Agent keys, wallets, and organization keys sign the evidence — including an agent signing on behalf of an organization. A hash says what; signatures say who; settlement receipts say when.",
+      "Artifact signatures say who made or approved the thing — agent keys, wallets, organization keys, including delegated signing. Envelope signatures say who assembled the evidence. The verifier reports both, separately.",
     iconBg: "bg-success/10 text-success",
     indicator: "eip-191 · ed25519",
   },
@@ -38,7 +38,7 @@ const FEATURES = [
     eyebrow: "Portability",
     title: "Receipts that outlive us",
     body:
-      "Anchor on one public chain or several — each receipt is an independent, chain-native attestation anyone can check. The package is a file; the open verifier validates it without calling FileOnChain.",
+      "Multi-system settlement receipts — each one an independent, system-native attestation anyone can check. The envelope is a file; the open local verifier validates it without calling FileOnChain.",
     iconBg: "bg-primary/10 text-primary",
     indicator: "multi-system receipts",
   },
@@ -51,7 +51,7 @@ const FeatureTrio = () => (
         What you get
       </p>
       <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-        Three guarantees every evidence package carries.
+        Three guarantees every evidence envelope carries.
       </h2>
     </header>
 

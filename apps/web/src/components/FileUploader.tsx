@@ -37,7 +37,7 @@ const FILE_NAME_MAX_LENGTH = 40;
 const UPLOAD_STEPS: Step[] = [
   { id: "select", label: "1 · Select file", description: "Drop or pick a file to upload" },
   { id: "split", label: "2 · Split & hash", description: "Slice into chain-sized chunks, SHA-256 each" },
-  { id: "send", label: "3 · Store & send", description: "Bytes to the storage chain, one anchor per chunk" },
+  { id: "send", label: "3 · Store & send", description: "Bytes to the storage system, one anchor per chunk" },
   { id: "register", label: "4 · Register", description: "Write each tx hash into the registry contract" },
   { id: "done", label: "Done", description: "Indexed and retrievable from the chain" },
 ];
