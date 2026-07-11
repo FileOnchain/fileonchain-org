@@ -95,7 +95,7 @@ export const FocatTopUp = () => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-wider text-muted">
-            FOCAT escrow on {activeChain.name}
+            FOCAT escrow on {activeChain.name} · testnet preview
           </p>
           <p className="mt-1 text-xs text-muted">
             Anchoring from your wallet escrows {economics.live ? "" : "~"}

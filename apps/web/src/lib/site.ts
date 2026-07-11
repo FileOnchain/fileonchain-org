@@ -12,11 +12,11 @@ export const siteConfig = {
     /\/$/,
     ""
   ),
-  title: "FileOnChain — Multichain Onchain Storage",
+  title: "FileOnChain — Verifiable Onchain Evidence Packages",
   description:
-    "Upload files permanently to Autonomys, Ethereum, Base, Optimism, Arbitrum, Polygon, Solana, and Aptos. Anchor CIDs onchain. Pay for private cache. Donate to keep public cache alive.",
+    "One developer interface that creates portable, independently verifiable evidence packages across storage and settlement systems — one SDK, API, and MCP server; twelve chain families behind it.",
   ogDescription:
-    "Permanent onchain file storage across 10 chains. Anchor CIDs, pay for private cache, support public infrastructure.",
+    "One developer interface. Portable, independently verifiable evidence packages across storage and settlement systems.",
   twitter: "@fileonchain",
   /** Public profiles — Organization JSON-LD `sameAs` and footer links. */
   socials: {

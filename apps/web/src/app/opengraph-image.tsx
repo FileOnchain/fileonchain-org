@@ -60,11 +60,11 @@ export default function OpengraphImage() {
               maxWidth: "900px",
             }}
           >
-            Permanent onchain file storage.
+            Verifiable onchain evidence packages.
           </div>
           <div style={{ fontSize: "32px", color: "#9aa3b2", maxWidth: "820px" }}>
-            Anchor file CIDs across 8 chains, pay for a private cache, and fund
-            the public cache.
+            One developer interface — portable, independently verifiable
+            evidence across storage and settlement systems.
           </div>
         </div>
 

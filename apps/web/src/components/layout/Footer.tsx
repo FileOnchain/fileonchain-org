@@ -88,9 +88,9 @@ const Footer = () => (
             </span>
           </Link>
           <p className="max-w-xs text-sm leading-relaxed text-muted">
-            Permanent file storage, anchored one transaction at a time across{" "}
-            {CHAIN_FAMILIES.length} chain families — from EVM and Substrate to
-            Cardano, TON, and Hedera.
+            One developer interface for portable, independently verifiable
+            evidence packages — {CHAIN_FAMILIES.length} chain families behind
+            it, from EVM and Substrate to Cardano, TON, and Hedera.
           </p>
           <div className="flex items-center gap-3">
             {ORG_SOCIALS.map(({ href, label, Icon }) => (

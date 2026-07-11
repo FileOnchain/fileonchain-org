@@ -75,7 +75,8 @@ const walletClient = createWalletClient({
   transport: custom(window.ethereum),
 });
 
-// Escrows a FOCAT tip + bond; verifies after the challenge window.
+// Testnet preview of the roadmap verification layer: escrows a FOCAT
+// tip + bond and verifies after a challenge window. Not part of v1.
 const receipt = await proposeAnchor(walletClient, {
   chainId: "evm:8453",
   cid: "bafybeig...",
@@ -398,13 +399,15 @@ const DocsPage = () => (
           identical progress and receipt shape — chunk anchors first, the
           file-level anchor last (indexers rely on that ordering). A folder
           anchors exactly like a file: anchor the CID of its DAG root. On
-          contract chains the file-level anchor is a paid{" "}
-          <code className="font-mono text-xs">proposeAnchor</code> that escrows
-          a FOCAT tip + bond and verifies after a challenge window — the{" "}
+          testnets with the roadmap verification layer deployed, the EVM
+          client also exposes a paid{" "}
+          <code className="font-mono text-xs">proposeAnchor</code> preview —
+          part of the staged roadmap, not v1 — while the{" "}
           <Link href="/protocol" className="text-primary underline underline-offset-2">
             protocol page
           </Link>{" "}
-          explains the token, the fee split, and every contract in the suite.
+          explains the v1 anchor flow and how anyone verifies an evidence
+          package.
         </p>
         <CodeBlock title="anchor.ts" code={CHUNKED_SNIPPET} />
       </section>

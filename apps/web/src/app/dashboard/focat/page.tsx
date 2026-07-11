@@ -42,12 +42,12 @@ export default async function FocatPage() {
               FOCAT anchor packs
             </p>
             <p className="mt-1 max-w-xl text-sm text-muted">
-              Fixed-price top-ups for wallets that anchor pay-as-you-go on
-              propose/verify chains — enough FOCAT for the tip and the
-              refundable bond, paid from your USD credits and delivered to a
-              wallet you choose. Credits anchoring never needs this, and
-              validators earn FOCAT from verification tips instead of buying.
-              Testnets drip for free.
+              Fixed-price top-ups for wallets exercising the propose/verify
+              layer — a testnet preview of the roadmap verification market,
+              not part of v1. Enough FOCAT for the tip and the refundable
+              bond, paid from your USD credits and delivered to a wallet you
+              choose. Credits anchoring never needs this. Testnets drip for
+              free.
             </p>
           </div>
           <GetFocatButton />
