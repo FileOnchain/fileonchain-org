@@ -44,17 +44,11 @@ const EXPORT_DIR = join(tmpdir(), "foc-exports");
 const DEFAULT_TTL_HOURS = 24;
 const TAR_BLOCK_SIZE = 512;
 
-const TAR_TYPE = {
-  REGULAR: "0",
-  DIRECTORY: "5",
-} as const;
-
 /** Compute octal-permission-string + modification-time header. */
 const buildTarHeader = (
   name: string,
   size: number,
-  mode: number = 0o644,
-  type: keyof typeof TAR_TYPE = "REGULAR",
+  type: "REGULAR" | "DIRECTORY" = "REGULAR",
 ): Buffer => {
   const header = Buffer.alloc(TAR_BLOCK_SIZE);
   // POSIX ustar (ustar prefix + magic + version). Each numeric field is

@@ -1,23 +1,15 @@
 import { NextResponse } from "next/server";
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { db, webhookEndpoints } from "@/lib/db";
+import { db, webhookEndpoints, webhookSubscriptions, type WebhookEventType } from "@/lib/db";
 import { authenticateApiKey } from "@/lib/server/api-keys";
-import { asRouteError, requireUser } from "@/lib/auth";
+import { asRouteError } from "@/lib/auth";
 import { HttpError } from "@/lib/server/http-error";
 import {
   CLOUD_WEBHOOKS_DISABLED_BODY,
   isCloudWebhooksEnabled,
 } from "@/lib/server/cloud-feature";
-import {
-  enqueueWebhookDeliveries,
-  mintWebhookSecret,
-} from "@/lib/server/webhooks";
+import { mintWebhookSecret } from "@/lib/server/webhooks";
 import { logActivity } from "@/lib/server/activity";
-import {
-  db as db2,
-  webhookSubscriptions,
-  type WebhookEventType,
-} from "@/lib/db";
 
 /**
  * `GET  /api/v1/webhooks`              list active endpoints for the org
@@ -131,7 +123,7 @@ export async function POST(request: Request) {
     if (!endpoint) throw new HttpError(500, "Insert returned no row", "internal_error");
 
     if (events.length > 0) {
-      await db2
+      await db
         .insert(webhookSubscriptions)
         .values(
           events.map((eventType) => ({
@@ -166,5 +158,7 @@ export async function POST(request: Request) {
 
 /** Re-exported for `/api/v1/webhooks/[id]/route.ts` — session-authed
  *  management uses the same `requireUser` path that the v1 API key
- *  surface uses, so the ownership check lives here. */
-export { requireUser };
+ *  surface uses, so the ownership check lives here.
+ *  (Note: do not export `requireUser` from this file — Next.js rejects
+ *  non-handler exports in route files. The sibling route imports it
+ *  from `@/lib/auth` directly.) */

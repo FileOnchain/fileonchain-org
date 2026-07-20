@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db, webhookDeliveries, webhookEndpoints } from "@/lib/db";
 import { authenticateApiKey } from "@/lib/server/api-keys";
 import { asRouteError } from "@/lib/auth";

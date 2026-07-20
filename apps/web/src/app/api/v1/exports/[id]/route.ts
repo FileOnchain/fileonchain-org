@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
 import { authenticateApiKey } from "@/lib/server/api-keys";
 import { asRouteError } from "@/lib/auth";
-import { HttpError } from "@/lib/server/http-error";
 import {
   CLOUD_EXPORTS_DISABLED_BODY,
   isCloudExportsEnabled,
 } from "@/lib/server/cloud-feature";
 import {
-  authorizeDownload,
   getExportJob,
   purgeExportJob,
 } from "@/lib/server/exports";
-import { logActivity } from "@/lib/server/activity";
 
 /**
  * `GET   /api/v1/exports/[id]`           job status (no file bytes)

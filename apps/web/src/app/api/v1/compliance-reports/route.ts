@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     const apiKey = await authenticateApiKey(request);
     let orgId: string | null = apiKey?.orgId ?? null;
     if (!orgId) {
-      const userId = await requireUser();
+      await requireUser();
       const url = new URL(request.url);
       const queryOrgId = url.searchParams.get("orgId");
       if (!queryOrgId) {
