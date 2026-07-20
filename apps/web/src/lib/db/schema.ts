@@ -195,23 +195,36 @@ export const creditLedger = pgTable(
 
 export type DepositStatus = "pending" | "confirmed" | "failed";
 
-/** USDC deposit intents. Confirmation is mocked for now. */
-export const deposits = pgTable("deposit", {
-  id: text("id").primaryKey().$defaultFn(uuid),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  chainId: text("chain_id").$type<ChainId>().notNull(),
-  amountMicroUsdc: bigint("amount_micro_usdc", { mode: "bigint" }).notNull(),
-  /** Mock deposit address shown to the user. */
-  depositAddress: text("deposit_address").notNull(),
-  status: text("status").$type<DepositStatus>().notNull().default("pending"),
-  txHash: text("tx_hash"),
-  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+/** USDC deposit intents. Confirmation is real on chains whose `usdcContract`
+ *  is provisioned; the `/api/cron/deposits-watch` cron matches inbound
+ *  Transfer events against the pending deposit rows. The
+ *  `(user_id, status, created_at)` index powers the watcher; the
+ *  unique `tx_hash` index makes a single hash claim a single deposit
+ *  race-free (manual confirm + auto watcher can never double-credit). */
+export const deposits = pgTable(
+  "deposit",
+  {
+    id: text("id").primaryKey().$defaultFn(uuid),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chainId: text("chain_id").$type<ChainId>().notNull(),
+    amountMicroUsdc: bigint("amount_micro_usdc", { mode: "bigint" }).notNull(),
+    /** Per-user deposit address derived deterministically from
+     *  `(userId, chainId)` — see `api/credits/deposit/route.ts`. */
+    depositAddress: text("deposit_address").notNull(),
+    status: text("status").$type<DepositStatus>().notNull().default("pending"),
+    txHash: text("tx_hash"),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("deposit_user_status_idx").on(t.userId, t.status, t.createdAt),
+    uniqueIndex("deposit_tx_hash_unique").on(t.txHash),
+  ],
+);
 
 export type ActivityType =
   | "sign_in"
@@ -256,7 +269,9 @@ export type ActivityType =
   | "export_downloaded"
   | "compliance_report_generated"
   | "compliance_report_downloaded"
-  | "sla_tier_changed";
+  | "sla_tier_changed"
+  | "deposit_auto_confirmed"
+  | "deposit_confirm_failed";
 
 export type ActivityMetadata = Record<string, string | number | boolean | null>;
 
@@ -968,5 +983,121 @@ export const complianceReports = pgTable(
       t.periodStart,
       t.periodEnd,
     ),
+  ],
+);
+
+/* ------------------------------------------------------------------ */
+/* Indexer (anchored events written by `/api/cron/indexer-scan`).
+ *
+ * One row per on-chain `anchorChunk` / `anchorCID` event observed on a
+ * provisioned EVM chain. The `(chain_id, tx_hash, log_index)` unique
+ * triple is the dedup key (a chain reorg or a duplicate cron run cannot
+ * produce two rows for the same log entry). `payload` is the parsed
+ * `AnchorPayload` JSON — see `lib/indexer/queries.ts` for the read
+ * side, `lib/indexer/scan.ts` for the write side. The
+ * `(cid, block_timestamp DESC)` index powers the explorer feed; the
+ * `(submitter, block_timestamp DESC)` index powers the leaderboard.   */
+/* ------------------------------------------------------------------ */
+
+export type AnchorEventStatus = "anchored" | "pending" | "failed";
+
+export const indexedAnchorEvents = pgTable(
+  "indexed_anchor_event",
+  {
+    id: text("id").primaryKey().$defaultFn(uuid),
+    chainId: text("chain_id").$type<ChainId>().notNull(),
+    cid: text("cid").notNull(),
+    registryAddress: text("registry_address").notNull(),
+    txHash: text("tx_hash").notNull(),
+    logIndex: integer("log_index").notNull(),
+    blockNumber: bigint("block_number", { mode: "number" }).notNull(),
+    /** Block timestamp in seconds since the epoch (per EVM convention). */
+    blockTimestamp: timestamp("block_timestamp", { withTimezone: true }).notNull(),
+    submitter: text("submitter").notNull(),
+    /** Parsed `AnchorPayload` JSON from `parseAnchorPayload`. */
+    payload: jsonb("payload").notNull(),
+    status: text("status").$type<AnchorEventStatus>().notNull().default("anchored"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("indexed_anchor_event_chain_tx_log_unique").on(
+      t.chainId,
+      t.txHash,
+      t.logIndex,
+    ),
+    index("indexed_anchor_event_cid_idx").on(t.cid, t.blockTimestamp),
+    index("indexed_anchor_event_submitter_idx").on(t.submitter, t.blockTimestamp),
+  ],
+);
+
+/** Per-chain head pointer for the indexer. The scan reads
+ *  `last_scanned_block + 1` on each tick and writes back the highest
+ *  block it observed. Reorgs aren't rolled back (we keep already-seen
+ *  rows); the unique `(chain_id, tx_hash, log_index)` index guarantees
+ *  a re-scan can't duplicate events.                                  */
+export const indexerCursors = pgTable("indexer_cursor", {
+  chainId: text("chain_id").$type<ChainId>().primaryKey(),
+  lastScannedBlock: bigint("last_scanned_block", { mode: "number" }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/* ------------------------------------------------------------------ */
+/* Deposit watcher cursor (drives `/api/cron/deposits-watch`).
+ *
+ * Same shape as the indexer cursor: per-chain head pointer for the USDC
+ * Transfer-event scan. The watcher also reads `deposit` rows whose
+ * `status = 'pending'` to discover the deposit addresses it should
+ * match on (no separate address list).                                */
+/* ------------------------------------------------------------------ */
+
+export const depositCursors = pgTable("deposit_cursor", {
+  chainId: text("chain_id").$type<ChainId>().primaryKey(),
+  lastScannedBlock: bigint("last_scanned_block", { mode: "number" }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/* ------------------------------------------------------------------ */
+/* API rate limits (drives `enforceApiKeyRateLimit` /
+ * `enforceIpRateLimit` called from `authenticateApiKey`).
+ *
+ * Sliding minute window: `window_start` is the floor of `now()` to the
+ * nearest minute. `(scope_kind, scope_id, endpoint, window_start)` is
+ * the dedup key for the atomic UPSERT counter. The cron
+ * `rate-limit-sweep` deletes windows older than the longest configured
+ * window so the table stays bounded.                                */
+/* ------------------------------------------------------------------ */
+
+export type RateLimitScope = "api_key" | "ip";
+
+export const rateLimitWindows = pgTable(
+  "rate_limit_window",
+  {
+    id: text("id").primaryKey().$defaultFn(uuid),
+    scopeKind: text("scope_kind").$type<RateLimitScope>().notNull(),
+    /** `api_key.id` or client IP. */
+    scopeId: text("scope_id").notNull(),
+    /** Stable endpoint key, e.g. "POST /api/v1/anchor". Path params
+     *  are normalized out so `[id]` doesn't fragment the bucket. */
+    endpoint: text("endpoint").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    requestCount: integer("request_count").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("rate_limit_window_scope_endpoint_window_unique").on(
+      t.scopeKind,
+      t.scopeId,
+      t.endpoint,
+      t.windowStart,
+    ),
+    index("rate_limit_window_window_idx").on(t.windowStart),
   ],
 );

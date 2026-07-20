@@ -54,6 +54,8 @@ const TYPE_LABELS: Record<ActivityType, { label: string; variant: BadgeVariant }
   compliance_report_generated: { label: "Compliance report generated", variant: "primary" },
   compliance_report_downloaded: { label: "Compliance report downloaded", variant: "default" },
   sla_tier_changed: { label: "SLA tier changed", variant: "default" },
+  deposit_auto_confirmed: { label: "Deposit auto-confirmed", variant: "success" },
+  deposit_confirm_failed: { label: "Deposit confirm failed", variant: "warning" },
 };
 
 export default async function LogsPage() {
