@@ -21,6 +21,7 @@
     "@cosmjs/proto-signing": "^0.39.0",
     "@cosmjs/stargate": "^0.39.0",
     "@fileonchain/sdk": "workspace:*",
+    "@fileonchain/protocol": "workspace:*",
     "@fileonchain/verify": "workspace:*",
     "@hashgraph/sdk": "^2.81.0",
     "@meshsdk/core": "^1.9.1",
