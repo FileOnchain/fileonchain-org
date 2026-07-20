@@ -4,6 +4,7 @@ import { desc, eq } from "drizzle-orm";
 import { FiKey } from "react-icons/fi";
 import { auth } from "@/lib/auth";
 import { db, apiKeys } from "@/lib/db";
+import { listOrganizations } from "@/lib/server/organizations";
 import FormattedDate from "@/components/ui/FormattedDate";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -18,11 +19,17 @@ export default async function KeysPage() {
   const session = await auth();
   if (!session?.user) redirect("/login?next=/dashboard/keys");
 
-  const keys = await db
-    .select()
-    .from(apiKeys)
-    .where(eq(apiKeys.userId, session.user.id))
-    .orderBy(desc(apiKeys.createdAt));
+  const [keys, orgs] = await Promise.all([
+    db
+      .select()
+      .from(apiKeys)
+      .where(eq(apiKeys.userId, session.user.id))
+      .orderBy(desc(apiKeys.createdAt)),
+    listOrganizations(session.user.id),
+  ]);
+
+  // Lookup so the page can render the org name (not just the id) per key.
+  const orgNameById = new Map(orgs.map((o) => [o.id, o.name]));
 
   return (
     <div className="space-y-6">
@@ -32,7 +39,9 @@ export default async function KeysPage() {
           send <code className="font-mono text-xs">Authorization: Bearer fok_…</code>{" "}
           to <code className="font-mono text-xs">POST /api/v1/anchor</code>.
         </p>
-        <CreateApiKeyButton />
+        <CreateApiKeyButton
+          orgs={orgs.map((o) => ({ id: o.id, name: o.name }))}
+        />
       </div>
 
       {keys.length === 0 ? (
@@ -45,6 +54,8 @@ export default async function KeysPage() {
         <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
           {keys.map((key) => {
             const revoked = key.revokedAt !== null;
+            const isOrg = key.scope === "org" && key.orgId;
+            const orgName = isOrg ? orgNameById.get(key.orgId!) : undefined;
             return (
               <li
                 key={key.id}
@@ -58,6 +69,15 @@ export default async function KeysPage() {
                     <code className="font-mono text-xs text-muted">
                       {key.prefix}…
                     </code>
+                    {isOrg ? (
+                      <Badge variant="info" size="sm">
+                        Org · {orgName ?? key.orgId}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" size="sm">
+                        Personal
+                      </Badge>
+                    )}
                     {revoked && (
                       <Badge variant="danger" size="sm">
                         Revoked

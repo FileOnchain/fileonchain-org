@@ -16,11 +16,23 @@ import { trackEvent } from "@/lib/analytics";
  * plaintext secret exactly once) and revoke.
  */
 
-export const CreateApiKeyButton = () => {
+interface OrgOption {
+  id: string;
+  name: string;
+}
+
+export const CreateApiKeyButton = ({
+  orgs = [],
+}: {
+  orgs?: OrgOption[];
+}) => {
   const router = useRouter();
   const { toast } = useToast();
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
+  /** Empty string means "personal". The select's first option is
+   *  always Personal so the default state produces a personal key. */
+  const [orgId, setOrgId] = React.useState<string>("");
   const [secret, setSecret] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -36,6 +48,7 @@ export const CreateApiKeyButton = () => {
     setOpen(next);
     if (!next) {
       setName("");
+      setOrgId("");
       setSecret(null);
       setError(null);
       clearDraft();
@@ -51,7 +64,7 @@ export const CreateApiKeyButton = () => {
       const res = await fetch("/api/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, orgId: orgId || null }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
@@ -80,7 +93,7 @@ export const CreateApiKeyButton = () => {
         description={
           secret
             ? "This is the only time the full key is shown — store it somewhere safe."
-            : "Name the key after the app or script that will use it."
+            : "Name the key after the app or script that will use it. Pick an organization to mint an org-scoped key (required for the Cloud evidence surface)."
         }
       >
         {secret ? (
@@ -104,6 +117,29 @@ export const CreateApiKeyButton = () => {
               onChange={(event) => setName(event.target.value)}
               aria-label="Key name"
             />
+            {orgs.length > 0 && (
+              <div className="space-y-1">
+                <label
+                  htmlFor="api-key-org"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Scope
+                </label>
+                <select
+                  id="api-key-org"
+                  value={orgId}
+                  onChange={(event) => setOrgId(event.target.value)}
+                  className="block w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <option value="">Personal — for /api/v1/anchor and /api/v1/credits</option>
+                  {orgs.map((org) => (
+                    <option key={org.id} value={org.id}>
+                      Org · {org.name} — also enables /api/v1/evidence, /verify, /retention
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             {error && (
               <p role="alert" className="text-sm text-danger">
                 {error}

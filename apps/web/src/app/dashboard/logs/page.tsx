@@ -30,6 +30,9 @@ const TYPE_LABELS: Record<ActivityType, { label: string; variant: BadgeVariant }
   org_deleted: { label: "Org deleted", variant: "warning" },
   org_member_added: { label: "Org member added", variant: "primary" },
   org_member_removed: { label: "Org member removed", variant: "default" },
+  evidence_sealed: { label: "Evidence sealed", variant: "primary" },
+  agent_run_sealed: { label: "Agent run sealed", variant: "primary" },
+  evidence_verified: { label: "Evidence verified", variant: "info" },
 };
 
 export default async function LogsPage() {
