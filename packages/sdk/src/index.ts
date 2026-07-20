@@ -19,10 +19,6 @@
 export * from "@fileonchain/utils";
 export {
   fileRegistryAbi,
-  fileOnChainAttestationTokenAbi,
-  validatorStakingAbi,
-  platformRegistryAbi,
-  fileOnChainGovernorAbi,
   cachePaymentsAbi,
   donationEscrowAbi,
 } from "@fileonchain/sdk-evm/abis";

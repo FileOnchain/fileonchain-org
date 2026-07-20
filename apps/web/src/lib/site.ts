@@ -12,11 +12,11 @@ export const siteConfig = {
     /\/$/,
     ""
   ),
-  title: "FileOnChain — Multichain Onchain Storage",
+  title: "FileOnChain — Tamper-Evident Audit Trails for AI Agents",
   description:
-    "Upload files permanently to Autonomys, Ethereum, Base, Optimism, Arbitrum, Polygon, Solana, and Aptos. Anchor CIDs onchain. Pay for private cache. Donate to keep public cache alive.",
+    "Seal agent runs, outputs, approvals, and tool activity into portable evidence packages that anyone can independently verify. Open protocol, local verifier, hash-only by default.",
   ogDescription:
-    "Permanent onchain file storage across 10 chains. Anchor CIDs, pay for private cache, support public infrastructure.",
+    "Portable evidence packages for AI agents — open protocol, local verifier, independently verifiable.",
   twitter: "@fileonchain",
   /** Public profiles — Organization JSON-LD `sameAs` and footer links. */
   socials: {

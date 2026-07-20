@@ -13,7 +13,6 @@ import ChunkProgressList from "@/components/upload/ChunkProgressList";
 import CostEstimatePanel from "@/components/upload/CostEstimatePanel";
 import StorageSelector from "@/components/upload/StorageSelector";
 import PaymentMethodSelector from "@/components/upload/PaymentMethodSelector";
-import FocatTopUp from "@/components/upload/FocatTopUp";
 import UploadManifest from "@/components/upload/UploadManifest";
 import UploadAdvisor, { type AdvisorApplyPayload } from "@/components/upload/UploadAdvisor";
 import { useChain } from "@/hooks/useChain";
@@ -38,7 +37,7 @@ const FILE_NAME_MAX_LENGTH = 40;
 const UPLOAD_STEPS: Step[] = [
   { id: "select", label: "1 · Select file", description: "Drop or pick a file to upload" },
   { id: "split", label: "2 · Split & hash", description: "Slice into chain-sized chunks, SHA-256 each" },
-  { id: "send", label: "3 · Store & send", description: "Bytes to the storage chain, one anchor per chunk" },
+  { id: "send", label: "3 · Store & send", description: "Bytes to the storage system, one anchor per chunk" },
   { id: "register", label: "4 · Register", description: "Write each tx hash into the registry contract" },
   { id: "done", label: "Done", description: "Indexed and retrievable from the chain" },
 ];
@@ -297,19 +296,13 @@ const FileUploader = () => {
             {/* 03 · PAYMENT --------------------------------------------- */}
             <section>
               <StepHeader n="03" label="Who pays" />
-              <div className="space-y-4">
-                <PaymentMethodSelector
-                  value={paymentMethod}
-                  byokKeyId={byokKeyId}
-                  chunkCount={Math.max(1, cids.length)}
-                  onChange={setPaymentMethod}
-                  onByokKeyChange={setByokKeyId}
-                />
-                {/* FOCAT enters the flow only where the wallet path requires
-                    it: PAYG on a propose/verify chain escrows tip + bond from
-                    the user's wallet. Credits users never see the token. */}
-                {paymentMethod === "payg" && <FocatTopUp />}
-              </div>
+              <PaymentMethodSelector
+                value={paymentMethod}
+                byokKeyId={byokKeyId}
+                chunkCount={Math.max(1, cids.length)}
+                onChange={setPaymentMethod}
+                onByokKeyChange={setByokKeyId}
+              />
             </section>
 
             {/* 04 · COST ------------------------------------------------ */}

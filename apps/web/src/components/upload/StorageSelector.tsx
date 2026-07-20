@@ -22,7 +22,7 @@ import { cn } from "@/lib/cn";
 interface StorageSelectorProps {
   fileSize: number;
   mode: StorageMode;
-  /** Resolved storage chain (null when mode isn't "onchain"). */
+  /** Resolved storage system (null when mode isn't "onchain"). */
   storageChain: ChainConfig | null;
   externalUri: string;
   activeChain: ChainConfig;
@@ -59,7 +59,7 @@ const isSuggested = (chain: ChainConfig): boolean =>
 /**
  * StorageSelector — where the file's bytes live. On-chain storage is the
  * default: bytes are embedded in the chunk anchors on the selected storage
- * chain (the anchoring chain when it can carry them, Autonomys suggested
+ * chain (the settlement chain when it can carry them, Autonomys suggested
  * for everything big), sized to each chain's per-transaction data budget.
  * Opting out offers a URI field so anchors can still point at an existing
  * copy (IPFS, Auto Drive, anywhere).
@@ -79,7 +79,7 @@ const StorageSelector = ({
   const visibleChains = useVisibleChains();
 
   // Storage targets: every visible, active, storage-capable chain — plus
-  // the resolved storage chain itself (it may be the Autonomys fallback a
+  // the resolved storage system itself (it may be the Autonomys fallback a
   // testnet-visibility preference would otherwise hide).
   const options = React.useMemo(() => {
     const chains = visibleChains.filter(

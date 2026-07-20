@@ -57,14 +57,14 @@ export default function OpengraphImage() {
               color: "#f4f2ec",
               lineHeight: 1.05,
               letterSpacing: "-0.02em",
-              maxWidth: "900px",
+              maxWidth: "1000px",
             }}
           >
-            Permanent onchain file storage.
+            Tamper-evident audit trails for AI agents.
           </div>
           <div style={{ fontSize: "32px", color: "#9aa3b2", maxWidth: "820px" }}>
-            Anchor file CIDs across 8 chains, pay for a private cache, and fund
-            the public cache.
+            Portable evidence packages. Open protocol. Independently
+            verifiable.
           </div>
         </div>
 

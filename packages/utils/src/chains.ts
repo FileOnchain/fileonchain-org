@@ -12,6 +12,31 @@ import type { ChainFamily, ChainId } from "./types";
 export type ChainStatus = "active" | "planned" | "deprecated";
 
 /**
+ * How far a network's integration has actually progressed — the honest
+ * checklist behind the product switch above. `status` says whether the
+ * product offers the chain; `integrationStatus` says what is genuinely
+ * built, deployed, and verified. Marketing surfaces must not describe a
+ * network beyond its `integrationStatus`.
+ *
+ * Ladder (each rung implies the ones before it):
+ * designed → implemented → tested-locally → testnet-deployed →
+ * mainnet-deployed → webapp-integrated → production-ready → audited.
+ *
+ * Families whose transport needs no deployment (Substrate remarks, Solana
+ * Memo, memo/metadata/comment channels) skip the deploy rungs: their
+ * integration is "webapp-integrated" once the client is wired end-to-end.
+ */
+export type IntegrationStatus =
+  | "designed"
+  | "implemented"
+  | "tested-locally"
+  | "testnet-deployed"
+  | "mainnet-deployed"
+  | "webapp-integrated"
+  | "production-ready"
+  | "audited";
+
+/**
  * ChainConfig — the single source of truth for every supported network.
  *
  * Each chain carries its RPC endpoint, explorer paths, and the relevant
@@ -35,30 +60,11 @@ export interface ChainConfig {
   cacheContract: `0x${string}` | null;
   donationContract: `0x${string}` | null;
   /**
-   * Anchor-protocol contracts (propose/verify economics). Optional and only
-   * meaningful on contract families (EVM, Aptos, Sui, Starknet, NEAR):
-   * `tokenContract` is the FOCAT token that denominates tips, bonds, and
-   * validator stakes — the propose path provisions only when it is set (see
-   * `isProposeProvisioned`). `stakingContract` / `platformRegistryContract`
-   * are ValidatorStaking and PlatformRegistry; `governorContract` /
-   * `timelockContract` exist on EVM chains only (governance is EVM-hubbed,
-   * other runtimes mirror decisions via admin accounts). On Move chains the
-   * registry module address doubles for these where modules share an
-   * account. Absent means not deployed.
-   */
-  tokenContract?: string | null;
-  stakingContract?: string | null;
-  platformRegistryContract?: string | null;
-  governorContract?: string | null;
-  timelockContract?: string | null;
-  /**
    * The USDC token `cacheContract` charges in — the chain's canonical USDC
    * on mainnets, the deploy script's MockUSDC on testnets. Cache payments
    * provision only when both this and `cacheContract` are set.
    */
   usdcContract?: `0x${string}` | null;
-  /** Platform id integrators on this chain default to (FileOnChain = "1"). */
-  defaultPlatformId?: string;
   programId: string | null;
   /**
    * Deployed on-chain code that `anchor_cid` calls: an Aptos/Sui Move
@@ -87,6 +93,12 @@ export interface ChainConfig {
   embedsChunkData?: boolean;
   /** Rollout status — only `"active"` chains accept new uploads. */
   status: ChainStatus;
+  /**
+   * Honest integration progress (see `IntegrationStatus`). Absent means
+   * `"implemented"`: the family client exists in the SDK and builds, but
+   * nothing is deployed or wired end-to-end for this specific network.
+   */
+  integrationStatus?: IntegrationStatus;
   testnet: boolean;
 }
 
@@ -113,7 +125,8 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
-    status: "active",
+    // No registry deployed yet — a roadmap adapter, not a live integration.
+    status: "planned",
     testnet: false,
   },
   {
@@ -155,7 +168,10 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
-    status: "active",
+    // Registry not deployed on the mainnet domain yet — flips to active
+    // when the Chronos-tested contracts land here.
+    status: "planned",
+    integrationStatus: "testnet-deployed",
     testnet: false,
   },
   {
@@ -393,17 +409,12 @@ export const CHAINS: readonly ChainConfig[] = [
     registryContract: "0xF81abde8b6474e6b169B85Dd74b61b9A9829BE64",
     cacheContract: "0xBB9Da1763A615fB8329ea5503de73A34F9FEE903",
     donationContract: "0xB2c219b84a876b4700114D58C2D5ba6B0B851D33",
-    tokenContract: "0x3C2adE0c7B3A4Bd0054314A03B79769DbCfFBE29",
-    stakingContract: "0x02c456169e7376a71F776366840Ac1eb46CC8799",
-    platformRegistryContract: "0x00E777c3023DB245a439c6c502046Dc91bC0D53b",
-    governorContract: "0x3FC3afAc0A442161e75927DFB6C00136fAdab5A4",
-    timelockContract: "0xB723B66A033825f182670B027BfdC550DF7e4885",
     usdcContract: "0xA449fDB39639a20d3403Be4024c54b35B82F5E4E", // MockUSDC
-    defaultPlatformId: "1",
     programId: null,
     moduleAddress: null,
     palletContract: null,
     status: "active",
+    integrationStatus: "testnet-deployed",
     testnet: true,
   },
   {
@@ -440,17 +451,12 @@ export const CHAINS: readonly ChainConfig[] = [
     registryContract: "0xF81abde8b6474e6b169B85Dd74b61b9A9829BE64",
     cacheContract: "0xBB9Da1763A615fB8329ea5503de73A34F9FEE903",
     donationContract: "0xB2c219b84a876b4700114D58C2D5ba6B0B851D33",
-    tokenContract: "0x3C2adE0c7B3A4Bd0054314A03B79769DbCfFBE29",
-    stakingContract: "0x02c456169e7376a71F776366840Ac1eb46CC8799",
-    platformRegistryContract: "0x00E777c3023DB245a439c6c502046Dc91bC0D53b",
-    governorContract: "0x3FC3afAc0A442161e75927DFB6C00136fAdab5A4",
-    timelockContract: "0xB723B66A033825f182670B027BfdC550DF7e4885",
     usdcContract: "0xA449fDB39639a20d3403Be4024c54b35B82F5E4E", // MockUSDC
-    defaultPlatformId: "1",
     programId: null,
     moduleAddress: null,
     palletContract: null,
     status: "active",
+    integrationStatus: "testnet-deployed",
     testnet: true,
   },
   {
@@ -692,7 +698,10 @@ export const CHAINS: readonly ChainConfig[] = [
     moduleAddress: null,
     palletContract: "system.remarkWithEvent",
     embedsChunkData: true,
-    status: "planned",
+    // v1 primary permanent-storage system: native remarks need no
+    // deployment, and the client is wired end-to-end in the webapp.
+    status: "active",
+    integrationStatus: "webapp-integrated",
     testnet: false,
   },
   {
@@ -713,7 +722,8 @@ export const CHAINS: readonly ChainConfig[] = [
     moduleAddress: null,
     palletContract: "system.remarkWithEvent",
     embedsChunkData: true,
-    status: "planned",
+    status: "active",
+    integrationStatus: "webapp-integrated",
     testnet: true,
   },
   {
@@ -811,11 +821,13 @@ export const CHAINS: readonly ChainConfig[] = [
     registryContract: null,
     cacheContract: null,
     donationContract: null,
-    /* TODO: deploy Solana program for CID anchoring */
+    // Anchors ride the native SPL Memo program — nothing of ours to deploy.
     programId: null,
     moduleAddress: null,
     palletContract: null,
-    status: "planned",
+    // v1's non-EVM portability demonstration.
+    status: "active",
+    integrationStatus: "webapp-integrated",
     testnet: false,
   },
   {
@@ -835,7 +847,8 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
-    status: "planned",
+    status: "active",
+    integrationStatus: "webapp-integrated",
     testnet: true,
   },
   // Aptos
@@ -1222,7 +1235,11 @@ export const CHAINS: readonly ChainConfig[] = [
   },
 ] as const;
 
-export const DEFAULT_CHAIN_ID: ChainId = "evm:870";
+/**
+ * The v1 default: Autonomys, the primary permanent-storage system — the
+ * only mainnet where anchoring (and on-chain storage) is live end-to-end.
+ */
+export const DEFAULT_CHAIN_ID: ChainId = "substrate:autonomys-mainnet";
 
 export const getChain = (id: ChainId | string): ChainConfig | undefined =>
   CHAINS.find((c) => c.id === id);
@@ -1250,9 +1267,25 @@ export const getVisibleChains = (
 /** Display labels for each rollout status. */
 export const CHAIN_STATUS_LABELS: Record<ChainStatus, string> = {
   active: "Active",
-  planned: "Planned",
+  planned: "Roadmap adapter",
   deprecated: "Deprecated",
 };
+
+/** Display labels for each integration-status rung. */
+export const INTEGRATION_STATUS_LABELS: Record<IntegrationStatus, string> = {
+  designed: "Designed",
+  implemented: "Implemented",
+  "tested-locally": "Tested locally",
+  "testnet-deployed": "Testnet deployed",
+  "mainnet-deployed": "Mainnet deployed",
+  "webapp-integrated": "Integrated into the webapp",
+  "production-ready": "Production ready",
+  audited: "Externally audited",
+};
+
+/** A chain's integration progress, with the documented default. */
+export const getIntegrationStatus = (chain: ChainConfig): IntegrationStatus =>
+  chain.integrationStatus ?? "implemented";
 
 /** Whether a chain is open for new uploads. */
 export const isChainActive = (chain: ChainConfig): boolean =>

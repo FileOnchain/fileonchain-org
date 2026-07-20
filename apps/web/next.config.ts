@@ -22,6 +22,9 @@ const nextConfig: NextConfig = {
   transpilePackages: [
     "@fileonchain/sdk",
     "@fileonchain/utils",
+    "@fileonchain/protocol",
+    "@fileonchain/agent-profile",
+    "@fileonchain/verify",
     "@fileonchain/api",
     "@fileonchain/sdk-evm",
     "@fileonchain/sdk-substrate",

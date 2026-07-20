@@ -35,9 +35,8 @@ export interface AnchorPayload {
   chainIds: ChainId[];
   paymentMethod: "credits" | "byok";
   byokKeyId?: string;
-  /** Originating platform id for the propose/verify fee split; defaults to
-   * the server's ANCHOR_PLATFORM_ID (FileOnChain = "1"). Partner API keys
-   * pass their registered platform id to receive the platform share. */
+  /** Originating platform id carried in the anchor payload (attribution
+   * only); defaults to the server's ANCHOR_PLATFORM_ID (FileOnChain = "1"). */
   platformId?: string;
 }
 
@@ -248,18 +247,13 @@ export const anchorWithAccount = async (
     console.error(`Anchor worker failed for job ${job.id}:`, error);
     throw new AnchorRequestError("On-chain anchoring failed — try again", 502);
   }
-  // The job is complete once the anchors landed; on-chain verification
-  // settles later — "proposed" anchors verify after their challenge window
-  // (permissionless finalize; a keeper cron is the follow-up).
   const [finished] = await db
     .update(uploadJobs)
     .set({
       status: "complete",
       txHashes: workerResult.txs,
       completedAt: new Date(),
-      verificationStatus: workerResult.verification.status,
-      challengeDeadlineAt: workerResult.verification.challengeDeadlineAt,
-      platformId: workerResult.verification.platformId,
+      platformId: payload.platformId ?? null,
     })
     .where(eq(uploadJobs.id, job.id))
     .returning();
@@ -294,11 +288,6 @@ export const serializeJob = (job: typeof uploadJobs.$inferSelect) => ({
   status: job.status,
   costMicroUsdc: job.costMicroUsdc.toString(),
   txHashes: job.txHashes,
-  verification: {
-    status: job.verificationStatus,
-    challengeDeadline: job.challengeDeadlineAt?.toISOString() ?? null,
-    platformId: job.platformId,
-  },
   createdAt: job.createdAt.toISOString(),
   completedAt: job.completedAt?.toISOString() ?? null,
 });

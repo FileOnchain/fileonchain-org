@@ -2,12 +2,10 @@ import {
   CHAINS,
   getChain,
   isChainProvisioned,
-  type AnchorProposal,
   type ChainId,
   type CIDRegistryRecord,
-  type ProposalStatus,
 } from "@fileonchain/sdk";
-import { getMockCIDRecord, getMockProposal } from "@/lib/mock/registry";
+import { getMockCIDRecord } from "@/lib/mock/registry";
 
 /**
  * Registry reads — real contract reads on provisioned chains, mock fallback
@@ -16,25 +14,15 @@ import { getMockCIDRecord, getMockProposal } from "@/lib/mock/registry";
  * Provisioned EVM chains resolve through `FileRegistry` storage via the
  * `@fileonchain/sdk/evm` read helpers (dynamic-imported so viem stays out of
  * the client bundle until needed). A provisioned chain's answer is
- * authoritative: "no verified record / no proposal" returns null rather than
- * falling back to fake data. Chains with nothing deployed keep returning the
- * deterministic mocks so the rest of the UI stays explorable — the same seam
+ * authoritative: "no stored record" returns null rather than falling back to
+ * fake data. Chains with nothing deployed keep returning the deterministic
+ * mocks so the rest of the UI stays explorable — the same seam
  * `useFileUploader` uses for sends.
  *
- * Contract storage only keeps the winning proposal, so records read here
+ * Contract storage only keeps the first-write record, so records read here
  * carry no txHash/blockNumber; those stay event/indexer territory
  * (see lib/mock/cid-indexer.ts).
  */
-
-/**
- * A proposal pinned to the CID + chain it was read from. `"none"` never
- * surfaces — a chain with no proposal resolves to null instead.
- */
-export type RegistryProposal = Omit<AnchorProposal, "status" | "cid"> & {
-  cid: string;
-  chainId: ChainId;
-  status: Exclude<ProposalStatus, "none">;
-};
 
 const isRealReadable = (chainId: ChainId) => {
   const chain = getChain(chainId);
@@ -45,9 +33,9 @@ const isRealReadable = (chainId: ChainId) => {
 
 /**
  * Resolve the registry record for a CID on one chain. Real
- * `FileRegistry.getVerifiedRecord` read where provisioned (null until a
- * proposal verifies), mock elsewhere. RPC failures resolve to null — a read
- * error must not fabricate a record.
+ * `FileRegistry.getCIDRecord` read where provisioned (null until the CID is
+ * anchored), mock elsewhere. RPC failures resolve to null — a read error
+ * must not fabricate a record.
  */
 export const getCIDRecord = async (
   cid: string,
@@ -57,8 +45,8 @@ export const getCIDRecord = async (
   if (!chain) return getMockCIDRecord(cid, chainId);
 
   try {
-    const { getVerifiedRecord } = await import("@fileonchain/sdk/evm");
-    const record = await getVerifiedRecord(chainId, cid);
+    const { getCIDRecord: readCIDRecord } = await import("@fileonchain/sdk/evm");
+    const record = await readCIDRecord(chainId, cid);
     if (!record) return null;
     return {
       cid,
@@ -68,36 +56,8 @@ export const getCIDRecord = async (
       submitter: record.submitter,
       contentHash: record.contentHash,
       uri: record.uri,
-      status: "verified",
+      status: "anchored",
     };
-  } catch {
-    return null;
-  }
-};
-
-/**
- * Latest propose/verify lifecycle state for a CID on one chain. Real
- * `getProposalIds` + `getProposal` where provisioned, mock on the other
- * protocol families.
- */
-export const getProposalForCID = async (
-  cid: string,
-  chainId: ChainId,
-): Promise<RegistryProposal | null> => {
-  const chain = isRealReadable(chainId);
-  if (!chain) {
-    const mock = getMockProposal(cid, chainId);
-    return mock ? { ...mock } : null;
-  }
-
-  try {
-    const { getProposal, getProposalIds } = await import("@fileonchain/sdk/evm");
-    const ids = await getProposalIds(chainId, cid);
-    const latest = ids[ids.length - 1];
-    if (!latest) return null;
-    const proposal = await getProposal(chainId, latest);
-    if (!proposal || proposal.status === "none") return null;
-    return { ...proposal, status: proposal.status, cid, chainId };
   } catch {
     return null;
   }

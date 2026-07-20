@@ -3,7 +3,6 @@ import { keccak256, stringToBytes } from "viem";
 import {
   getChain,
   isChainProvisioned,
-  isProposeProvisioned,
   ChainNotProvisionedError,
   type ChainConfig,
   type ChainId,
@@ -41,7 +40,7 @@ const anchorOnEvm = async (
   cid: string,
   privateKey: string,
   platformId: string,
-): Promise<UploadJobTx & { challengeDeadline?: number }> => {
+): Promise<UploadJobTx> => {
   const [{ createWalletClient, http }, { privateKeyToAccount }, evm] = await Promise.all([
     import("viem"),
     import("viem/accounts"),
@@ -53,22 +52,17 @@ const anchorOnEvm = async (
     chain: viemChain,
     transport: http(chain.rpcUrl),
   });
-  // proposeAnchor escrows the FOCAT tip + bond from the server signer
-  // (auto-approves when short) and waits for its own receipt. The anchor
-  // enters its challenge window here and verifies via permissionless
-  // finalize once the window closes.
-  const receipt = await evm.proposeAnchor(walletClient, {
+  // anchorCID emits the free file-level registry event and waits for its
+  // receipt — the block data goes straight into the job's tx record.
+  const receipt = await evm.anchorCID(walletClient, {
     chainId: chain.id,
     cid,
     platformId,
-    tip: env.anchorTipBaseUnits,
   });
   return {
     chainId: chain.id,
     txHash: receipt.txHash,
     blockNumber: receipt.blockNumber,
-    proposalId: receipt.proposalId,
-    challengeDeadline: receipt.challengeDeadline,
   };
 };
 
@@ -194,7 +188,7 @@ const sendWithSigner = async (
   chain: ChainConfig,
   cid: string,
   platformId: string,
-): Promise<(UploadJobTx & { challengeDeadline?: number }) | null> => {
+): Promise<UploadJobTx | null> => {
   if (chain.family === "evm" && env.anchorEvmPrivateKey) {
     return await anchorOnEvm(chain, cid, env.anchorEvmPrivateKey, platformId);
   }
@@ -277,10 +271,6 @@ interface AnchorSendResult {
   tx: UploadJobTx;
   /** True when the send was the deterministic mock, not a real transaction. */
   simulated: boolean;
-  /** True when the file anchor went through the propose/verify protocol. */
-  proposed: boolean;
-  /** Unix seconds when the propose challenge window closes, when known. */
-  challengeDeadline?: number;
 }
 
 const anchorOnChain = async (
@@ -293,7 +283,6 @@ const anchorOnChain = async (
   const simulated = (): AnchorSendResult => ({
     tx: mockTx(jobId, cid, chainId),
     simulated: true,
-    proposed: false,
   });
 
   const registryChain = getChain(chainId);
@@ -312,15 +301,7 @@ const anchorOnChain = async (
   try {
     const sent = await sendWithSigner(chain, cid, platformId);
     if (sent) {
-      const { challengeDeadline, ...tx } = sent;
-      return {
-        tx,
-        simulated: false,
-        // The family clients route file anchors through proposeAnchor
-        // exactly when the chain is propose-provisioned.
-        proposed: isProposeProvisioned(chain),
-        challengeDeadline,
-      };
+      return { tx: sent, simulated: false };
     }
   } catch (error) {
     if (error instanceof ChainNotProvisionedError) return simulated();
@@ -332,14 +313,6 @@ const anchorOnChain = async (
 
 export interface AnchorWorkerResult {
   txs: UploadJobTx[];
-  /** Propose/verify lifecycle across the requested chains: "proposed" when
-   * at least one real anchor entered a challenge window. */
-  verification: {
-    status: "none" | "proposed";
-    /** Earliest challenge-window close across proposed chains. */
-    challengeDeadlineAt: Date | null;
-    platformId: string | null;
-  };
 }
 
 export const runAnchorWorker = async (
@@ -350,27 +323,9 @@ export const runAnchorWorker = async (
   platformId: string = env.anchorPlatformId,
 ): Promise<AnchorWorkerResult> => {
   const txs: UploadJobTx[] = [];
-  let proposed = false;
-  let earliestDeadline: number | undefined;
   for (const chainId of chainIds) {
     const result = await anchorOnChain(jobId, cid, chainId, platformId, rpcOverrides);
     txs.push(result.tx);
-    if (result.proposed) {
-      proposed = true;
-      if (result.challengeDeadline) {
-        earliestDeadline = Math.min(
-          earliestDeadline ?? result.challengeDeadline,
-          result.challengeDeadline,
-        );
-      }
-    }
   }
-  return {
-    txs,
-    verification: {
-      status: proposed ? "proposed" : "none",
-      challengeDeadlineAt: earliestDeadline ? new Date(earliestDeadline * 1000) : null,
-      platformId: proposed ? platformId : null,
-    },
-  };
+  return { txs };
 };

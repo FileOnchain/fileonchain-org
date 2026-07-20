@@ -90,15 +90,15 @@ export type AnchorStatus =
 
 /**
  * Where the file's bytes go:
- * - "onchain"  — chunk bytes are embedded in the anchors on a storage chain
- *   (the anchoring chain itself when it can store, Autonomys otherwise);
+ * - "onchain"  — chunk bytes are embedded in the anchors on a storage system
+ *   (the settlement chain itself when it can store, Autonomys otherwise);
  * - "external" — the user already hosts the bytes and provides a URI
  *   (ipfs://…, an Auto Drive CID, https://…) for the file anchor to carry;
  * - "none"     — proof-only: anchor the CIDs, store nothing.
  */
 export type StorageMode = "onchain" | "external" | "none";
 
-/** Suggested storage fallback when the anchoring chain can't carry bytes —
+/** Suggested storage fallback when the settlement chain can't carry bytes —
  * Autonomys, the permanent-storage network (testnet mirror for testnets). */
 const fallbackStorageChainId = (anchorChain: ChainConfig): ChainId =>
   anchorChain.testnet ? "substrate:autonomys-taurus" : "substrate:autonomys-mainnet";
@@ -135,7 +135,7 @@ export const useFileUploader = () => {
   const [anchorStatus, setAnchorStatus] = useState<AnchorStatus>("idle");
   const [anchorProgress, setAnchorProgress] = useState(0);
 
-  // Storage: bytes go on-chain by default; the anchoring chain is the
+  // Storage: bytes go on-chain by default; the settlement chain is the
   // default target, Autonomys the fallback when it can't carry bytes.
   const [storageMode, setStorageMode] = useState<StorageMode>("onchain");
   const [storageChainId, setStorageChainId] = useState<ChainId | null>(null);
@@ -151,7 +151,7 @@ export const useFileUploader = () => {
     return getChain(fallbackStorageChainId(activeChain)) ?? null;
   }, [storageMode, storageChainId, activeChain]);
 
-  /** Chunk size follows the storage chain's per-transaction data budget so
+  /** Chunk size follows the storage system's per-transaction data budget so
    * every chunk anchor (with bytes) fits in one transaction. */
   const chunkSize = useMemo(() => {
     if (!storageChain) return CHUNK_BUFFER_SIZE;
@@ -175,7 +175,7 @@ export const useFileUploader = () => {
 
   /**
    * Prepare a file: ingest via IPLD for the canonical file CID and slice
-   * into real SHA-256 chunks sized for the storage chain. Anchoring is a
+   * into real SHA-256 chunks sized for the storage system. Anchoring is a
    * separate explicit step — see `anchor()` — so the user can pick a
    * payment method first.
    */
@@ -209,7 +209,7 @@ export const useFileUploader = () => {
         stringToCid(cidString);
         setFileCid(cidString);
 
-        // Real chunking sized to the storage chain's per-tx data budget —
+        // Real chunking sized to the storage system's per-tx data budget —
         // one entry (and, in production, one transaction) per chunk, with
         // nextCid chaining.
         const chunks = await generateCIDs(selectedFile, chunkSize);
@@ -344,11 +344,11 @@ export const useFileUploader = () => {
 
   /**
    * Pay-as-you-go: send the real per-chunk transactions for the active
-   * family via `lib/anchor`. Storage happens first: when the storage chain
-   * differs from the anchoring chain, a storage pass embeds the bytes there
+   * family via `lib/anchor`. Storage happens first: when the storage system
+   * differs from the settlement chain, a storage pass embeds the bytes there
    * and the anchor pass carries a `fileonchain://` URI pointing at it; when
    * they're the same chain, one combined pass stores and anchors together.
-   * When the anchoring chain has nothing deployed yet, fall back to the
+   * When the settlement chain has nothing deployed yet, fall back to the
    * previous simulated flow — one authorization signature, ticking
    * progress, then the mock anchor.
    */
@@ -367,7 +367,7 @@ export const useFileUploader = () => {
     try {
       // Storage pass — bytes embedded in chunk anchors on the storage
       // chain. Its provisioning failure is the user's to resolve (pick
-      // another storage chain), never silently mocked.
+      // another storage system), never silently mocked.
       let uri: string | undefined;
       const storesOnAnchorChain = storageChain?.id === activeChain.id;
       if (storageChain && !storesOnAnchorChain) {
@@ -394,7 +394,7 @@ export const useFileUploader = () => {
         } catch (error) {
           if (error instanceof ChainNotProvisionedError) {
             throw new Error(
-              `${storageChain.name} can't store bytes for real yet. Pick a different storage chain, or switch storage off.`,
+              `${storageChain.name} can't store bytes for real yet. Pick a different storage system, or switch storage off.`,
             );
           }
           throw error;
@@ -403,8 +403,8 @@ export const useFileUploader = () => {
         uri = externalUri.trim();
       }
 
-      // Anchor pass — proof-only unless the anchoring chain is also the
-      // storage chain. Bytes are stripped on proof-only passes so a
+      // Anchor pass — proof-only unless the settlement chain is also the
+      // storage system. Bytes are stripped on proof-only passes so a
       // storage-first chain's default embed can't sneak them in twice.
       setAnchorStatus("signing");
       setAnchorProgress(0);

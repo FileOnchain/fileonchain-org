@@ -39,6 +39,20 @@ export default function Home() {
 
         {/* 2 · UPLOADER --------------------------------------------- */}
         <div id="dropzone" className="scroll-mt-24">
+          <header className="mx-auto mb-6 w-full max-w-3xl space-y-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
+              Try it
+            </p>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+              Create evidence for an artifact
+            </h2>
+            <p className="text-sm text-muted">
+              Drop an agent output, a log, or any file. It&apos;s hashed in your
+              browser and sealed into an evidence package — storage is an
+              optional, advanced choice; by default nothing but the hash
+              leaves your machine.
+            </p>
+          </header>
           <FileUploader />
         </div>
 

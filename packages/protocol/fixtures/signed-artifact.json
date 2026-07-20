@@ -1,0 +1,37 @@
+{
+  "protocol": "fileonchain-evidence",
+  "version": 1,
+  "subject": {
+    "type": "artifact",
+    "digests": {
+      "sha256": "cf3315e196480491a6eb663f80effcca46536d8c9a9a181ff49d900a4253e3de"
+    },
+    "mediaType": "text/plain",
+    "size": 41,
+    "name": "run-42.txt"
+  },
+  "signatures": [
+    {
+      "signer": {
+        "kind": "wallet",
+        "publicKey": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+        "scheme": "eip191"
+      },
+      "payloadDigest": "acfd62f12e1b42c73488f276a5f110cc7479b7a64be587696f22f395e313ddee",
+      "signature": "0x509b9891815a4244a70a6c09cb15f22f7c1a96b305ddb8bcc65342ce91df7c1f5ffba657f943973f07b62e0416c8f875e9aad9d7722e145833cd07ffdcd6da051b",
+      "signedAt": "2026-07-11T12:00:00Z"
+    }
+  ],
+  "receipts": {
+    "storage": [],
+    "settlement": [],
+    "inclusion": []
+  },
+  "createdAt": "2026-07-11T12:00:00Z",
+  "envelope": {
+    "digest": {
+      "sha256": "d5c5773b80d82c00ccd120c7a06bf42764f000992afdf312ae104e9d056ba62f"
+    },
+    "signatures": []
+  }
+}

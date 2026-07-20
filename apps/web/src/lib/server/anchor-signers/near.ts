@@ -3,9 +3,7 @@ import type { ChainConfig } from "@fileonchain/sdk";
 import type { UploadJobTx } from "@/lib/db/schema";
 
 /** NEAR server signer: a full-access key on the configured account calls
- * `anchor_cid` on the registry contract account; file-level anchors go
- * through `ft_transfer_call` on the FOCAT token (tip + bond escrowed via
- * the registry's ft_on_transfer) when the chain is propose-provisioned. */
+ * `anchor_cid` on the registry contract account. */
 export const anchorOnNear = async (
   chain: ChainConfig,
   cid: string,
@@ -33,16 +31,6 @@ export const anchorOnNear = async (
           args: { cid: chunkCid, payload },
           gas: BigInt("30000000000000"),
           deposit: BigInt(0),
-        });
-        return { txHash: outcome.transaction.hash as string };
-      },
-      callMethod: async (contractId, methodName, args, options) => {
-        const outcome = await account.callFunctionRaw({
-          contractId,
-          methodName,
-          args,
-          gas: BigInt(options?.gas ?? "30000000000000"),
-          deposit: BigInt(options?.attachedDeposit ?? "0"),
         });
         return { txHash: outcome.transaction.hash as string };
       },

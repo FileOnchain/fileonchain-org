@@ -7,8 +7,8 @@ import ScrollReveal from "@/components/ScrollReveal";
 
 /**
  * FeatureTrio — three callouts stacked side-by-side that explain the
- * platform's three core promises: permanence, verifiability, and
- * multichain. Each card has a hover-lift, an icon that scales+rotates,
+ * three guarantees an evidence envelope carries: integrity, attribution,
+ * and portability. Each card has a hover-lift, an icon that scales+rotates,
  * an animated underline, and a tiny live indicator.
  */
 
@@ -16,31 +16,31 @@ const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 
 const FEATURES = [
   {
-    Icon: FiLock,
-    eyebrow: "Permanence",
-    title: "Anchored forever",
-    body:
-      "Once the registry tx is included in a block, the chunk's CID and its tx hash are as durable as the chain itself. No central pinning service that can disappear overnight.",
-    iconBg: "bg-success/10 text-success",
-    indicator: "live",
-  },
-  {
     Icon: FiInbox,
-    eyebrow: "Verifiability",
+    eyebrow: "Integrity",
     title: "Content-addressed",
     body:
-      "Each chunk's CID is a SHA-256 of its bytes. Retrieval proves you're getting the exact bytes you anchored — bit-for-bit, no surprises.",
+      "Every subject is bound to a SHA-256 digest. Anyone holding the bytes can recompute the hash and know, bit-for-bit, that nothing changed — wherever the bytes came from, whoever produced them.",
     iconBg: "bg-info/10 text-info",
     indicator: "sha-256",
   },
   {
-    Icon: FiRepeat,
-    eyebrow: "Choice",
-    title: "Pick one chain — or several",
+    Icon: FiLock,
+    eyebrow: "Attribution",
+    title: "Two kinds of signatures",
     body:
-      "Anchor the file to the chain you want. One chain is enough to retrieve. You can repeat the anchor on more chains for redundancy — each chain charges its own gas.",
+      "Artifact signatures say who made or approved the thing — agent keys, wallets, organization keys, including delegated signing. Envelope signatures say who assembled the evidence. The verifier reports both, separately.",
+    iconBg: "bg-success/10 text-success",
+    indicator: "eip-191 · ed25519",
+  },
+  {
+    Icon: FiRepeat,
+    eyebrow: "Portability",
+    title: "Receipts that outlive us",
+    body:
+      "Multi-system settlement receipts — each one an independent, system-native attestation anyone can check. The envelope is a file; the open local verifier validates it without calling FileOnChain.",
     iconBg: "bg-primary/10 text-primary",
-    indicator: "10 chains",
+    indicator: "multi-system receipts",
   },
 ] as const;
 
@@ -51,7 +51,7 @@ const FeatureTrio = () => (
         What you get
       </p>
       <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-        Three guarantees every file inherits.
+        Three guarantees every evidence envelope carries.
       </h2>
     </header>
 

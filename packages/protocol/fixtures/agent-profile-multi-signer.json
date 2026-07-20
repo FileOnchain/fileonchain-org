@@ -1,0 +1,65 @@
+{
+  "protocol": "fileonchain-evidence",
+  "version": 1,
+  "profile": "org.fileonchain.agent/v1",
+  "subject": {
+    "type": "artifact",
+    "digests": {
+      "sha256": "cf3315e196480491a6eb663f80effcca46536d8c9a9a181ff49d900a4253e3de"
+    },
+    "mediaType": "text/plain",
+    "size": 41,
+    "name": "run-42.txt"
+  },
+  "claims": {
+    "org.fileonchain.agent": {
+      "runId": "run_42",
+      "agentId": "agent_reporter",
+      "sessionId": "session-42",
+      "status": "completed",
+      "model": {
+        "provider": "anthropic",
+        "id": "claude-fable-5"
+      }
+    }
+  },
+  "signatures": [
+    {
+      "signer": {
+        "kind": "wallet",
+        "publicKey": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+        "scheme": "eip191"
+      },
+      "payloadDigest": "ffaf253123d84a1aa4a5aecbb9189d1e7b5a49ce8fdeddf44945556691c3710a",
+      "signature": "0xbe6a9018b3f1b2fa95ee2179eccc7941221f64b4de43f756b58a296d9651379d2ec221490434bdff428b763b4c33d0b3aefcaf601556e09780e28d8be62b5c8d1b",
+      "signedAt": "2026-07-11T12:00:00Z"
+    },
+    {
+      "signer": {
+        "kind": "agent",
+        "id": "agent://reporter-1",
+        "publicKey": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "scheme": "ed25519",
+        "onBehalfOf": {
+          "kind": "organization",
+          "id": "example.org"
+        }
+      },
+      "payloadDigest": "ffaf253123d84a1aa4a5aecbb9189d1e7b5a49ce8fdeddf44945556691c3710a",
+      "signature": "d28a2bc19338e5d2fa09886692907dd9decab397d4f7b16f404189d163611d224f491104c2443fab4bc2cecaea8b2a57ee5ab1bc1c74fd73b681f8d373a5840e",
+      "signedAt": "2026-07-11T12:00:00Z"
+    }
+  ],
+  "receipts": {
+    "storage": [],
+    "settlement": [],
+    "inclusion": []
+  },
+  "createdAt": "2026-07-11T12:00:00Z",
+  "envelope": {
+    "digest": {
+      "sha256": "348b3b3c35ef69a01979ec540ce91939de2d0ebd15a35684afbc996843fe83cf"
+    },
+    "signatures": []
+  }
+}

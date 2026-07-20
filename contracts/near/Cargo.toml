@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["registry", "foc-token"]
+members = ["registry"]
 
 [workspace.dependencies]
 near-sdk = "5"

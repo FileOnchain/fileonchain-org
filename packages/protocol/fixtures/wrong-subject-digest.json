@@ -1,0 +1,26 @@
+{
+  "protocol": "fileonchain-evidence",
+  "version": 1,
+  "subject": {
+    "type": "artifact",
+    "digests": {
+      "sha256": "fc009952b9d2549dd47cbe50537bab84b1896f9748c6095df59c3b921fa4f3c9"
+    },
+    "mediaType": "text/plain",
+    "size": 41,
+    "name": "run-42.txt"
+  },
+  "signatures": [],
+  "receipts": {
+    "storage": [],
+    "settlement": [],
+    "inclusion": []
+  },
+  "createdAt": "2026-07-11T12:00:00Z",
+  "envelope": {
+    "digest": {
+      "sha256": "23ff152af4d45af3b5123caf521f18ac7144c254b8dd7d986b2968bf7d6c1462"
+    },
+    "signatures": []
+  }
+}

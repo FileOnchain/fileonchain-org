@@ -8,7 +8,7 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 /// Three recipient categories: Platform (flat), PerCID (funds a specific
 /// CID's pinning), PerChain (funds a chain's public cache layer).
 /// Deployed behind an OZ TransparentUpgradeableProxy; the ProxyAdmin is
-/// owned by the timelock.
+/// owned by the deploy-time admin address.
 contract DonationEscrow is Initializable {
   // ---------------------------------------------------------------------
   // Types

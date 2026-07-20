@@ -8,7 +8,6 @@ const SECTIONS = [
   { href: "/dashboard", label: "Overview" },
   { href: "/dashboard/logs", label: "Logs" },
   { href: "/dashboard/credits", label: "Credits" },
-  { href: "/dashboard/focat", label: "FOCAT" },
   { href: "/dashboard/keys", label: "API Keys" },
   { href: "/dashboard/byok", label: "BYOK" },
   { href: "/dashboard/rpc", label: "RPC Endpoints" },

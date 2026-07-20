@@ -13,7 +13,7 @@ interface IERC20 {
 /// single file, folder, and permanent tiers. Owners can grant and revoke
 /// address-based access to their cached entries.
 /// Deployed behind an OZ TransparentUpgradeableProxy; the ProxyAdmin is
-/// owned by the timelock.
+/// owned by the deploy-time admin address.
 contract CachePayments is Initializable {
   // ---------------------------------------------------------------------
   // Types

@@ -29,6 +29,7 @@
     "build": "pnpm -r build",
     "start": "pnpm --filter @fileonchain/web start",
     "lint": "pnpm -r lint",
-    "clean": "pnpm -r clean"
+    "clean": "pnpm -r clean",
+    "test": "pnpm -r test"
   }
 }

@@ -67,7 +67,7 @@ const receipt = await anchorChunkedFile(api, {
 receipt.txHashes; // every transaction sent
 receipt.txHash;   // the file-level anchor (always sent last)`;
 
-const EVM_SNIPPET = `import { proposeAnchor, getVerifiedRecord } from "@fileonchain/sdk/evm";
+const EVM_SNIPPET = `import { anchorCID, getCIDRecord } from "@fileonchain/sdk/evm";
 import { createWalletClient, custom } from "viem";
 
 const walletClient = createWalletClient({
@@ -75,17 +75,20 @@ const walletClient = createWalletClient({
   transport: custom(window.ethereum),
 });
 
-// Escrows a FOCAT tip + bond; verifies after the challenge window.
-const receipt = await proposeAnchor(walletClient, {
+// The file-level anchor is a free registry event; the receipt slots
+// straight into an evidence package as its settlement receipt.
+const receipt = await anchorCID(walletClient, {
   chainId: "evm:8453",
   cid: "bafybeig...",
   uri: "ipfs://bafybeig...",
 });
-receipt.proposalId;
-receipt.challengeDeadline; // unix seconds
+receipt.txHash;
+receipt.blockNumber;
+receipt.blockHash;
+receipt.submitter;
 
-// Later — anyone can verify without a wallet:
-const record = await getVerifiedRecord("evm:8453", "bafybeig...");
+// Later — anyone can read the first-write record without a wallet:
+const record = await getCIDRecord("evm:8453", "bafybeig...");
 record?.submitter;`;
 
 const SUBSTRATE_SNIPPET = `import { anchorCIDWithRemark } from "@fileonchain/sdk/substrate";
@@ -397,14 +400,14 @@ const DocsPage = () => (
           <code className="font-mono text-xs">anchorChunkedFile</code> with an
           identical progress and receipt shape — chunk anchors first, the
           file-level anchor last (indexers rely on that ordering). A folder
-          anchors exactly like a file: anchor the CID of its DAG root. On
-          contract chains the file-level anchor is a paid{" "}
-          <code className="font-mono text-xs">proposeAnchor</code> that escrows
-          a FOCAT tip + bond and verifies after a challenge window — the{" "}
+          anchors exactly like a file: anchor the CID of its DAG root. The
+          file-level anchor is a free registry event, and its receipt slots
+          straight into an evidence package — the{" "}
           <Link href="/protocol" className="text-primary underline underline-offset-2">
             protocol page
           </Link>{" "}
-          explains the token, the fee split, and every contract in the suite.
+          explains the v1 anchor flow and how anyone verifies an evidence
+          package.
         </p>
         <CodeBlock title="anchor.ts" code={CHUNKED_SNIPPET} />
       </section>

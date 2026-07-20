@@ -1,7 +1,7 @@
 {
   "name": "@fileonchain/mcp",
   "version": "0.1.0",
-  "description": "MCP server for FileOnChain — chain registry lookups, CID validation, and API-backed CID anchoring for AI agents.",
+  "description": "MCP server for FileOnChain \u2014 chain registry lookups, CID validation, and API-backed CID anchoring for AI agents.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -24,7 +24,8 @@
     "@fileonchain/api": "workspace:^",
     "@fileonchain/utils": "workspace:^",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "@fileonchain/verify": "workspace:^"
   },
   "devDependencies": {
     "@types/node": "^20",
