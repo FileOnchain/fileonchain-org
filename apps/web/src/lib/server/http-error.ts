@@ -17,6 +17,8 @@ export type HttpErrorCode =
   | "conflict"
   | "payload_too_large"
   | "rate_limited"
+  | "not_implemented"
+  | "org_scoped_key_required"
   | "internal_error";
 
 const CODE_BY_STATUS: Record<number, HttpErrorCode> = {
@@ -29,6 +31,33 @@ const CODE_BY_STATUS: Record<number, HttpErrorCode> = {
   429: "rate_limited",
   500: "internal_error",
 };
+
+/** Codes mapped by `code` rather than `status` so callers can disambiguate
+ *  HTTP-shared statuses (e.g. 403 between generic `forbidden` and the more
+ *  specific `org_scoped_key_required`). */
+/** Throw a typed HTTP error from a service or route handler. Route handlers
+ *  map these via `asRouteError` (`@/lib/auth`).
+ *
+ *  Prefer `HttpError` for status + generic code; use this constructor when
+ *  the code carries semantics that a generic `forbidden` does not. */
+export const httpError = (
+  status: number,
+  code: HttpErrorCode,
+  message: string,
+): HttpError => new HttpError(status, message, code);
+
+/** Convenience for the Cloud evidence surface: the route short-circuits
+ *  to 503 when the feature flag is off. */
+export const notImplemented = (surface: string): HttpError =>
+  httpError(503, "not_implemented", `${surface} is not enabled`);
+
+/** Convenience for org-scoped API keys: the caller's key has no orgId. */
+export const orgScopedKeyRequired = (): HttpError =>
+  httpError(
+    403,
+    "org_scoped_key_required",
+    "This endpoint requires an org-scoped API key (orgId != null).",
+  );
 
 export class HttpError extends Error {
   constructor(
