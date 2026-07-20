@@ -115,4 +115,10 @@ export const env = {
   get cloudEvidenceEnabled(): boolean {
     return process.env.FILEONCHAIN_CLOUD_EVIDENCE_ENABLED === "1";
   },
+  /** Shared secret guarding the scheduled cron routes. Vercel Cron sends it
+   * as `Authorization: Bearer $CRON_SECRET`. Absent = the cron route rejects
+   * every request (the sweep can still be run via the CLI). */
+  get cronSecret(): string | undefined {
+    return process.env.CRON_SECRET;
+  },
 };
