@@ -6,8 +6,10 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CloudShell } from "@/components/cloud/CloudShell";
 import { PlannedBadge } from "@/components/cloud/PlannedBadge";
+import { OrgSelect } from "@/components/cloud/OrgSelect";
 import { auth } from "@/lib/auth";
-import { searchEvidence, listUserOrgIds } from "@/lib/server/evidence";
+import { searchEvidence } from "@/lib/server/evidence";
+import { listOrganizations } from "@/lib/server/organizations";
 import { isCloudEvidenceEnabled } from "@/lib/server/cloud-feature";
 
 /**
@@ -15,6 +17,8 @@ import { isCloudEvidenceEnabled } from "@/lib/server/cloud-feature";
  * page's own URL (`?query=…&orgId=…`); the page reads `searchParams`
  * directly so navigation is bookmarkable. Hits come from
  * `searchEvidence`, the same service that backs `GET /api/v1/evidence`.
+ * Multi-org users switch scope with the shared `OrgSelect`, which sets
+ * `?orgId=` while preserving the current query.
  *
  * The page is gated like every other `/cloud/*` surface.
  */
@@ -30,15 +34,15 @@ export default async function CloudSearchPage({ searchParams }: PageProps) {
 
   const params = await searchParams;
   const query = typeof params.query === "string" ? params.query : "";
-  const userOrgIds = enabled ? await listUserOrgIds(session.user.id) : [];
+  const orgs = enabled ? await listOrganizations(session.user.id) : [];
 
-  // We don't have a typed session-with-org helper, so the page picks the
-  // first org as the implicit scope when the URL doesn't specify one. A
-  // follow-up wires an OrgSelect so multi-org users can switch.
+  // Scope to the org named in the URL (validated against membership) or the
+  // first org otherwise. The OrgSelect below lets multi-org users switch.
   const effectiveOrgId =
-    (typeof params.orgId === "string" && userOrgIds.includes(params.orgId)
+    (typeof params.orgId === "string" &&
+    orgs.some((o) => o.id === params.orgId)
       ? params.orgId
-      : userOrgIds[0]) ?? null;
+      : orgs[0]?.id) ?? null;
 
   let hits: Awaited<ReturnType<typeof searchEvidence>> = [];
   let searchError: string | null = null;
@@ -77,7 +81,7 @@ export default async function CloudSearchPage({ searchParams }: PageProps) {
           title="Search is in development"
           description="The backend, schema, and GET /api/v1/evidence ship in this build. The UI and the route are not reachable for users until FILEONCHAIN_CLOUD_EVIDENCE_ENABLED is set."
         />
-      ) : userOrgIds.length === 0 ? (
+      ) : orgs.length === 0 ? (
         <EmptyState
           icon={<FiSearch size={20} />}
           title="No organizations yet"
@@ -85,7 +89,18 @@ export default async function CloudSearchPage({ searchParams }: PageProps) {
         />
       ) : (
         <Card className="p-5">
+          {orgs.length > 1 && (
+            <div className="mb-4 max-w-xs">
+              <OrgSelect
+                orgs={orgs.map((o) => ({ id: o.id, name: o.name }))}
+                selectedOrgId={effectiveOrgId}
+              />
+            </div>
+          )}
           <form action="/cloud/search" method="get" className="flex flex-wrap items-end gap-3">
+            {effectiveOrgId && (
+              <input type="hidden" name="orgId" value={effectiveOrgId} />
+            )}
             <div className="grow">
               <label
                 htmlFor="cloud-search-query"

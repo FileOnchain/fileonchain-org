@@ -49,8 +49,13 @@ const FEATURES: CloudFeature[] = [
     status: "Planned",
   },
   {
+    title: "Server-side signer (server_sign)",
+    body: "Generate a per-org ed25519 key and pass ?server_sign=1; Cloud adds an envelope signature — a service identity attesting it assembled the envelope. Never an artifact signature, so it makes no claim about who authored the subject. Verifiers resolve the public key status URL independently.",
+    status: "Planned",
+  },
+  {
     title: "Retention & search",
-    body: "Per-org retention window with a documented sweep entry point. Full-text + claim-level search across the org's envelopes, indexed by a Postgres tsvector.",
+    body: "Per-org retention window editor; new envelopes are stamped with an expiry and a daily Vercel Cron sweep deletes expired rows. Full-text + claim-level search across the org's envelopes, indexed by a Postgres tsvector, with a multi-org scope picker.",
     status: "Planned",
   },
   {
@@ -90,6 +95,9 @@ export default function CloudPage() {
             </ButtonLink>
             <ButtonLink href="/cloud/retention" variant="secondary">
               Retention policy
+            </ButtonLink>
+            <ButtonLink href="/cloud/signer" variant="secondary">
+              Server-side signer
             </ButtonLink>
           </div>
         }
