@@ -1,17 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { FiCheck, FiX, FiAlertTriangle, FiHelpCircle, FiMinus } from "react-icons/fi";
 import type {
   CheckGroup,
   CheckResult,
-  CheckStatus,
   VerificationReport,
-  VerificationStatus,
 } from "@fileonchain/verify";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { OVERALL, STATUS_ICON, SECTIONS } from "@/components/verify/reportView";
 
 /**
  * VerifyPanel — the interactive half of /verify. Collects an envelope
@@ -19,75 +17,10 @@ import { cn } from "@/lib/cn";
  * toggle, then dynamic-imports `@fileonchain/verify` (it pulls in viem —
  * keep it out of the initial bundle) and renders the grouped report.
  *
- * The overall chip always shows the verifier's exact status — "Valid",
- * "Valid with warnings", "Incomplete", "Invalid" — never a single green
- * "verified" that would hide uncertainty.
+ * The overall chip wording + the six grouped sections live in
+ * `./reportView.tsx` so the hosted `/cloud/verify/[envelopeId]` page can
+ * share them — `/verify` and the hosted page must produce the same shape.
  */
-
-/* ------------------------------------------------------------------ */
-/* Display vocabulary                                                  */
-/* ------------------------------------------------------------------ */
-
-const OVERALL: Record<VerificationStatus, { label: string; className: string }> = {
-  valid: { label: "Valid", className: "bg-success/10 text-success border-success/30" },
-  "valid-with-warnings": {
-    label: "Valid with warnings",
-    className: "bg-warning/10 text-warning border-warning/30",
-  },
-  incomplete: { label: "Incomplete", className: "bg-info/10 text-info border-info/30" },
-  invalid: { label: "Invalid", className: "bg-danger/10 text-danger border-danger/30" },
-};
-
-const STATUS_ICON: Record<CheckStatus, { Icon: React.ElementType; className: string; label: string }> = {
-  pass: { Icon: FiCheck, className: "text-success", label: "Pass" },
-  fail: { Icon: FiX, className: "text-danger", label: "Fail" },
-  warning: { Icon: FiAlertTriangle, className: "text-warning", label: "Warning" },
-  unknown: { Icon: FiHelpCircle, className: "text-muted", label: "Unknown" },
-  skipped: { Icon: FiMinus, className: "text-muted/60", label: "Skipped" },
-};
-
-/** The report's ten check groups, folded into six plain-language sections. */
-const SECTIONS: { title: string; caption: string; groups: CheckGroup[] }[] = [
-  {
-    title: "Schema, claims & envelope",
-    caption:
-      "The envelope is well-formed, its application-profile claims validate, and the envelope digest matches its canonical encoding.",
-    groups: ["schema", "claims", "envelope"],
-  },
-  {
-    title: "Subject integrity",
-    caption:
-      "The subject's SHA-256 digest — recomputed bit-for-bit when you supply the original bytes.",
-    groups: ["subject"],
-  },
-  {
-    title: "Artifact signatures — who signed",
-    caption:
-      "Who made or approved the subject. Claimed identities and delegations are part of these checks: a key is proven, the identity behind it is claimed.",
-    groups: ["artifact-signatures"],
-  },
-  {
-    title: "Envelope signatures — who assembled",
-    caption: "Who put the evidence together — verified separately from who made the artifact.",
-    groups: ["envelope-signatures"],
-  },
-  {
-    title: "Receipts",
-    caption:
-      "Storage, settlement, and inclusion receipts — each one checkable on its own public system.",
-    groups: ["storage-receipts", "settlement-receipts", "inclusion-receipts"],
-  },
-  {
-    title: "Key status",
-    caption:
-      "Whether signing keys declare a status endpoint. A signature alone cannot prove a key was never revoked, so this may honestly be unknown.",
-    groups: ["key-status"],
-  },
-];
-
-/* ------------------------------------------------------------------ */
-/* Component                                                           */
-/* ------------------------------------------------------------------ */
 
 const VerifyPanel = () => {
   const [json, setJson] = React.useState("");

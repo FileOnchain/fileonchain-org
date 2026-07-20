@@ -1,17 +1,59 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
-import { db, apiKeys } from "@/lib/db";
+import { db, apiKeys, organizationMembers } from "@/lib/db";
+import { HttpError } from "@/lib/server/http-error";
 
 /**
  * API keys look like `fok_<32 base64url chars>`. Only the SHA-256 hash is
  * stored — the plaintext is returned exactly once at creation.
+ *
+ * Optional `orgId` produces an org-scoped key: `scope = "org"`,
+ * `orgId = <org>`. Org-scoped keys are required by the Cloud evidence
+ * surface (`/api/v1/evidence`, `/api/v1/agent-runs`, `/api/v1/verify`,
+ * `/api/v1/retention`). Personal keys (`scope = "personal"`,
+ * `orgId = NULL`) keep their existing behavior for `/api/v1/anchor` and
+ * `/api/v1/credits`.
  */
 
 const hashKey = (secret: string): string =>
   createHash("sha256").update(secret).digest("hex");
 
-export const createApiKey = async (userId: string, name: string) => {
+/**
+ * Verify that the user is a member of `orgId`. Returns the role, or throws
+ * `forbidden` (403) when the user has no membership row. Used by the keys
+ * issuance path so a user cannot mint a key against an org they don't
+ * belong to.
+ */
+const assertOrgMembership = async (
+  userId: string,
+  orgId: string,
+): Promise<void> => {
+  const [row] = await db
+    .select({ role: organizationMembers.role })
+    .from(organizationMembers)
+    .where(
+      and(
+        eq(organizationMembers.orgId, orgId),
+        eq(organizationMembers.userId, userId),
+      ),
+    )
+    .limit(1);
+  if (!row) {
+    throw new HttpError(
+      403,
+      "You are not a member of that organization",
+      "forbidden",
+    );
+  }
+};
+
+export const createApiKey = async (
+  userId: string,
+  name: string,
+  orgId: string | null = null,
+) => {
+  if (orgId) await assertOrgMembership(userId, orgId);
   const secret = `fok_${randomBytes(24).toString("base64url")}`;
   const [row] = await db
     .insert(apiKeys)
@@ -20,6 +62,8 @@ export const createApiKey = async (userId: string, name: string) => {
       name,
       prefix: secret.slice(0, 12),
       keyHash: hashKey(secret),
+      orgId,
+      scope: orgId ? "org" : "personal",
     })
     .returning();
   return { secret, apiKey: row };

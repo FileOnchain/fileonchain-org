@@ -204,6 +204,16 @@ const AgentEvidencePage = () => (
         The hosted product removes the operational work — honestly labeled by what&apos;s live
         today.
       </p>
+      <p className="mt-3 max-w-[70ch] text-xs text-muted">
+        The <Badge variant="warning" size="sm">Planned</Badge> entries below are wired and gated
+        behind <code className="font-mono text-[11px]">FILEONCHAIN_CLOUD_EVIDENCE_ENABLED</code>;
+        the schema, routes, services, and pages ship in this build but the surfaces are not
+        reachable for users until the flag is on. See{" "}
+        <Link href="/cloud" className="text-primary underline underline-offset-2">
+          the Cloud landing
+        </Link>{" "}
+        for the full inventory.
+      </p>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         {CLOUD_FEATURES.map((item) => (
           <Card key={item.title} className="p-5">

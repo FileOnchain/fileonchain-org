@@ -32,7 +32,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@fileonchain/utils": "workspace:^"
+    "@fileonchain/utils": "workspace:^",
+    "@fileonchain/verify": "workspace:^"
   },
   "devDependencies": {
     "@types/node": "^20",

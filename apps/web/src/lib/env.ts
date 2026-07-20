@@ -109,4 +109,10 @@ export const env = {
   get recommendationLlmEnabled(): boolean {
     return process.env.RECOMMENDATION_LLM_ENABLED !== "0";
   },
+  /** Cloud evidence surface (POST/GET /api/v1/evidence, /agent-runs,
+   * /verify, /retention + /cloud/* webapp pages). Defaults OFF; set
+   * FILEONCHAIN_CLOUD_EVIDENCE_ENABLED=1 to open the surface. */
+  get cloudEvidenceEnabled(): boolean {
+    return process.env.FILEONCHAIN_CLOUD_EVIDENCE_ENABLED === "1";
+  },
 };

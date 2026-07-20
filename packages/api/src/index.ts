@@ -1,4 +1,5 @@
 import type { ChainId } from "@fileonchain/utils";
+import type { EvidenceEnvelope, VerificationReport } from "@fileonchain/verify";
 
 /**
  * @fileonchain/api — typed client for the hosted FileOnChain HTTP API.
@@ -9,6 +10,12 @@ import type { ChainId } from "@fileonchain/utils";
  * family clients instead. Authentication is an API key from the dashboard
  * (`fok_…`), sent as `Authorization: Bearer`. Uses the global `fetch`
  * (Node >= 18 or any browser).
+ *
+ * The Cloud evidence surface (`/api/v1/evidence`, `/api/v1/agent-runs`,
+ * `/api/v1/verify`, `/api/v1/retention`) is gated server-side by the
+ * `FILEONCHAIN_CLOUD_EVIDENCE_ENABLED` env var. When OFF, those routes
+ * return 503 and the methods below throw `FileOnChainApiError(503, …)`.
+ * The Cloud evidence surface requires an org-scoped API key.
  */
 
 export const DEFAULT_BASE_URL = "https://fileonchain.org";
@@ -96,6 +103,95 @@ export interface WaitForJobOptions {
   /** Give up (throwing) after this long; default 120000 ms. */
   timeoutMs?: number;
   signal?: AbortSignal;
+}
+
+/* ------------------------------------------------------------------ */
+/* Cloud evidence surface types                                        */
+/* ------------------------------------------------------------------ */
+
+/** Result of `POST /api/v1/evidence`. */
+export interface SubmitEvidenceResult {
+  envelopeId: string;
+  envelope: EvidenceEnvelope;
+  /** Server-computed envelope digest (SHA-256 lowercase hex). */
+  envelopeDigest: string;
+}
+
+/** Result of `GET /api/v1/evidence/:id`. */
+export interface EvidenceEnvelopeRecord {
+  envelopeId: string;
+  envelope: EvidenceEnvelope;
+  envelopeDigest: string;
+  profile: string | null;
+  subjectSha256: string | null;
+  /** ISO timestamp. */
+  createdAt: string;
+  /** ISO timestamp, null when no retention policy is in force. */
+  expiresAt: string | null;
+  verificationCount: number;
+}
+
+/** One hit returned by `GET /api/v1/evidence?query=…`. */
+export interface EvidenceSearchHit {
+  envelopeId: string;
+  envelopeDigest: string;
+  profile: string | null;
+  subjectSha256: string | null;
+  /** ISO timestamp. */
+  createdAt: string;
+  /** `<b>…</b>`-highlighted snippet (server-side ts_headline). */
+  snippet: string;
+}
+
+/** Result of `POST /api/v1/agent-runs`. */
+export interface SubmitAgentRunResult {
+  runId: string;
+  agentId: string;
+  envelopeId: string;
+}
+
+/** One envelope in a run-centric GET. */
+export interface AgentRunEnvelope {
+  envelopeId: string;
+  envelopeDigest: string;
+  profile: string | null;
+  subjectSha256: string | null;
+  /** ISO timestamp. */
+  createdAt: string;
+}
+
+/** Result of `GET /api/v1/agent-runs/:runId`. */
+export interface AgentRunRecord {
+  runId: string;
+  agentId: string;
+  envelopes: AgentRunEnvelope[];
+}
+
+/** Body shape for `POST /api/v1/verify` — case A. */
+export interface ServerVerifyByEnvelopeId {
+  envelopeId: string;
+  /** Optional base64-encoded subject bytes; recomputes the subject digest. */
+  subjectBytesB64?: string;
+  /** When true, the verifier consults public RPCs for receipt checks. */
+  checkReceiptsOnline?: boolean;
+}
+
+/** Body shape for `POST /api/v1/verify` — case B. */
+export interface ServerVerifyByEnvelope {
+  envelope: EvidenceEnvelope;
+  subjectBytesB64?: string;
+  checkReceiptsOnline?: boolean;
+}
+
+/** Discriminated union for `POST /api/v1/verify`. */
+export type ServerVerifyBody = ServerVerifyByEnvelopeId | ServerVerifyByEnvelope;
+
+/** Result of `GET` / `PATCH /api/v1/retention`. */
+export interface RetentionPolicy {
+  /** Days from `created_at` before the envelope is swept. */
+  windowDays: number;
+  /** Where the window came from — `policy` (custom) or `default` (hard-coded). */
+  source: "policy" | "default";
 }
 
 const sleep = (ms: number, signal?: AbortSignal): Promise<void> =>
@@ -186,5 +282,111 @@ export class FileOnChainClient {
   /** Current credit balance in micro-USDC (string) and USDC (number). */
   getCredits(options?: { signal?: AbortSignal }): Promise<CreditBalance> {
     return this.request<CreditBalance>("/api/v1/credits", { signal: options?.signal });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Cloud evidence surface (org-scoped, gated behind                   */
+  /* FILEONCHAIN_CLOUD_EVIDENCE_ENABLED on the server).                  */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * Submit a sealed envelope. Hash-only by default — the body carries an
+   * `EvidenceEnvelope` JSON, never the artifact bytes. The server
+   * recomputes the envelope digest and stamps `expires_at` from the
+   * org's retention policy.
+   *
+   * Requires an org-scoped API key. 403 `org_scoped_key_required` for
+   * personal keys.
+   */
+  submitEvidence(
+    input: { envelope: EvidenceEnvelope },
+    options?: { signal?: AbortSignal },
+  ): Promise<SubmitEvidenceResult> {
+    return this.request<SubmitEvidenceResult>("/api/v1/evidence", {
+      method: "POST",
+      body: input,
+      signal: options?.signal,
+    });
+  }
+
+  /** Fetch one sealed envelope by id. 404 when the envelope is not in the
+   *  caller's org. */
+  getEvidence(envelopeId: string, options?: { signal?: AbortSignal }): Promise<EvidenceEnvelopeRecord> {
+    return this.request<EvidenceEnvelopeRecord>(
+      `/api/v1/evidence/${encodeURIComponent(envelopeId)}`,
+      { signal: options?.signal },
+    );
+  }
+
+  /** Claim-level + signer search across the org's envelopes. Empty query
+   *  returns the most recent rows. */
+  searchEvidence(
+    params: { query?: string; limit?: number },
+    options?: { signal?: AbortSignal },
+  ): Promise<{ hits: EvidenceSearchHit[] }> {
+    const search = new URLSearchParams();
+    if (params.query) search.set("query", params.query);
+    if (params.limit !== undefined) search.set("limit", String(params.limit));
+    const qs = search.toString();
+    return this.request<{ hits: EvidenceSearchHit[] }>(
+      `/api/v1/evidence${qs ? `?${qs}` : ""}`,
+      { signal: options?.signal },
+    );
+  }
+
+  /** Submit an Agent Evidence envelope. Must carry the
+   *  `org.fileonchain.agent/v1` profile and required `runId` / `agentId`
+   *  claims. */
+  submitAgentRun(
+    input: { envelope: EvidenceEnvelope },
+    options?: { signal?: AbortSignal },
+  ): Promise<SubmitAgentRunResult> {
+    return this.request<SubmitAgentRunResult>("/api/v1/agent-runs", {
+      method: "POST",
+      body: input,
+      signal: options?.signal,
+    });
+  }
+
+  /** Run-centric view: returns the run plus the envelopes sealed under it. */
+  getAgentRun(runId: string, options?: { signal?: AbortSignal }): Promise<AgentRunRecord> {
+    return this.request<AgentRunRecord>(
+      `/api/v1/agent-runs/${encodeURIComponent(runId)}`,
+      { signal: options?.signal },
+    );
+  }
+
+  /** Run the open verifier server-side. Accepts either an envelope id
+   *  (case A — server fetches + verifies + bumps counters) or an envelope
+   *  payload (case B — caller supplies, no DB lookup). The response is
+   *  the same `VerificationReport` shape as `@fileonchain/verify`. */
+  runServerVerify(
+    body: ServerVerifyBody,
+    options?: { signal?: AbortSignal },
+  ): Promise<VerificationReport> {
+    return this.request<VerificationReport>("/api/v1/verify", {
+      method: "POST",
+      body,
+      signal: options?.signal,
+    });
+  }
+
+  /** Effective retention window for the caller's org. */
+  getRetention(options?: { signal?: AbortSignal }): Promise<RetentionPolicy> {
+    return this.request<RetentionPolicy>("/api/v1/retention", {
+      signal: options?.signal,
+    });
+  }
+
+  /** Upsert the per-org retention window (positive integer days). */
+  setRetentionPolicy(
+    windowDays: number,
+    options?: { signal?: AbortSignal },
+  ): Promise<RetentionPolicy> {
+    return this.request<RetentionPolicy>("/api/v1/retention", {
+      method: "PATCH",
+      body: { windowDays },
+      signal: options?.signal,
+    });
   }
 }

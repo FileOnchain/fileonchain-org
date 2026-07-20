@@ -103,7 +103,7 @@ juries, governance) was removed and is preserved, unmaintained, on the
 
 - **A. Protocol specification (normative):** [docs/protocol/evidence-protocol.md](docs/protocol/evidence-protocol.md)
 - **B. Agent Evidence Profile v1:** [docs/profiles/agent-evidence-v1.md](docs/profiles/agent-evidence-v1.md)
-- **C. FileOnChain Cloud (non-normative product overview):** [docs/product/fileonchain-cloud.md](docs/product/fileonchain-cloud.md)
+- **C. FileOnChain Cloud (non-normative product overview):** [docs/product/fileonchain-cloud.md](docs/product/fileonchain-cloud.md) — the evidence ingestion, agent-run, hosted verification, retention, and search surfaces ship behind `FILEONCHAIN_CLOUD_EVIDENCE_ENABLED` until they are opened.
 - **D. Integration status:** [docs/integrations/status.md](docs/integrations/status.md)
 - **E. Architecture decision records:** [docs/adr/](docs/adr/)
 - **Umbrella overview:** [docs/whitepaper.md](docs/whitepaper.md)

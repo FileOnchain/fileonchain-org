@@ -21,6 +21,7 @@ const PRIMARY_LINKS: NavLink[] = [
   { href: "/agent-evidence", label: "Agent Evidence" },
   { href: "/protocol", label: "Protocol" },
   { href: "/verify", label: "Verify" },
+  { href: "/cloud", label: "Cloud" },
   { href: "/integrations", label: "Integrations" },
   { href: "/docs", label: "Docs" },
   { href: "/dashboard", label: "Dashboard" },

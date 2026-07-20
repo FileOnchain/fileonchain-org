@@ -35,6 +35,9 @@ importers:
       '@cosmjs/stargate':
         specifier: ^0.39.0
         version: 0.39.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      '@fileonchain/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       '@fileonchain/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
@@ -220,6 +223,9 @@ importers:
       '@fileonchain/utils':
         specifier: workspace:^
         version: link:../utils
+      '@fileonchain/verify':
+        specifier: workspace:^
+        version: link:../verify
     devDependencies:
       '@types/node':
         specifier: ^20
