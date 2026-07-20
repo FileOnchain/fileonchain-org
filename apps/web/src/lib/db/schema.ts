@@ -120,22 +120,45 @@ export const authNonces = pgTable("auth_nonce", {
     .defaultNow(),
 });
 
+/** `scope` distinguishes a personal API key from an org-scoped one.
+ *  `personal` keys (default) can only hit user-scoped endpoints
+ *  (`/api/v1/anchor`, `/api/v1/credits`). `org` keys additionally hold an
+ *  `orgId` and are required by the Cloud evidence surface
+ *  (`/api/v1/evidence`, `/api/v1/agent-runs`, `/api/v1/verify`,
+ *  `/api/v1/retention`). The `scope` column is denormalized from
+ *  `orgId IS NOT NULL` so we can index / filter on it without the IS NOT
+ *  NULL dance. */
+export type ApiKeyScope = "personal" | "org";
+
 /** API keys — only the SHA-256 hash is stored; plaintext is shown once. */
-export const apiKeys = pgTable("api_key", {
-  id: text("id").primaryKey().$defaultFn(uuid),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  /** Display prefix, e.g. `fok_a1b2c3d4` — enough to recognize, not to use. */
-  prefix: text("prefix").notNull(),
-  keyHash: text("key_hash").notNull().unique(),
-  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
-  revokedAt: timestamp("revoked_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const apiKeys = pgTable(
+  "api_key",
+  {
+    id: text("id").primaryKey().$defaultFn(uuid),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** Display prefix, e.g. `fok_a1b2c3d4` — enough to recognize, not to use. */
+    prefix: text("prefix").notNull(),
+    keyHash: text("key_hash").notNull().unique(),
+    /** Optional org tenancy — set for org-scoped keys; NULL for personal keys. */
+    orgId: text("org_id").references(() => organizations.id, {
+      onDelete: "cascade",
+    }),
+    /** Denormalized `personal` | `org`. Defaults to `personal`. */
+    scope: text("scope").$type<ApiKeyScope>().notNull().default("personal"),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("api_key_user_created_idx").on(t.userId, t.createdAt),
+    index("api_key_org_idx").on(t.orgId),
+  ],
+);
 
 export type CreditReason = "deposit" | "anchor_debit" | "refund" | "adjustment";
 
@@ -199,7 +222,10 @@ export type ActivityType =
   | "org_renamed"
   | "org_deleted"
   | "org_member_added"
-  | "org_member_removed";
+  | "org_member_removed"
+  | "evidence_sealed"
+  | "agent_run_sealed"
+  | "evidence_verified";
 
 export type ActivityMetadata = Record<string, string | number | boolean | null>;
 
@@ -373,3 +399,155 @@ export const uploadJobs = pgTable(
   },
   (t) => [index("upload_job_user_created_idx").on(t.userId, t.createdAt)],
 );
+
+/* ------------------------------------------------------------------ */
+/* Cloud evidence surface (gated behind FILEONCHAIN_CLOUD_EVIDENCE_ENABLED).
+ * Per-org tenancy: every envelope and every agent run belongs to exactly one
+ * org. The Cloud-only fields (orgId, expiresAt, verificationCount,
+ * lastVerifiedAt, apiKeyId, userId) live in DB columns only — they MUST
+ * NEVER be inserted into the envelope JSON itself (CLAUDE.md:411-413). */
+/* ------------------------------------------------------------------ */
+
+export interface EvidenceClaimSummary {
+  /** Profile-namespaced claim keys, e.g. `["run", "run.model", "run.toolCalls"]`. */
+  keys: string[];
+  /** Profile ids present in the envelope, e.g. `["org.fileonchain.agent/v1"]`. */
+  namespaces: string[];
+  /** Distinct signer ids across artifact and envelope signatures. */
+  signers: string[];
+}
+
+/**
+ * A sealed protocol `EvidenceEnvelope` stored server-side so the Cloud can
+ * expose search, retention, and hosted verification. The row carries the
+ * canonical envelope JSON plus the derived columns the protocol guarantees
+ * (envelope digest, subject sha256, profile id) so a search or retention
+ * sweep does not have to re-parse JSONB. The `search_tsv` column is a
+ * Postgres `GENERATED ALWAYS AS (…) STORED` `tsvector` built by the
+ * migration; Drizzle-ORM cannot express generated columns natively so the
+ * migration adds it as a hand-appended `ALTER TABLE`.
+ */
+export const evidenceEnvelopes = pgTable(
+  "evidence_envelope",
+  {
+    id: text("id").primaryKey().$defaultFn(uuid),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    /** Creator / uploader — audit only; the authoritative ownership is orgId. */
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** API key used at submission, when applicable — audit only. */
+    apiKeyId: text("api_key_id").references(() => apiKeys.id),
+    /** Profile id from the envelope, e.g. `org.fileonchain.agent/v1`. */
+    profile: text("profile"),
+    /**
+     * Subject SHA-256 digest (lowercase hex), extracted from
+     * `envelope.subject.digests.sha256`. NULL when the envelope's subject
+     * declares no SHA-256 digest (subjects may carry other algorithms).
+     */
+    subjectSha256: text("subject_sha256"),
+    /** `envelope.subject.type` — one of the SubjectDescriptor kinds. */
+    subjectKind: text("subject_kind"),
+    /** Canonical `EvidenceEnvelope` JSON, exactly as submitted. Drizzle
+     *  jsonb is typed `unknown` here; service code casts to
+     *  `EvidenceEnvelope` at the boundary (the envelope was validated by
+     *  `validateEnvelope` at insert time). */
+    envelope: jsonb("envelope").notNull(),
+    /**
+     * `computeEnvelopeDigest(envelope)` — SHA-256 lowercase hex of the
+     * canonical envelope minus its `envelope` member. Recomputed server-side
+     * before insert so the row carries the protocol's digest of record.
+     */
+    envelopeDigest: text("envelope_digest").notNull(),
+    /**
+     * Denormalized claim summary so the search index doesn't have to
+     * descend into the envelope JSON on every query. See
+     * `EvidenceClaimSummary` — Cloud-only metadata, never present in the
+     * envelope itself.
+     */
+    claimSummary: jsonb("claim_summary")
+      .$type<EvidenceClaimSummary>()
+      .notNull()
+      .default({ keys: [], namespaces: [], signers: [] }),
+    /**
+     * `tsvector` built from subjectSha256 + profile + signer/claim keys by
+     * the migration's `GENERATED ALWAYS AS (…) STORED` clause; the search
+     * route queries this column via `websearch_to_tsquery`.
+     */
+    // searchTsv is added by the migration — see migrations-helpers.ts
+    /** Retention sweep target — NULL means "no expiry configured". */
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    /** Increments every time `/api/v1/verify` (case A) re-verifies the row. */
+    verificationCount: integer("verification_count").notNull().default(0),
+    lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("evidence_envelope_org_created_idx").on(t.orgId, t.createdAt),
+    index("evidence_envelope_subject_idx").on(t.subjectSha256),
+  ],
+);
+
+/**
+ * One row per Agent Evidence `runId` submitted to the Cloud. The run row
+ * is the join key for `/api/v1/agent-runs/:runId` and is uniquely tied to
+ * one envelope; resubmitting the same (runId, agentId) pair with a new
+ * envelope creates a second row (idempotency key is the full triple).
+ */
+export const agentRuns = pgTable(
+  "agent_run",
+  {
+    id: text("id").primaryKey().$defaultFn(uuid),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    /** Creator / uploader — audit only. */
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** `AgentClaims.runId`. NOT the envelope id; one run can span runs. */
+    runId: text("run_id").notNull(),
+    /** `AgentClaims.agentId`. */
+    agentId: text("agent_id").notNull(),
+    /** The envelope that sealed this run. Cascade-on-delete matches the
+     * envelope retention sweep. */
+    envelopeId: text("envelope_id")
+      .notNull()
+      .references(() => evidenceEnvelopes.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("agent_run_org_created_idx").on(t.orgId, t.createdAt),
+    index("agent_run_run_idx").on(t.runId),
+    uniqueIndex("agent_run_org_run_envelope_unique").on(
+      t.orgId,
+      t.runId,
+      t.envelopeId,
+    ),
+  ],
+);
+
+/**
+ * Per-org retention window for stored envelopes. NULL row means "use the
+ * `DEFAULT_RETENTION_DAYS` constant". The retention sweep deletes any
+ * `evidence_envelope` whose `expires_at < now()` — it does NOT consult
+ * this table at sweep time, so a policy change only affects newly sealed
+ * envelopes; existing envelopes retain their original expiry. Apply
+ * proactively with a sweep + reseed if a shorter window is needed.
+ */
+export const retentionPolicies = pgTable("retention_policy", {
+  orgId: text("org_id")
+    .primaryKey()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  /** Days from `evidence_envelope.createdAt` before the envelope expires. */
+  windowDays: integer("window_days").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
