@@ -20,25 +20,25 @@ export type { EvidenceEnvelope };
 /**
  * Agent-run service — wraps the Cloud evidence store with run-shaped reads
  * and a convenience submit that validates the envelope carries an
- * `org.fileonchain.agent` profile. Server-side sealing (`server_sign: true`)
- * is not implemented in v1; the route explicitly rejects it with 400 so
- * the failure mode is honest instead of silent.
+ * `org.fileonchain.agent` profile. When `serverSign` is set the Cloud adds
+ * an envelope signature with the org's `service` signer (see
+ * `lib/server/cloud-signer.ts`) before storage.
  *
  * Every envelope stored through this path is also a row in
  * `evidence_envelope` — there is no second copy. The agent-run row is
  * just the `(runId, agentId, envelopeId)` join key plus an audit trail.
  */
 
-/** Inputs for `submitAgentRun`. Either an already-built envelope (the v1
- *  path) or — when `server_sign` lands in a follow-up — a build-time
- *  payload. We accept only `{envelope}` today. */
+/** Inputs for `submitAgentRun`. `serverSign` opts into Cloud envelope
+ *  sealing with the org's `service` signer. */
 export interface SubmitAgentRunInput {
   envelope: EvidenceEnvelope;
+  serverSign?: boolean;
 }
 
 export const submitAgentRun = async (
   apiKey: OrgApiKey,
-  { envelope }: SubmitAgentRunInput,
+  { envelope, serverSign = false }: SubmitAgentRunInput,
 ) => {
   const orgId = requireOrgApiKey(apiKey);
 
@@ -69,7 +69,10 @@ export const submitAgentRun = async (
     );
   }
 
-  const submit = await submitEvidence(apiKey, { envelope } as SubmitEvidenceInput);
+  const submit = await submitEvidence(apiKey, {
+    envelope,
+    serverSign,
+  } as SubmitEvidenceInput);
 
   const runRowId = crypto.randomUUID();
   try {

@@ -17,8 +17,11 @@ import {
  * required `runId` / `agentId` claims (validated by
  * `@fileonchain/agent-profile` upstream).
  *
- * Server-side sealing (`server_sign: true`) is not implemented in v1;
- * requests that ask for it get a clean 400 rather than a silent no-op.
+ * Server-side sealing: pass `?server_sign=1` (or header
+ * `x-fileonchain-server-sign: 1`) and the Cloud adds an envelope signature
+ * with the org's `service` signer. The flag rides on the query/header, not
+ * the JSON body, so the body stays the pure envelope and is read once.
+ * Returns 409 when the org has no active Cloud signer.
  */
 
 const asOrgApiKey = (row: NonNullable<Awaited<ReturnType<typeof authenticateApiKey>>>): OrgApiKey => ({
@@ -27,6 +30,15 @@ const asOrgApiKey = (row: NonNullable<Awaited<ReturnType<typeof authenticateApiK
   orgId: row.orgId,
   scope: row.scope,
 });
+
+/** Read the server-sign opt-in from `?server_sign=` or the header. */
+const wantsServerSign = (request: Request): boolean => {
+  const url = new URL(request.url);
+  const q = url.searchParams.get("server_sign");
+  if (q === "1" || q === "true") return true;
+  const header = request.headers.get("x-fileonchain-server-sign");
+  return header === "1" || header === "true";
+};
 
 export async function POST(request: Request) {
   if (!isCloudEvidenceEnabled()) {
@@ -37,15 +49,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid or revoked API key" }, { status: 401 });
   }
   try {
-    const raw = await request.json().catch(() => null) as { serverSign?: unknown } | null;
-    if (raw?.serverSign === true) {
-      return NextResponse.json(
-        { error: "server_sign is not implemented in this version" },
-        { status: 400 },
-      );
-    }
+    const serverSign = wantsServerSign(request);
     const envelope = await parseEnvelopeBody(request);
-    const result = await submitAgentRun(asOrgApiKey(apiKey), { envelope });
+    const result = await submitAgentRun(asOrgApiKey(apiKey), {
+      envelope,
+      serverSign,
+    });
     return NextResponse.json(result);
   } catch (error) {
     return asRouteError(error);

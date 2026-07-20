@@ -57,6 +57,13 @@
       "when": 1784572075095,
       "tag": "0007_sour_fantastic_four",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784578391793,
+      "tag": "0008_omniscient_silverclaw",
+      "breakpoints": true
     }
   ]
 }

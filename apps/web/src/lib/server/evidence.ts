@@ -9,6 +9,8 @@ import {
 import { HttpError } from "@/lib/server/http-error";
 import { orgScopedKeyRequired } from "@/lib/server/http-error";
 import { logActivity } from "@/lib/server/activity";
+import { signEnvelopeForOrg } from "@/lib/server/cloud-signer";
+import { applyRetentionToNewEnvelope } from "@/lib/server/retention";
 import {
   db,
   evidenceEnvelopes,
@@ -76,19 +78,28 @@ export const listUserOrgIds = async (userId: string): Promise<string[]> => {
 export interface SubmitEvidenceInput {
   /** The canonical envelope JSON, exactly as the caller wants it stored. */
   envelope: EvidenceEnvelope;
+  /**
+   * When true, the Cloud adds an *envelope* signature with the org's active
+   * `service` signer before storing (the `server_sign` capability). Requires
+   * the org to have generated a Cloud signer first; throws 409 otherwise.
+   */
+  serverSign?: boolean;
 }
 
 /**
  * Validate and store an envelope. Recomputes the envelope digest server-
  * side so the row carries the protocol's canonical value, and derives the
- * claim summary so the GIN-indexed search column has data to index.
+ * claim summary so the GIN-indexed search column has data to index. When
+ * `serverSign` is set, the org's Cloud signer adds an envelope signature
+ * first — the digest is unaffected (envelope signatures live outside the
+ * digested region), so the stored digest is the protocol's value either way.
  *
  * TODO(kcd): credits debit. Ingestion is currently free; the cost is the
  * block of bytes the caller already paid to seal, not Cloud storage.
  */
 export const submitEvidence = async (
   apiKey: OrgApiKey,
-  { envelope }: SubmitEvidenceInput,
+  { envelope, serverSign = false }: SubmitEvidenceInput,
 ) => {
   const orgId = requireOrgApiKey(apiKey);
 
@@ -104,15 +115,22 @@ export const submitEvidence = async (
     );
   }
 
+  // Server-side sealing: add the org's `service` envelope signature before
+  // we compute the digest + claim summary so the Cloud signer is captured in
+  // both. Throws 409 when the org has no active Cloud signer.
+  const sealed = serverSign
+    ? await signEnvelopeForOrg(orgId, envelope)
+    : envelope;
+
   const id = crypto.randomUUID();
-  const envelopeDigest = computeEnvelopeDigest(envelope);
+  const envelopeDigest = computeEnvelopeDigest(sealed);
   const subjectSha256 =
-    typeof envelope.subject.digests?.sha256 === "string"
-      ? envelope.subject.digests.sha256.toLowerCase()
+    typeof sealed.subject.digests?.sha256 === "string"
+      ? sealed.subject.digests.sha256.toLowerCase()
       : null;
-  const subjectKind = envelope.subject.type;
-  const profile = envelope.profile ?? null;
-  const claimSummary = summarizeClaims(envelope);
+  const subjectKind = sealed.subject.type;
+  const profile = sealed.profile ?? null;
+  const claimSummary = summarizeClaims(sealed);
 
   const [row] = await db
     .insert(evidenceEnvelopes)
@@ -124,22 +142,30 @@ export const submitEvidence = async (
       profile,
       subjectSha256,
       subjectKind,
-      envelope,
+      envelope: sealed,
       envelopeDigest,
       claimSummary,
     })
     .returning();
   if (!row) throw new HttpError(500, "Insert returned no row", "internal_error");
 
-  await logActivity(apiKey.userId, "evidence_sealed", {
-    envelopeId: id,
-    profile,
-    subjectSha256,
-  });
+  // Stamp `expires_at` from the org's retention window. Without this the
+  // sweep is a permanent no-op (every row would have a NULL expiry).
+  await applyRetentionToNewEnvelope(id, orgId, row.createdAt);
+
+  await logActivity(
+    apiKey.userId,
+    serverSign ? "evidence_server_signed" : "evidence_sealed",
+    {
+      envelopeId: id,
+      profile,
+      subjectSha256,
+    },
+  );
 
   return {
     envelopeId: id,
-    envelope,
+    envelope: sealed,
     envelopeDigest,
     claimSummary,
     row: { ...row, envelope: row.envelope as EvidenceEnvelope },

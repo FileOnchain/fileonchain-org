@@ -68,6 +68,24 @@ const membershipOf = async (
   return row?.role ?? null;
 };
 
+/**
+ * Assert the user holds one of `allowed` roles in the org. Returns the role
+ * on success; throws `OrgError(404)` when not a member (no info leak) and
+ * `OrgError(403)` when the role is insufficient. Use from session-authed
+ * routes that mutate org-scoped resources (signer, retention).
+ */
+export const requireOrgRole = async (
+  userId: string,
+  orgId: string,
+  allowed: OrganizationRole[] = ["owner", "admin"],
+): Promise<OrganizationRole> => {
+  const role = await membershipOf(userId, orgId);
+  if (!role) throw new OrgError(404, "Organization not found");
+  if (!allowed.includes(role))
+    throw new OrgError(403, `Requires one of: ${allowed.join(", ")}`);
+  return role;
+};
+
 export const listOrganizations = async (
   userId: string,
 ): Promise<OrganizationSummary[]> => {

@@ -10,6 +10,7 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import type { AdapterAccountType } from "next-auth/adapters";
 import type { ChainFamily, ChainId } from "@fileonchain/sdk";
 // Relative import (not "@/…") so drizzle-kit can bundle the schema.
@@ -225,7 +226,11 @@ export type ActivityType =
   | "org_member_removed"
   | "evidence_sealed"
   | "agent_run_sealed"
-  | "evidence_verified";
+  | "evidence_verified"
+  | "evidence_server_signed"
+  | "retention_updated"
+  | "cloud_signer_generated"
+  | "cloud_signer_revoked";
 
 export type ActivityMetadata = Record<string, string | number | boolean | null>;
 
@@ -551,3 +556,44 @@ export const retentionPolicies = pgTable("retention_policy", {
     .notNull()
     .defaultNow(),
 });
+
+export type CloudSignerScheme = "ed25519";
+
+/**
+ * Per-org Cloud signing key used for server-side envelope sealing
+ * (`server_sign`). The Cloud adds an ENVELOPE signature — a `service`
+ * signer identity attesting it assembled/exported the envelope — never an
+ * artifact signature (which would claim authorship of the subject). The
+ * ed25519 seed is sealed at rest with `lib/crypto/secretbox.ts` (same
+ * `iv.ciphertext.tag` base64 format as `byok_key`). The public key is
+ * exposed unauthenticated at `/api/cloud/signer/[orgId]` so verifiers can
+ * resolve `keyStatusUrl`. Rotation revokes the current row (sets
+ * `revoked_at`) and inserts a new one; a partial unique index enforces at
+ * most one active (`revoked_at IS NULL`) signer per org.
+ */
+export const cloudSigners = pgTable(
+  "cloud_signer",
+  {
+    id: text("id").primaryKey().$defaultFn(uuid),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    scheme: text("scheme").$type<CloudSignerScheme>().notNull().default("ed25519"),
+    /** 32-byte lowercase-hex ed25519 public key (the verifiable identity). */
+    publicKey: text("public_key").notNull(),
+    /** Sealed ed25519 seed — `iv.ciphertext.tag`, base64. See secretbox.ts. */
+    encryptedSecret: text("encrypted_secret").notNull(),
+    /** First 8 hex chars of the public key, for display only. */
+    keyPreview: text("key_preview").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("cloud_signer_org_idx").on(t.orgId),
+    uniqueIndex("cloud_signer_one_active_per_org")
+      .on(t.orgId)
+      .where(sql`${t.revokedAt} IS NULL`),
+  ],
+);

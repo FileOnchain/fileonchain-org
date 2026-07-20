@@ -15,7 +15,9 @@ import {
 /**
  * `POST /api/v1/evidence` — submit a sealed envelope. Hash-only by
  * default; the body carries an `EvidenceEnvelope` JSON, never the
- * artifact bytes.
+ * artifact bytes. Pass `?server_sign=1` (or header
+ * `x-fileonchain-server-sign: 1`) to have the Cloud add an envelope
+ * signature with the org's `service` signer (409 if none is active).
  *
  * `GET /api/v1/evidence?query=…&limit=…` — claim-level search across the
  * org's envelopes. Empty `query` returns the most recent 20.
@@ -31,6 +33,15 @@ const asOrgApiKey = (row: NonNullable<Awaited<ReturnType<typeof authenticateApiK
   scope: row.scope,
 });
 
+/** Read the server-sign opt-in from `?server_sign=` or the header. */
+const wantsServerSign = (request: Request): boolean => {
+  const url = new URL(request.url);
+  const q = url.searchParams.get("server_sign");
+  if (q === "1" || q === "true") return true;
+  const header = request.headers.get("x-fileonchain-server-sign");
+  return header === "1" || header === "true";
+};
+
 export async function POST(request: Request) {
   if (!isCloudEvidenceEnabled()) {
     return NextResponse.json(CLOUD_DISABLED_BODY, { status: 503 });
@@ -40,8 +51,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid or revoked API key" }, { status: 401 });
   }
   try {
+    const serverSign = wantsServerSign(request);
     const envelope = await parseEnvelopeBody(request);
-    const result = await submitEvidence(asOrgApiKey(apiKey), { envelope });
+    const result = await submitEvidence(asOrgApiKey(apiKey), {
+      envelope,
+      serverSign,
+    });
     return NextResponse.json({
       envelopeId: result.envelopeId,
       envelope: result.envelope,
