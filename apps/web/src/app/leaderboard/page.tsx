@@ -1,5 +1,3 @@
-"use client";
-
 import * as React from "react";
 import Link from "next/link";
 import { PageShell } from "@/components/layout/PageShell";
@@ -7,22 +5,19 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import LeaderboardTable from "@/components/leaderboard/LeaderboardTable";
 import { StatCounter } from "@/components/LiveLedgerTicker";
 import { formatBytes } from "@/lib/cid/format";
-import { cn } from "@/lib/cn";
 import type { PublicProfile } from "@/lib/mock/profiles";
+import { getLeaderboard } from "@/lib/mock/profiles";
 
 /* ----------------------------------------------------------------------------
- * Sorting
+ * Sorting — runs server-side once per request, no client round-trip.
  * --------------------------------------------------------------------------- */
 
 type UploaderSort = "anchors" | "bytes" | "donated";
 
-const UPLOADER_SORTS: Array<{ key: UploaderSort; label: string }> = [
-  { key: "anchors", label: "Most anchors" },
-  { key: "bytes", label: "Most bytes" },
-  { key: "donated", label: "Top donors" },
-];
-
-const sortProfiles = (profiles: PublicProfile[], sort: UploaderSort): PublicProfile[] =>
+const sortProfiles = (
+  profiles: PublicProfile[],
+  sort: UploaderSort,
+): PublicProfile[] =>
   [...profiles]
     .sort((a, b) => {
       switch (sort) {
@@ -37,80 +32,25 @@ const sortProfiles = (profiles: PublicProfile[], sort: UploaderSort): PublicProf
     .map((p, i) => ({ ...p, rank: i + 1 }));
 
 /* ----------------------------------------------------------------------------
- * Small shared pieces
+ * Server component — fetches the leaderboard server-side. The sort chips
+ * below re-render the page via URL search params so the sort stays
+ * server-rendered (no client DB shim).
  * --------------------------------------------------------------------------- */
 
-const SortChips = <K extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: Array<{ key: K; label: string }>;
-  value: K;
-  onChange: (key: K) => void;
-}) => (
-  <div className="mb-4 flex flex-wrap items-center gap-2">
-    <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
-      Rank by
-    </span>
-    {options.map(({ key, label }) => (
-      <button
-        key={key}
-        type="button"
-        onClick={() => onChange(key)}
-        aria-pressed={value === key}
-        className={cn(
-          "rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-base",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-          value === key
-            ? "border-primary bg-primary text-primary-foreground"
-            : "border-border bg-surface text-muted hover:border-primary/40 hover:text-foreground",
-        )}
-      >
-        {label}
-      </button>
-    ))}
-  </div>
-);
+interface PageProps {
+  searchParams: Promise<{ sort?: string }>;
+}
 
-const LoadingRows = () => (
-  <div className="space-y-2">
-    {Array.from({ length: 5 }).map((_, i) => (
-      <div key={i} className="h-16 animate-pulse rounded-lg border border-border bg-surface" />
-    ))}
-  </div>
-);
+export const dynamic = "force-dynamic";
 
-/**
- * LeaderboardShell — the uploader board: identities ranked by public anchors,
- * bytes kept alive, and public-cache donations. Data comes from the mock
- * profile layer (TODO: real indexer reads).
- */
-const LeaderboardShell = () => {
-  const [profiles, setProfiles] = React.useState<PublicProfile[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [uploaderSort, setUploaderSort] = React.useState<UploaderSort>("anchors");
+const isSort = (v: string | undefined): v is UploaderSort =>
+  v === "anchors" || v === "bytes" || v === "donated";
 
-  React.useEffect(() => {
-    let cancelled = false;
-    // Dynamic import keeps the mock layer (and its viem dependency) out of
-    // the initial bundle, matching how the rest of the app loads chain code.
-    void import("@/lib/mock/profiles")
-      .then((mod) => mod.getLeaderboard())
-      .then((boardProfiles) => {
-        if (cancelled) return;
-        setProfiles(boardProfiles);
-        setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const rankedProfiles = React.useMemo(
-    () => sortProfiles(profiles, uploaderSort),
-    [profiles, uploaderSort],
-  );
+export default async function LeaderboardPage({ searchParams }: PageProps) {
+  const sp = await searchParams;
+  const sort: UploaderSort = isSort(sp.sort) ? sp.sort : "anchors";
+  const profiles = await getLeaderboard();
+  const rankedProfiles = sortProfiles(profiles, sort);
 
   const totalBytes = profiles.reduce((acc, p) => acc + p.stats.bytes, 0);
   const totalAnchors = profiles.reduce((acc, p) => acc + p.stats.anchors, 0);
@@ -148,8 +88,38 @@ const LeaderboardShell = () => {
         />
       </div>
 
-      <SortChips options={UPLOADER_SORTS} value={uploaderSort} onChange={setUploaderSort} />
-      {loading ? <LoadingRows /> : <LeaderboardTable profiles={rankedProfiles} />}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
+          Rank by
+        </span>
+        {(
+          [
+            { key: "anchors", label: "Most anchors" },
+            { key: "bytes", label: "Most bytes" },
+            { key: "donated", label: "Top donors" },
+          ] as Array<{ key: UploaderSort; label: string }>
+        ).map(({ key, label }) => {
+          const isActive = sort === key;
+          const href = key === "anchors" ? "/leaderboard" : `/leaderboard?sort=${key}`;
+          return (
+            <Link
+              key={key}
+              href={href}
+              scroll={false}
+              className={
+                "rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary " +
+                (isActive
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-surface text-muted hover:border-primary/40 hover:text-foreground")
+              }
+            >
+              {label}
+            </Link>
+          );
+        })}
+      </div>
+
+      <LeaderboardTable profiles={rankedProfiles} />
 
       <section className="mt-12 rounded-2xl border border-dashed border-border bg-surface/60 p-5 text-sm text-muted">
         <p>
@@ -167,6 +137,4 @@ const LeaderboardShell = () => {
       </section>
     </PageShell>
   );
-};
-
-export default LeaderboardShell;
+}

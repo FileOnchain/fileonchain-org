@@ -11,7 +11,7 @@ import { useIdentityStates } from "@/states/identity";
 import { useWalletStates } from "@/states/wallet";
 import { useAccountWallets } from "@/hooks/useAccountWallets";
 import { WALLET_FAMILIES } from "@/lib/auth/wallet-message";
-import { mockLinkedAddress } from "@/lib/mock/profiles";
+import { mockLinkedAddress } from "@/lib/mock/wallet-fakes";
 import { truncateAddress } from "@/lib/cid/format";
 import { trackEvent } from "@/lib/analytics";
 

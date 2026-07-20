@@ -24,11 +24,12 @@ import {
 } from "@/lib/cid/format";
 import { buildTxUrl, getChain } from "@fileonchain/sdk";
 import type { SearchHit } from "@/lib/mock/cid-indexer";
-import { getChunksForFile, getFilesByUploader } from "@/lib/mock/cid-indexer";
 
 interface DetailProps {
   cid: string;
   hits: SearchHit[];
+  initialChunks: Array<{ index: number; cid: string; sizeBytes: number }>;
+  initialRelated: Array<{ cid: string; hits: SearchHit[] }>;
 }
 
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
@@ -46,41 +47,17 @@ type Tab = "anchors" | "chunks" | "related";
  * itself, the per-chain anchor hits, the chunk rows derived from
  * on-chain `chunk` events, and other CIDs from the same submitter.
  */
-const ExplorerDetailClient = ({ cid, hits }: DetailProps) => {
+const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: DetailProps) => {
   const [tab, setTab] = React.useState<Tab>("anchors");
-  const [chunks, setChunks] = React.useState<
-    Array<{ index: number; cid: string; sizeBytes: number }>
-  >([]);
-  const [related, setRelated] = React.useState<
-    Array<{ cid: string; hits: SearchHit[] }>
-  >([]);
-  const [chunksLoaded, setChunksLoaded] = React.useState(false);
-  // The "submitter" used to fetch related files is whichever chain
-  // hit landed first. CIDs with no hits never reach this component.
-  const submitter = hits[0]?.submitter;
-
-  React.useEffect(() => {
-    let cancelled = false;
-    void Promise.all([
-      getChunksForFile(cid),
-      submitter
-        ? getFilesByUploader(submitter, cid, 4)
-        : Promise.resolve([]),
-    ]).then(([c, r]) => {
-      if (cancelled) return;
-      setChunks(c);
-      setRelated(r);
-      setChunksLoaded(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [cid, submitter]);
+  const chunks = initialChunks;
+  const related = initialRelated;
+  const chunksLoaded = true;
 
   const anchoredHits = hits.filter((h) => h.status === "anchored");
   const pendingHits = hits.filter((h) => h.status === "pending");
   const runtimeSet = new Set(hits.map((h) => h.family));
   const uniqueSubmitters = new Set(hits.map((h) => h.submitter));
+  const submitter = hits[0]?.submitter;
 
   return (
     <PageShell size="wide" padding="lg">

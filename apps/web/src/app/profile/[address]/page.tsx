@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import * as React from "react";
 import { getProfile } from "@/lib/mock/profiles";
+import { getFilesByUploader } from "@/lib/indexer/queries";
 import { truncateAddress } from "@/lib/cid/format";
 import { siteConfig } from "@/lib/site";
 import ProfileClient from "@/components/profile/ProfileClient";
@@ -52,6 +53,7 @@ export default async function ProfilePage({ params }: PageProps) {
   const { address } = await params;
   const decoded = decodeURIComponent(address);
   const profile = await getProfile(decoded);
+  const initialFiles = await getFilesByUploader(profile.address, undefined, 8);
 
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -79,7 +81,7 @@ export default async function ProfilePage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-      <ProfileClient profile={profile} />
+      <ProfileClient profile={profile} initialFiles={initialFiles} />
     </>
   );
 }

@@ -20,6 +20,7 @@ import { truncateAddress, truncateCID } from "@/lib/cid/format";
 
 interface ProfileClientProps {
   profile: PublicProfile;
+  initialFiles: Array<{ cid: string; hits: SearchHit[] }>;
 }
 
 /**
@@ -29,15 +30,15 @@ interface ProfileClientProps {
  * into the display.
  *
  * The "Anchored files" list now renders CIDs only — there's no
- * off-chain file metadata to show. Each entry shows the truncated CID,
- * the chain count for that CID, and the latest anchor timestamp.
+ * off-chain file metadata to show. Each entry shows the truncated CID
+ * and the chain count for that CID. The initial list comes from the
+ * server-rendered parent (no client-side DB shim); the `filesLoaded`
+ * state is kept so future refresh logic has a stable seam.
  */
-const ProfileClient = ({ profile }: ProfileClientProps) => {
+const ProfileClient = ({ profile, initialFiles }: ProfileClientProps) => {
   const [linkModalOpen, setLinkModalOpen] = React.useState(false);
-  const [files, setFiles] = React.useState<
-    Array<{ cid: string; hits: SearchHit[] }>
-  >([]);
-  const [filesLoaded, setFilesLoaded] = React.useState(false);
+  const files = initialFiles;
+  const filesLoaded = true;
 
   // Identity store is localStorage-backed — hydrate after mount so the SSR
   // markup stays deterministic (same pattern as the theme store).
@@ -100,17 +101,8 @@ const ProfileClient = ({ profile }: ProfileClientProps) => {
   }, [isOwn, identityHydrated, profile.linkedWallets, localLinks, serverLinks]);
 
   React.useEffect(() => {
-    let cancelled = false;
-    void import("@/lib/mock/cid-indexer").then(async (mod) => {
-      const rows = await mod.getFilesByUploader(profile.address, undefined, 8);
-      if (cancelled) return;
-      setFiles(rows);
-      setFilesLoaded(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [profile.address]);
+    void 0; // initialFiles come from the server-rendered parent
+  }, []);
 
   return (
     <PageShell size="wide" padding="lg" atmosphere>

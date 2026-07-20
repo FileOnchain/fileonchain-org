@@ -1,5 +1,3 @@
-"use client";
-
 import * as React from "react";
 import Link from "next/link";
 import { FiArrowRight, FiSearch } from "react-icons/fi";
@@ -15,13 +13,12 @@ import {
   CHAIN_FAMILY_LABELS,
   type ChainFamily,
 } from "@fileonchain/sdk";
-import type {
-  ExplorerStats,
-  RecentAnchorRow,
-} from "@/lib/mock/cid-indexer";
+import {
+  getExplorerStats,
+  getRecentAnchors,
+} from "@/lib/indexer/queries";
 import RecentAnchorsTable from "@/components/explorer/RecentAnchorsTable";
 import ExplorerFilters from "@/components/explorer/ExplorerFilters";
-import { trackEvent } from "@/lib/analytics";
 
 /**
  * ExplorerShell — Etherscan-style home for the multichain CID indexer.
@@ -31,43 +28,35 @@ import { trackEvent } from "@/lib/analytics";
  *   2. Animated stats (chains / CIDs / anchors / uploaders)
  *   3. Live ledger ticker (recent anchors flowing under)
  *   4. Browse-by-chain mini cards
- *   5. Recent anchors table w/ family filter and "load more"
+ *   5. Recent anchors table w/ family filter
  *
  * Data source: the DB-backed indexer
- * (`@/lib/mock/cid-indexer` → `@/lib/indexer/queries`). The category
- * filter is preserved for back-compat but no longer narrows the feed
- * — categories imply off-chain file metadata (name, MIME) which we
- * don't attest to; the UI surfaces this honestly.
+ * (`lib/indexer/queries`). The category filter was dropped when the
+ * indexer moved to on-chain data — categories imply off-chain file
+ * metadata (name, MIME) which we don't attest to.
+ *
+ * This is a server component: it reads `?runtime=X` from the URL and
+ * fetches the indexer rows directly. The filter chips link to
+ * `/explorer?runtime=X` for a full reload — keeps the surface
+ * fully server-rendered (no client DB shim).
  */
-const ExplorerShell = () => {
-  const [runtime, setRuntime] = React.useState<ChainFamily | "all">("all");
-  const [stats, setStats] = React.useState<ExplorerStats | null>(null);
-  const [rows, setRows] = React.useState<RecentAnchorRow[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [pageSize, setPageSize] = React.useState(6);
+interface PageProps {
+  searchParams: Promise<{ runtime?: string }>;
+}
 
-  // Reload rows + stats whenever a filter changes.
-  React.useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      const mod = await import("@/lib/mock/cid-indexer");
-      const [s, r] = await Promise.all([
-        mod.getExplorerStats(),
-        mod.getRecentAnchors(12, { runtime }),
-      ]);
-      if (cancelled) return;
-      setStats(s);
-      setRows(r);
-      setLoading(false);
-    };
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [runtime]);
+const isFamily = (v: string | undefined): v is ChainFamily =>
+  !!v && ACTIVE_FAMILIES.includes(v as ChainFamily);
 
-  const visible = rows.slice(0, pageSize);
+export const dynamic = "force-dynamic";
+
+export default async function ExplorerPage({ searchParams }: PageProps) {
+  const sp = await searchParams;
+  const runtime = isFamily(sp.runtime) ? sp.runtime : "all";
+  const [stats, allRows] = await Promise.all([
+    getExplorerStats(),
+    getRecentAnchors(24, { runtime }),
+  ]);
+  const rows = allRows.slice(0, 12);
 
   return (
     <PageShell size="wide" padding="lg" atmosphere>
@@ -77,20 +66,13 @@ const ExplorerShell = () => {
           index="02"
           kicker="Cross-chain indexer"
           title="Every anchor, on every chain."
-          lede="Every file that has been publicly anchored on FileOnChain. Search a CID to see which chains committed it, the on-chain tx hash, block number, and submitter. Or browse recent anchors below."
+          lede="Every CID that has been publicly anchored on FileOnChain. Search a CID to see which chains committed it, the on-chain tx hash, block number, and submitter. Or browse recent anchors below."
         />
 
-        {/* Search bar (sticky visual style, not actually sticky) */}
+        {/* Search bar — submits to the detail page route */}
         <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const fd = new FormData(e.currentTarget);
-            const q = String(fd.get("cid") ?? "").trim();
-            if (q) {
-              trackEvent("cid_search", { source: "explorer_index" });
-              window.location.assign(`/explorer/${encodeURIComponent(q)}`);
-            }
-          }}
+          action="/explorer/[cid]"
+          method="get"
           className="flex flex-col gap-2 sm:flex-row"
           role="search"
           aria-label="Search a CID"
@@ -129,25 +111,25 @@ const ExplorerShell = () => {
       <section className="mt-10">
         <div className="grid grid-cols-2 gap-4 rounded-2xl border border-border bg-surface p-6 md:grid-cols-4">
           <StatCounter
-            value={stats?.totalChains ?? ACTIVE_CHAINS.length}
+            value={stats.totalChains || ACTIVE_CHAINS.length}
             label="Chains reporting"
             hint={ACTIVE_FAMILIES.map((f) => CHAIN_FAMILY_LABELS[f]).join(" · ")}
             format={(n) => Math.round(n).toString()}
           />
           <StatCounter
-            value={stats?.totalFiles ?? 0}
+            value={stats.totalFiles}
             label="Distinct CIDs"
             hint="Indexed"
             format={(n) => compactNumber(n)}
           />
           <StatCounter
-            value={stats?.totalAnchors ?? 0}
+            value={stats.totalAnchors}
             label="Onchain anchors"
             hint="Across all chains"
             format={(n) => compactNumber(n)}
           />
           <StatCounter
-            value={stats?.uniqueUploaders ?? 0}
+            value={stats.uniqueUploaders}
             label="Unique uploaders"
             hint="Distinct submitter addrs"
             format={(n) => Math.round(n).toString()}
@@ -182,36 +164,34 @@ const ExplorerShell = () => {
           </div>
         </header>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {ACTIVE_FAMILIES.map(
-            (runtimeId) => {
-              const chains = ACTIVE_CHAINS.filter((c) => c.family === runtimeId);
-              const mainnet = chains.filter((c) => !c.testnet).length;
-              const testnet = chains.length - mainnet;
-              return (
-                <Link
-                  key={runtimeId}
-                  href={`/explorer?runtime=${runtimeId}`}
-                  className="group flex flex-col gap-2 rounded-2xl border border-border bg-surface p-4 transition-colors hover:border-primary/40 hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-                      {CHAIN_FAMILY_LABELS[runtimeId]}
-                    </span>
-                    <FiArrowRight
-                      size={14}
-                      className="text-muted transition-transform duration-base group-hover:translate-x-0.5 group-hover:text-primary"
-                    />
-                  </div>
-                  <p className="font-mono text-2xl font-bold tracking-tight tabular-nums text-foreground">
-                    {chains.length}
-                  </p>
-                  <p className="text-[11px] text-muted">
-                    {mainnet} mainnet · {testnet} testnet
-                  </p>
-                </Link>
-              );
-            },
-          )}
+          {ACTIVE_FAMILIES.map((runtimeId) => {
+            const chains = ACTIVE_CHAINS.filter((c) => c.family === runtimeId);
+            const mainnet = chains.filter((c) => !c.testnet).length;
+            const testnet = chains.length - mainnet;
+            return (
+              <Link
+                key={runtimeId}
+                href={`/explorer?runtime=${runtimeId}`}
+                className="group flex flex-col gap-2 rounded-2xl border border-border bg-surface p-4 transition-colors hover:border-primary/40 hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+                    {CHAIN_FAMILY_LABELS[runtimeId]}
+                  </span>
+                  <FiArrowRight
+                    size={14}
+                    className="text-muted transition-transform duration-base group-hover:translate-x-0.5 group-hover:text-primary"
+                  />
+                </div>
+                <p className="font-mono text-2xl font-bold tracking-tight tabular-nums text-foreground">
+                  {chains.length}
+                </p>
+                <p className="text-[11px] text-muted">
+                  {mainnet} mainnet · {testnet} testnet
+                </p>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
@@ -227,44 +207,19 @@ const ExplorerShell = () => {
             </h2>
           </div>
           <p className="max-w-sm text-xs text-muted md:text-sm">
-            Click any file to see every chain that anchored it, the on-chain
-            tx hash, the chunk breakdown, and other files from the same submitter.
+            Click any CID to see every chain that anchored it, the on-chain
+            tx hash, the chunk breakdown, and other CIDs from the same submitter.
           </p>
         </header>
 
-        <ExplorerFilters
-          runtime={runtime}
-          onRuntimeChange={setRuntime}
-        />
+        <ExplorerFilters runtime={runtime} basePath="/explorer" />
 
-        {loading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-16 animate-pulse rounded-lg border border-border bg-surface"
-              />
-            ))}
-          </div>
+        {rows.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-border bg-surface/60 p-10 text-center text-sm text-muted">
+            No recent anchors match this runtime yet.
+          </p>
         ) : (
-          <>
-            <RecentAnchorsTable rows={visible} />
-            {rows.length > pageSize && (
-              <div className="flex justify-center pt-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => setPageSize((p) => p + 6)}
-                >
-                  Load more
-                </Button>
-              </div>
-            )}
-            {rows.length === 0 && (
-              <p className="text-center text-sm text-muted">
-                No recent anchors match this combination of filters.
-              </p>
-            )}
-          </>
+          <RecentAnchorsTable rows={rows} />
         )}
       </section>
 
@@ -272,15 +227,14 @@ const ExplorerShell = () => {
       <section className="mt-16 rounded-2xl border border-dashed border-border bg-surface/60 p-5 text-sm text-muted">
         <p>
           The explorer indexes every CID that has been publicly anchored on the
-          registry contracts across <span className="font-semibold text-foreground">{ACTIVE_CHAINS.length} active chains</span>.
-          One chain is enough to retrieve a file — adding more chains is optional and
-          each chain charges its own gas. Some testnet anchors are reported as
-          {" "}<span className="font-semibold text-warning">pending</span> until finality; status codes follow the
-          convention used by Etherscan and Subscan.
+          registry contracts across{" "}
+          <span className="font-semibold text-foreground">
+            {ACTIVE_CHAINS.length} active chains
+          </span>
+          . One chain is enough to retrieve a file — adding more chains is
+          optional and each chain charges its own gas.
         </p>
       </section>
     </PageShell>
   );
-};
-
-export default ExplorerShell;
+}

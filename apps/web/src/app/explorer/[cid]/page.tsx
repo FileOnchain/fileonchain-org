@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import * as React from "react";
 import { notFound } from "next/navigation";
-import { lookupFile } from "@/lib/mock/cid-indexer";
+import {
+  lookupFile,
+  getChunksForFile,
+  getFilesByUploader,
+} from "@/lib/indexer/queries";
 import { truncateCID } from "@/lib/cid/format";
 import { siteConfig } from "@/lib/site";
 import ExplorerDetailClient from "./ExplorerDetailClient";
@@ -51,6 +55,18 @@ export default async function ExplorerCIDPage({ params }: PageProps) {
   // generateMetadata above already marks the unresolved CID as noindex.
   if (!result) notFound();
 
+  // Pull the submitter off the first hit so the related-files query can
+  // run in parallel with the chunks query — both depend on data we
+  // already have server-side. The client component takes the resolved
+  // arrays as props; no client-side DB shim needed.
+  const submitter = result.hits[0]?.submitter;
+  const [chunks, related] = await Promise.all([
+    getChunksForFile(result.cid),
+    submitter
+      ? getFilesByUploader(submitter, result.cid, 4)
+      : Promise.resolve([]),
+  ]);
+
   // Breadcrumb structured data — lets Google render "Home › Explorer › CID"
   // instead of the raw URL in search results.
   const breadcrumbJsonLd = {
@@ -79,7 +95,12 @@ export default async function ExplorerCIDPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-      <ExplorerDetailClient cid={result.cid} hits={result.hits} />
+      <ExplorerDetailClient
+        cid={result.cid}
+        hits={result.hits}
+        initialChunks={chunks}
+        initialRelated={related}
+      />
     </>
   );
 }
