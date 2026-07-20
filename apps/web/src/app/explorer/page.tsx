@@ -16,7 +16,6 @@ import {
   type ChainFamily,
 } from "@fileonchain/sdk";
 import type {
-  FileCategory,
   ExplorerStats,
   RecentAnchorRow,
 } from "@/lib/mock/cid-indexer";
@@ -29,17 +28,19 @@ import { trackEvent } from "@/lib/analytics";
  *
  * Structure (top-to-bottom):
  *   1. Header with kicker + headline + sticky search
- *   2. Animated stats (chains / files / anchors / bytes / uploaders)
+ *   2. Animated stats (chains / CIDs / anchors / uploaders)
  *   3. Live ledger ticker (recent anchors flowing under)
  *   4. Browse-by-chain mini cards
- *   5. Recent anchors table w/ family + type filters and "load more"
+ *   5. Recent anchors table w/ family filter and "load more"
  *
- * All data is loaded via the mock indexer (TODO: swap for real TheGraph /
- * Subscan / Solana RPC queries).
+ * Data source: the DB-backed indexer
+ * (`@/lib/mock/cid-indexer` → `@/lib/indexer/queries`). The category
+ * filter is preserved for back-compat but no longer narrows the feed
+ * — categories imply off-chain file metadata (name, MIME) which we
+ * don't attest to; the UI surfaces this honestly.
  */
 const ExplorerShell = () => {
   const [runtime, setRuntime] = React.useState<ChainFamily | "all">("all");
-  const [category, setCategory] = React.useState<FileCategory | "all">("all");
   const [stats, setStats] = React.useState<ExplorerStats | null>(null);
   const [rows, setRows] = React.useState<RecentAnchorRow[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -53,7 +54,7 @@ const ExplorerShell = () => {
       const mod = await import("@/lib/mock/cid-indexer");
       const [s, r] = await Promise.all([
         mod.getExplorerStats(),
-        mod.getRecentAnchors(12, { runtime, category }),
+        mod.getRecentAnchors(12, { runtime }),
       ]);
       if (cancelled) return;
       setStats(s);
@@ -64,7 +65,7 @@ const ExplorerShell = () => {
     return () => {
       cancelled = true;
     };
-  }, [runtime, category]);
+  }, [runtime]);
 
   const visible = rows.slice(0, pageSize);
 
@@ -126,7 +127,7 @@ const ExplorerShell = () => {
 
       {/* Stats strip ----------------------------------------- */}
       <section className="mt-10">
-        <div className="grid grid-cols-2 gap-4 rounded-2xl border border-border bg-surface p-6 md:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 rounded-2xl border border-border bg-surface p-6 md:grid-cols-4">
           <StatCounter
             value={stats?.totalChains ?? ACTIVE_CHAINS.length}
             label="Chains reporting"
@@ -135,7 +136,7 @@ const ExplorerShell = () => {
           />
           <StatCounter
             value={stats?.totalFiles ?? 0}
-            label="Public files"
+            label="Distinct CIDs"
             hint="Indexed"
             format={(n) => compactNumber(n)}
           />
@@ -144,13 +145,6 @@ const ExplorerShell = () => {
             label="Onchain anchors"
             hint="Across all chains"
             format={(n) => compactNumber(n)}
-          />
-          <StatCounter
-            value={stats?.totalBytes ?? 0}
-            label="Bytes anchored"
-            hint="Total payload"
-            format={(n) => compactNumber(n / 1_000_000, 1)}
-            suffix="MB"
           />
           <StatCounter
             value={stats?.uniqueUploaders ?? 0}
@@ -240,9 +234,7 @@ const ExplorerShell = () => {
 
         <ExplorerFilters
           runtime={runtime}
-          category={category}
           onRuntimeChange={setRuntime}
-          onCategoryChange={setCategory}
         />
 
         {loading ? (

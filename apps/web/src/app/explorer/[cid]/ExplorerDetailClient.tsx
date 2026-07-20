@@ -14,10 +14,8 @@ import { ChainBadge } from "@/components/ui/ChainBadge";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { Button } from "@/components/ui/Button";
 import { compactNumber } from "@/components/LiveLedgerTicker";
-import CategoryIcon from "@/components/explorer/CategoryIcon";
 import StatusPill from "@/components/explorer/StatusPill";
 import {
-  formatBytes,
   formatRelativeTime,
   formatTimestamp,
   formatBlockNumber,
@@ -25,14 +23,11 @@ import {
   truncateCID,
 } from "@/lib/cid/format";
 import { buildTxUrl, getChain } from "@fileonchain/sdk";
-import type {
-  RegisteredFile,
-  SearchHit,
-} from "@/lib/mock/cid-indexer";
+import type { SearchHit } from "@/lib/mock/cid-indexer";
 import { getChunksForFile, getFilesByUploader } from "@/lib/mock/cid-indexer";
 
 interface DetailProps {
-  file: RegisteredFile;
+  cid: string;
   hits: SearchHit[];
 }
 
@@ -44,20 +39,33 @@ type Tab = "anchors" | "chunks" | "related";
  * ExplorerDetailClient — Etherscan-style transaction-detail page for a
  * single CID. Rendered client-side so it can hydrate the chunks table +
  * related-files section asynchronously.
+ *
+ * The detail page no longer carries off-chain file metadata (name,
+ * MIME, description, chunkCount) — the protocol doesn't attest to any
+ * of that, so the UI renders only what the indexer can prove: the CID
+ * itself, the per-chain anchor hits, the chunk rows derived from
+ * on-chain `chunk` events, and other CIDs from the same submitter.
  */
-const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
+const ExplorerDetailClient = ({ cid, hits }: DetailProps) => {
   const [tab, setTab] = React.useState<Tab>("anchors");
   const [chunks, setChunks] = React.useState<
     Array<{ index: number; cid: string; sizeBytes: number }>
   >([]);
-  const [related, setRelated] = React.useState<RegisteredFile[]>([]);
+  const [related, setRelated] = React.useState<
+    Array<{ cid: string; hits: SearchHit[] }>
+  >([]);
   const [chunksLoaded, setChunksLoaded] = React.useState(false);
+  // The "submitter" used to fetch related files is whichever chain
+  // hit landed first. CIDs with no hits never reach this component.
+  const submitter = hits[0]?.submitter;
 
   React.useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      getChunksForFile(file),
-      getFilesByUploader(file.uploader, file.cid, 4),
+    void Promise.all([
+      getChunksForFile(cid),
+      submitter
+        ? getFilesByUploader(submitter, cid, 4)
+        : Promise.resolve([]),
     ]).then(([c, r]) => {
       if (cancelled) return;
       setChunks(c);
@@ -67,11 +75,12 @@ const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
     return () => {
       cancelled = true;
     };
-  }, [file]);
+  }, [cid, submitter]);
 
   const anchoredHits = hits.filter((h) => h.status === "anchored");
   const pendingHits = hits.filter((h) => h.status === "pending");
   const runtimeSet = new Set(hits.map((h) => h.family));
+  const uniqueSubmitters = new Set(hits.map((h) => h.submitter));
 
   return (
     <PageShell size="wide" padding="lg">
@@ -81,7 +90,7 @@ const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
           Explorer
         </Link>
         <span aria-hidden>›</span>
-        <span className="truncate font-mono">{truncateCID(file.cid, 12, 10)}</span>
+        <span className="truncate font-mono">{truncateCID(cid, 12, 10)}</span>
       </nav>
 
       {/* Header card ----------------------------------------- */}
@@ -92,32 +101,31 @@ const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
         className="rounded-2xl border border-border bg-surface p-5 md:p-7"
       >
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
-          <div className="flex min-w-0 items-start gap-4">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-surface-elevated text-primary">
-              <CategoryIcon category={file.category} size={22} />
-            </span>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="truncate text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-                  {file.name}
-                </h1>
-                <span className="rounded-full border border-border bg-surface-elevated px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted">
-                  {file.category}
-                </span>
-              </div>
-              <div className="mt-2 flex items-center gap-2 break-all">
-                <span
-                  className="font-mono text-sm text-foreground"
-                  title={file.cid}
-                >
-                  {file.cid}
-                </span>
-                <CopyButton value={file.cid} ariaLabel="Copy full CID" />
-              </div>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
-                {file.description}
-              </p>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="font-mono text-xl font-bold tracking-tight text-foreground md:text-2xl">
+                {truncateCID(cid, 14, 12)}
+              </h1>
+              <span className="rounded-full border border-border bg-surface-elevated px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted">
+                CIDv1
+              </span>
             </div>
+            <div className="mt-3 flex items-center gap-2 break-all">
+              <span
+                className="font-mono text-sm text-foreground"
+                title={cid}
+              >
+                {cid}
+              </span>
+              <CopyButton value={cid} ariaLabel="Copy full CID" />
+            </div>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
+              Every on-chain anchor for this CID, one row per chain. The
+              indexer reads the FileRegistry <code className="font-mono text-[12px]">CIDAnchored</code> +
+              <code className="font-mono text-[12px]">ChunkAnchored</code> events on every
+              provisioned EVM chain — your honest view of how widely this
+              CID is attested.
+            </p>
           </div>
 
           {/* Quick action */}
@@ -126,17 +134,18 @@ const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
               variant="secondary"
               leftIcon={<FiDownload size={14} />}
               onClick={() => {
-                /* mock rebuild — real version rehydrates from IPLD chunks */
+                /* The CID-by-CID rebuilder is a future surface; today the
+                 * explorer attests to existence + integrity, not retrieval. */
                 const blob = new Blob(
                   [
-                    `Mock rebuild for ${file.name}\nCID: ${file.cid}\nAnchored on ${anchoredHits.length} chains.\n\nThis is a placeholder. Real reassembly will rehydrate the file from IPLD chunks across chains.`,
+                    `CID: ${cid}\nAnchored on ${anchoredHits.length} chains.\n\nThis is a placeholder. Real reassembly will rehydrate the file from IPLD chunks across chains.`,
                   ],
                   { type: "text/plain" },
                 );
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement("a");
                 link.href = url;
-                link.download = `${file.name.replace(/\.[^.]+$/, "")}.rebuild.txt`;
+                link.download = `${truncateCID(cid, 8, 6)}.rebuild.txt`;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
@@ -156,28 +165,26 @@ const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
         </div>
 
         {/* Stat strip */}
-        <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border pt-5 sm:grid-cols-3 md:grid-cols-5">
-          <DetailStat label="Size" value={formatBytes(file.sizeBytes)} />
-          <DetailStat
-            label="Chunks"
-            value={compactNumber(file.chunkCount)}
-            hint={`${file.chunkCount === 1 ? "single-chunk file" : `64 KB avg`}`}
-          />
+        <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border pt-5 sm:grid-cols-3">
           <DetailStat
             label="Chains"
             value={compactNumber(hits.length)}
             hint={`${runtimeSet.size} runtime${runtimeSet.size === 1 ? "" : "s"} · ${anchoredHits.length} anchored, ${pendingHits.length} pending`}
           />
           <DetailStat
-            label="Submitter"
-            value={truncateAddress(file.uploader, 6)}
-            hint="View on explorer"
+            label="Submitters"
+            value={compactNumber(uniqueSubmitters.size)}
+            hint={
+              uniqueSubmitters.size === 1 && submitter
+                ? truncateAddress(submitter, 8)
+                : "Distinct addresses"
+            }
             mono
           />
           <DetailStat
-            label="MIME"
-            value={file.mimeType.split("/")[1]?.toUpperCase() ?? "FILE"}
-            hint={file.mimeType}
+            label="Chunks"
+            value={compactNumber(chunks.length)}
+            hint="From on-chain chunk events"
           />
         </div>
       </motion.section>
@@ -187,7 +194,7 @@ const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
         {(
           [
             { id: "anchors", label: `Anchors · ${hits.length}` },
-            { id: "chunks", label: `Chunks · ${file.chunkCount}` },
+            { id: "chunks", label: `Chunks · ${chunks.length}` },
             { id: "related", label: `Related · ${related.length}` },
           ] as Array<{ id: Tab; label: string }>
         ).map((t) => {
@@ -237,7 +244,7 @@ const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
               const realUrl = chainRec ? buildTxUrl(chainRec, hit.txHash) : "#";
               return (
                 <motion.li
-                  key={hit.chainId}
+                  key={`${hit.txHash}-${hit.logIndex}`}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.28, delay: i * 0.03, ease: EASE_OUT }}
@@ -308,14 +315,19 @@ const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
                   key={i}
                   className="h-12 animate-pulse rounded-lg border border-border bg-surface"
                 />
-                ))}
+              ))}
+            </div>
+          ) : chunks.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-surface p-8 text-center text-sm text-muted">
+              No chunk-level anchors for this CID. File-level anchors
+              still attest to its existence; chunks become visible when a
+              submitter anchors the per-chunk payload.
             </div>
           ) : (
             <div className="overflow-hidden rounded-2xl border border-border bg-surface">
-              <div className="hidden border-b border-border bg-surface-elevated px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted md:grid md:grid-cols-[60px_minmax(0,2fr)_minmax(0,1fr)_120px] md:gap-3">
+              <div className="hidden border-b border-border bg-surface-elevated px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted md:grid md:grid-cols-[60px_minmax(0,1fr)_120px] md:gap-3">
                 <span>#</span>
                 <span>Chunk CID</span>
-                <span>Size</span>
                 <span className="text-right">Copy</span>
               </div>
               <ul role="list" className="max-h-[420px] divide-y divide-border overflow-y-auto">
@@ -325,16 +337,13 @@ const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, delay: i * 0.012, ease: EASE_OUT }}
-                    className="grid grid-cols-[60px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2 font-mono text-xs transition-colors hover:bg-surface-elevated md:grid-cols-[60px_minmax(0,2fr)_minmax(0,1fr)_120px]"
+                    className="grid grid-cols-[60px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2 font-mono text-xs transition-colors hover:bg-surface-elevated md:grid-cols-[60px_minmax(0,1fr)_120px]"
                   >
                     <span className="font-semibold tabular-nums text-foreground">
                       {chunk.index + 1}
                     </span>
                     <span className="truncate text-foreground" title={chunk.cid}>
                       {chunk.cid}
-                    </span>
-                    <span className="tabular-nums text-muted">
-                      {formatBytes(chunk.sizeBytes)}
                     </span>
                     <span className="col-span-2 flex justify-end md:col-span-1">
                       <CopyButton value={chunk.cid} ariaLabel="Copy chunk CID" />
@@ -358,7 +367,7 @@ const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
         >
           {related.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border bg-surface p-8 text-center text-sm text-muted">
-              No other public files from this uploader yet.
+              No other public CIDs from this submitter yet.
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -368,18 +377,13 @@ const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
                   href={`/explorer/${r.cid}`}
                   className="group flex items-start gap-3 rounded-2xl border border-border bg-surface p-4 transition-colors hover:border-primary/40 hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-elevated text-primary">
-                    <CategoryIcon category={r.category} size={16} />
-                  </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-foreground">
-                      {r.name}
-                    </p>
-                    <p className="mt-0.5 truncate font-mono text-[10px] text-muted">
-                      {truncateCID(r.cid)}
+                    <p className="truncate font-mono font-semibold text-foreground">
+                      {truncateCID(r.cid, 10, 8)}
                     </p>
                     <p className="mt-1 text-[11px] text-muted">
-                      {formatBytes(r.sizeBytes)} · {r.chunkCount} chunks
+                      Anchored on {r.hits.length} chain
+                      {r.hits.length === 1 ? "" : "s"}
                     </p>
                   </div>
                   <FiArrowRight
@@ -400,7 +404,7 @@ const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
             Content hash
           </p>
           <p className="mt-1 break-all font-mono text-xs text-foreground">
-            {truncateCID(file.cid, 14, 12)}
+            {truncateCID(cid, 14, 12)}
           </p>
           <p className="mt-2 text-[11px] text-muted">
             SHA-256 of the original byte payload, recorded on every supported
@@ -429,7 +433,9 @@ const ExplorerDetailClient = ({ file, hits }: DetailProps) => {
             <FiCheck size={14} /> Pass
           </p>
           <p className="mt-2 text-[11px] text-muted">
-            All chunks hashed and committed onchain. No drift, no truncation.
+            Each chain&rsquo;s anchor tx carries the CID hash and SHA-256
+            content hash on chain. Re-deriving either reproduces the
+            registry record.
           </p>
         </div>
       </section>

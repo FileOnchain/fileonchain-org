@@ -23,6 +23,10 @@
     {
       "path": "/api/cron/deposits-watch",
       "schedule": "57 2 * * *"
+    },
+    {
+      "path": "/api/cron/indexer-scan",
+      "schedule": "47 1 * * *"
     }
   ]
 }

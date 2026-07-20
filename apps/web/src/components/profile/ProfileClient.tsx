@@ -9,15 +9,14 @@ import { Button } from "@/components/ui/Button";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { Identicon } from "@/components/ui/Identicon";
 import { StatCounter } from "@/components/LiveLedgerTicker";
-import CategoryIcon from "@/components/explorer/CategoryIcon";
 import RuntimeChip from "@/components/profile/RuntimeChip";
 import LinkWalletModal from "@/components/profile/LinkWalletModal";
 import { useIdentityStates, hydrateIdentity } from "@/states/identity";
 import { useWalletStates } from "@/states/wallet";
 import { useAccountWallets } from "@/hooks/useAccountWallets";
 import type { LinkedWallet, PublicProfile } from "@/lib/mock/profiles";
-import type { RegisteredFile } from "@/lib/mock/cid-indexer";
-import { formatBytes, truncateAddress, truncateCID } from "@/lib/cid/format";
+import type { SearchHit } from "@/lib/mock/cid-indexer";
+import { truncateAddress, truncateCID } from "@/lib/cid/format";
 
 interface ProfileClientProps {
   profile: PublicProfile;
@@ -28,10 +27,16 @@ interface ProfileClientProps {
  * connected wallet owns this profile, the linked-wallets card becomes
  * editable (link/unlink per runtime) and locally recorded links are merged
  * into the display.
+ *
+ * The "Anchored files" list now renders CIDs only — there's no
+ * off-chain file metadata to show. Each entry shows the truncated CID,
+ * the chain count for that CID, and the latest anchor timestamp.
  */
 const ProfileClient = ({ profile }: ProfileClientProps) => {
   const [linkModalOpen, setLinkModalOpen] = React.useState(false);
-  const [files, setFiles] = React.useState<RegisteredFile[]>([]);
+  const [files, setFiles] = React.useState<
+    Array<{ cid: string; hits: SearchHit[] }>
+  >([]);
   const [filesLoaded, setFilesLoaded] = React.useState(false);
 
   // Identity store is localStorage-backed — hydrate after mount so the SSR
@@ -182,7 +187,7 @@ const ProfileClient = ({ profile }: ProfileClientProps) => {
       <div className="mt-8 grid grid-cols-2 gap-6 rounded-2xl border border-border bg-surface p-6 sm:gap-8 md:grid-cols-4">
         <StatCounter
           value={profile.stats.files}
-          label="Public files"
+          label="Public CIDs"
           hint="Indexed anchors"
           format={(n) => Math.round(n).toString()}
         />
@@ -190,7 +195,7 @@ const ProfileClient = ({ profile }: ProfileClientProps) => {
           value={profile.stats.bytes}
           label="Bytes anchored"
           hint="Across all files"
-          format={(n) => formatBytes(n)}
+          format={(n) => Math.round(n).toString()}
         />
         <StatCounter
           value={profile.stats.anchors}
@@ -250,16 +255,13 @@ const ProfileClient = ({ profile }: ProfileClientProps) => {
                     href={`/explorer/${file.cid}`}
                     className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-elevated text-primary">
-                      <CategoryIcon category={file.category} size={16} />
-                    </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold text-foreground">
-                        {file.name}
+                      <p className="truncate font-mono font-semibold text-foreground">
+                        {truncateCID(file.cid, 10, 8)}
                       </p>
-                      <p className="truncate font-mono text-[11px] text-muted">
-                        {truncateCID(file.cid, 10, 8)} · {formatBytes(file.sizeBytes)} ·{" "}
-                        {file.chunkCount} chunks
+                      <p className="truncate text-[11px] text-muted">
+                        Anchored on {file.hits.length} chain
+                        {file.hits.length === 1 ? "" : "s"}
                       </p>
                     </div>
                     <FiArrowRight

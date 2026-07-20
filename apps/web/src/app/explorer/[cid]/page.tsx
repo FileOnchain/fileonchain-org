@@ -20,32 +20,29 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!result) {
     return {
       title: `Unknown CID · ${truncateCID(cid)}`,
-      description: `No public record for ${cid} on FileOnChain yet.`,
+      description: `No public anchor record for ${cid} on FileOnChain yet.`,
       alternates: { canonical },
       // Nothing to index for an unresolved CID.
       robots: { index: false, follow: true },
     };
   }
 
-  const { name, description, category } = result.file;
-  const title = `${name} · ${truncateCID(cid)}`;
-  const desc =
-    description ||
-    `${name} — a ${category} file anchored onchain. View its CID records and chunk map on FileOnChain.`;
+  const title = `CID ${truncateCID(cid, 12, 10)} · FileOnChain`;
+  const desc = `${result.hits.length} onchain anchor${result.hits.length === 1 ? "" : "s"} across ${new Set(result.hits.map((h) => h.chainId)).size} chain${result.hits.length === 1 ? "" : "s"} — view the tx receipts and submitter on FileOnChain.`;
 
   return {
     title,
     description: desc,
     alternates: { canonical },
-    openGraph: { title: `${title} · FileOnChain`, description: desc, url: canonical, type: "website" },
+    openGraph: { title, description: desc, url: canonical, type: "website" },
     twitter: { card: "summary_large_image", title, description: desc },
   };
 }
 
 /**
- * Server component — looks up the registered file (if any) and pre-fetches
- * the anchor hits + chunks. Hands off rendering to the client component so
- * the chunk table can hydrate smoothly on the browser.
+ * Server component — looks up the CID across the indexer DB and
+ * pre-fetches the anchor hits. Hands off rendering to the client
+ * component so the chunk table can hydrate smoothly on the browser.
  */
 export default async function ExplorerCIDPage({ params }: PageProps) {
   const { cid } = await params;
@@ -54,7 +51,7 @@ export default async function ExplorerCIDPage({ params }: PageProps) {
   // generateMetadata above already marks the unresolved CID as noindex.
   if (!result) notFound();
 
-  // Breadcrumb structured data — lets Google render "Home › Explorer › file"
+  // Breadcrumb structured data — lets Google render "Home › Explorer › CID"
   // instead of the raw URL in search results.
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -70,7 +67,7 @@ export default async function ExplorerCIDPage({ params }: PageProps) {
       {
         "@type": "ListItem",
         position: 3,
-        name: result.file.name,
+        name: truncateCID(cid, 12, 10),
         item: `${siteConfig.url}/explorer/${cid}`,
       },
     ],
@@ -82,7 +79,7 @@ export default async function ExplorerCIDPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-      <ExplorerDetailClient file={result.file} hits={result.hits} />
+      <ExplorerDetailClient cid={result.cid} hits={result.hits} />
     </>
   );
 }

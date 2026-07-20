@@ -7,14 +7,11 @@ import {
   CHAIN_FAMILY_LABELS,
   type ChainFamily,
 } from "@fileonchain/sdk";
-import type { FileCategory } from "@/lib/mock/cid-indexer";
 import { cn } from "@/lib/cn";
 
 interface ExplorerFiltersProps {
   runtime: ChainFamily | "all";
-  category: FileCategory | "all";
   onRuntimeChange: (f: ChainFamily | "all") => void;
-  onCategoryChange: (c: FileCategory | "all") => void;
 }
 
 // Only runtimes with a network open for uploads — the indexer never reports
@@ -27,26 +24,15 @@ const RUNTIME_OPTIONS: Array<{ id: ChainFamily | "all"; label: string }> = [
   })),
 ];
 
-const CATEGORY_OPTIONS: Array<{ id: FileCategory | "all"; label: string }> = [
-  { id: "all", label: "All types" },
-  { id: "document", label: "Documents" },
-  { id: "data", label: "Data" },
-  { id: "image", label: "Images" },
-  { id: "video", label: "Video" },
-  { id: "audio", label: "Audio" },
-  { id: "archive", label: "Archives" },
-];
-
 /**
  * ExplorerFilters — sticky filter chips above the recent-anchors table.
- * Two pill groups (runtime + category). Selected chip is solid primary;
- * the rest are outlined.
+ * The category filter was dropped when the indexer moved to on-chain
+ * data: categories imply off-chain file metadata (name, MIME) which we
+ * don't attest to.
  */
 const ExplorerFilters = ({
   runtime,
-  category,
   onRuntimeChange,
-  onCategoryChange,
 }: ExplorerFiltersProps) => (
   <div className="space-y-3">
     <FilterRow
@@ -54,12 +40,6 @@ const ExplorerFilters = ({
       options={RUNTIME_OPTIONS}
       active={runtime}
       onSelect={onRuntimeChange}
-    />
-    <FilterRow
-      label="File type"
-      options={CATEGORY_OPTIONS}
-      active={category}
-      onSelect={onCategoryChange}
     />
   </div>
 );
