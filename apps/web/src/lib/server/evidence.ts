@@ -13,6 +13,7 @@ import { signEnvelopeForOrg, signEnvelopeForScope } from "@/lib/server/cloud-sig
 import { getProjectOrgId } from "@/lib/server/projects";
 import { applyRetentionToNewEnvelope } from "@/lib/server/retention";
 import { enforceEnvelopeQuota } from "@/lib/server/quotas";
+import { enqueueWebhookDeliveries } from "@/lib/server/webhooks";
 import {
   db,
   evidenceEnvelopes,
@@ -245,6 +246,20 @@ export const submitEvidence = async (
       subjectSha256,
     },
   );
+
+  // Webhook fan-out. Fire-and-forget: the call catches its own errors
+  // and returns, so an outage at a webhook receiver never blocks the
+  // ingest path or rolls back the row.
+  void enqueueWebhookDeliveries(orgId, "evidence.sealed", id, {
+    envelopeId: id,
+    profile,
+    subjectSha256,
+    subjectKind,
+    envelopeDigest,
+    projectId: effectiveProjectId,
+    serverSign,
+    serverSignProject,
+  });
 
   return {
     envelopeId: id,

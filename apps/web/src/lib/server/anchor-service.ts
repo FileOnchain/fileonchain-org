@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq, isNull } from "drizzle-orm";
 import { getChain, isValidCID, type ChainId } from "@fileonchain/sdk";
-import { db, byokKeys, uploadJobs } from "@/lib/db";
+import { db, byokKeys, uploadJobs, organizationMembers } from "@/lib/db";
 import {
   getChainCostEstimates,
   totalCostFor,
@@ -16,6 +16,8 @@ import { logActivity } from "@/lib/server/activity";
 import { runAnchorWorker } from "@/lib/server/anchor-worker";
 import { getUserRpcOverrides } from "@/lib/server/rpc-endpoints";
 import { enforceAnchorQuota } from "@/lib/server/quotas";
+import { enqueueWebhookDeliveries } from "@/lib/server/webhooks";
+import { getProjectOrgId } from "@/lib/server/projects";
 import { microToUsdc } from "@/lib/usdc";
 
 export class AnchorRequestError extends Error {
@@ -293,6 +295,37 @@ export const anchorWithAccount = async (
       jobId: job.id,
     });
   }
+
+  // Webhook fan-out — `anchor.job.settled` replaces the
+  // `/api/v1/anchor/[id]` polling endpoint for org-scoped consumers.
+  // The org is resolved through the project (when present) or the user's
+  // first org membership — `enqueueWebhookDeliveries` no-ops when no
+  // endpoint subscribes, so the lookup is best-effort.
+  void (async () => {
+    let orgId: string | null = null;
+    if (finished.projectId) {
+      orgId = await getProjectOrgId(finished.projectId);
+    }
+    if (!orgId) {
+      const [m] = await db
+        .select({ orgId: organizationMembers.orgId })
+        .from(organizationMembers)
+        .where(eq(organizationMembers.userId, ctx.userId))
+        .limit(1);
+      orgId = m?.orgId ?? null;
+    }
+    if (!orgId) return;
+    await enqueueWebhookDeliveries(orgId, "anchor.job.settled", finished.id, {
+      jobId: finished.id,
+      status: finished.status,
+      cid: finished.cid,
+      chainIds: finished.chainIds,
+      paymentMethod: finished.paymentMethod,
+      projectId: finished.projectId,
+      txHashes: finished.txHashes,
+      settledAt: finished.completedAt?.toISOString() ?? new Date().toISOString(),
+    });
+  })();
 
   return finished;
 };
