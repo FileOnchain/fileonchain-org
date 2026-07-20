@@ -10,6 +10,7 @@ const serialize = (key: typeof apiKeys.$inferSelect) => ({
   name: key.name,
   prefix: key.prefix,
   orgId: key.orgId,
+  projectId: key.projectId,
   scope: key.scope,
   lastUsedAt: key.lastUsedAt?.toISOString() ?? null,
   revokedAt: key.revokedAt?.toISOString() ?? null,
@@ -32,9 +33,15 @@ export async function GET() {
 
 /** Create a key. The plaintext secret appears in this response only.
  *
- *  Body: `{ name, orgId? }`. When `orgId` is present the key is
- *  org-scoped (`scope = "org"`); the user must be a member of that org.
- *  Personal keys (no `orgId`) keep their existing behavior end-to-end.
+ *  Body: `{ name, orgId?, projectId? }`. The three scopes compose:
+ *   - no orgId + no projectId → personal key
+ *   - orgId + no projectId     → org-scoped key
+ *   - orgId + projectId        → project-scoped key
+ *
+ *  Project-scoped keys also require the project member to be an org
+ *  member (the project view filters down from the org); membership is
+ *  re-checked inside `createApiKey` so a stale session cannot mint into
+ *  a project the user has been removed from.
  */
 export async function POST(request: Request) {
   try {
@@ -42,6 +49,7 @@ export async function POST(request: Request) {
     const body = (await request.json().catch(() => null)) as {
       name?: unknown;
       orgId?: unknown;
+      projectId?: unknown;
     } | null;
     const name = typeof body?.name === "string" ? body.name.trim() : "";
     if (!name || name.length > 64) {
@@ -54,14 +62,24 @@ export async function POST(request: Request) {
       typeof body?.orgId === "string" && body.orgId.length > 0
         ? body.orgId
         : null;
+    const projectId =
+      typeof body?.projectId === "string" && body.projectId.length > 0
+        ? body.projectId
+        : null;
 
-    const { secret, apiKey } = await createApiKey(userId, name, orgId);
+    const { secret, apiKey } = await createApiKey({
+      userId,
+      name,
+      orgId,
+      projectId,
+    });
     await logActivity(userId, "api_key_created", {
       keyId: apiKey.id,
       name,
       prefix: apiKey.prefix,
       scope: apiKey.scope,
       orgId: apiKey.orgId,
+      projectId: apiKey.projectId,
     });
     return NextResponse.json({ key: serialize(apiKey), secret });
   } catch (error) {

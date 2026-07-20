@@ -5,6 +5,7 @@ import {
   db,
   organizationMembers,
   organizations,
+  orgSlas,
   users,
   type OrganizationRole,
 } from "@/lib/db";
@@ -174,6 +175,11 @@ export const createOrganization = async (
       await tx
         .insert(organizationMembers)
         .values({ orgId: created.id, userId, role: "owner" });
+      // Seed the org's SLA row at `tier: 'free'`. Tier changes go through
+      // `updateOrgSla` (added alongside the compliance surface).
+      await tx
+        .insert(orgSlas)
+        .values({ orgId: created.id, tier: "free" });
       return created;
     });
     return { ...org, role: "owner", memberCount: 1 };

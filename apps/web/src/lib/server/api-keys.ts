@@ -1,7 +1,12 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
-import { db, apiKeys, organizationMembers } from "@/lib/db";
+import {
+  db,
+  apiKeys,
+  organizationMembers,
+  projectMembers,
+} from "@/lib/db";
 import { HttpError } from "@/lib/server/http-error";
 
 /**
@@ -48,12 +53,64 @@ const assertOrgMembership = async (
   }
 };
 
-export const createApiKey = async (
+/**
+ * Verify that the user is a project member. Project scope implies org
+ * scope; we re-check org membership so a user that has been removed from
+ * the org can no longer seal into the project.
+ */
+const assertProjectMembership = async (
   userId: string,
-  name: string,
-  orgId: string | null = null,
-) => {
+  projectId: string,
+): Promise<void> => {
+  const [row] = await db
+    .select({ userId: projectMembers.userId })
+    .from(projectMembers)
+    .where(
+      and(
+        eq(projectMembers.projectId, projectId),
+        eq(projectMembers.userId, userId),
+      ),
+    )
+    .limit(1);
+  if (!row) {
+    throw new HttpError(
+      403,
+      "You are not a member of that project",
+      "forbidden",
+    );
+  }
+};
+
+export interface ApiKeyInput {
+  userId: string;
+  name: string;
+  orgId?: string | null;
+  projectId?: string | null;
+}
+
+export const createApiKey = async ({
+  userId,
+  name,
+  orgId = null,
+  projectId = null,
+}: ApiKeyInput) => {
   if (orgId) await assertOrgMembership(userId, orgId);
+  if (projectId) {
+    if (!orgId) {
+      throw new HttpError(
+        400,
+        "project-scoped keys require an orgId",
+        "bad_request",
+      );
+    }
+    await assertProjectMembership(userId, projectId);
+  }
+  const scope =
+    projectId && orgId
+      ? "project"
+      : orgId
+        ? "org"
+        : "personal";
   const secret = `fok_${randomBytes(24).toString("base64url")}`;
   const [row] = await db
     .insert(apiKeys)
@@ -63,7 +120,8 @@ export const createApiKey = async (
       prefix: secret.slice(0, 12),
       keyHash: hashKey(secret),
       orgId,
-      scope: orgId ? "org" : "personal",
+      projectId: scope === "project" ? projectId : null,
+      scope,
     })
     .returning();
   return { secret, apiKey: row };
