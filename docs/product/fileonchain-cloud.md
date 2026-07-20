@@ -105,26 +105,79 @@ endpoint in this group.
   `CRON_SECRET`) deletes expired rows. `apps/web/scripts/retention-sweep.ts`
   remains the equivalent manual invocation for ops.
 
+### Wired behind the next four flags
+
+Each of the following ships with its own lazy env var (read on each
+call, so flipping it at runtime does not need a server restart).
+They are *additive* — none of the existing surfaces change.
+
+- **Projects + quotas + per-project signers** — gated on
+  `FILEONCHAIN_CLOUD_TENANCY_ENABLED`. New `project` and
+  `project_member` tables; `api_keys.scope` widens to
+  `"personal" | "org" | "project"` with a nullable `project_id`
+  column on `api_keys`. The Cloud signer table gets a nullable
+  `project_id` column too — partial unique indexes enforce one active
+  (revoked_at IS NULL) signer per org AND one active per project. The
+  new `submitEvidence` opt-in `?server_sign_project=1` (header
+  `x-fileonchain-server-sign-project: 1`) routes the envelope through
+  the project's service signer. Per-project monthly caps
+  (`envelopes_per_month`, `anchors_per_month`,
+  `bytes_anchored_per_month`) are read straight off the
+  `evidence_envelope.project_id` and `upload_job.project_id` columns,
+  enforced at submit time, returning `429 project_quota_exceeded`.
+  Dashboard: `/cloud/projects` + `/cloud/projects/[id]`.
+
+- **Webhooks** — gated on `FILEONCHAIN_CLOUD_WEBHOOKS_ENABLED`.
+  Outbound `webhook_endpoint` / `webhook_subscription` /
+  `webhook_delivery` tables. HMAC-SHA-256 over `${unix}.${rawBody}`
+  (Stripe-style `X-FileOnChain-Signature: t=<ts>,v1=<hex>`). Delivery
+  is best-effort with exponential backoff (30s, 5m, 30m, 2h, 8h;
+  capped at 5 attempts); the per-minute Vercel Cron
+  `/api/cron/webhooks-drain` picks up due rows. Eight event types:
+  `evidence.sealed`, `evidence.verified`, `evidence.expired`,
+  `agent_run.sealed`, `anchor.job.settled`, `signer.rotated`,
+  `signer.revoked`, `compliance_report.generated`. v1 routes at
+  `/api/v1/webhooks*` + dashboard at `/cloud/webhooks`.
+
+- **Bulk `.evidence.json` exports** — gated on
+  `FILEONCHAIN_CLOUD_EXPORTS_ENABLED`. New `export_job` table. The
+  build streams a cursor-paginated read of `evidence_envelope` rows
+  into a server-local TAR archive (one file per envelope, named
+  `<envelopeId>.evidence.json`); the tar is byte-streamed without any
+  compression dep and never holds the whole archive in memory.
+  Download links carry a one-time token and expire 24h after the
+  build completes; the daily `/api/cron/exports-sweep` cleans up rows
+  + files past expiry. v1 routes at `/api/v1/exports*` + dashboard at
+  `/cloud/exports`.
+
+- **Compliance reports + SLAs** — gated on
+  `FILEONCHAIN_CLOUD_COMPLIANCE_ENABLED`. New `org_sla` table
+  (tier + monthly caps + uptime + p95 settlement latency); new
+  `compliance_report` table whose row carries the canonical
+  `EvidenceEnvelope` JSON of the report body, signed by the org's
+  service signer, with the protocol's `envelope_digest` of record
+  on the row. The monthly cron
+  `/api/cron/compliance-reports-build` covers the previous
+  calendar-month for every org with at least one envelope. On-demand
+  via `POST /api/v1/compliance-reports`. v1 routes at
+  `/api/v1/compliance-reports*` + `/api/v1/sla`, dashboard at
+  `/cloud/compliance`.
+
 ### Still future
 
-- **Organizations and projects** — first-class tenancy. The
-  organization model *partially exists* today (organizations, member
-  roles owner/admin/member); org-scoped API keys + org-scoped evidence
-  rows wire those into evidence flows in this build. Projects,
-  quotas, and per-project signature scopes are the follow-up.
-- **Webhooks** — envelope-sealed / receipt-confirmed / verification-run
-  event delivery.
-- **Exports** — bulk export of an organization's envelopes as
-  `.evidence.json` files, at any time, in the open format.
-- **Compliance reports** — periodic, signed summaries over an
-  organization's evidence.
-- **SLAs** — uptime and settlement-latency commitments for paid tiers.
+- **Cross-org report signing keys** — each org's report is currently
+  signed by the org's `service` key. A separate "compliance-signer"
+  identity that does not mint artifact signatures is straightforward
+  follow-up when audit separation requires it.
+- **SLA breach alerting** — published target vs. delivered
+  observations tracked per period; today the dashboard surfaces only
+  the tier promise, not the rolling-window evidence.
 
 ## Roadmap: target API shape
 
 The public API surface — `/api/v1/anchor` and `/api/v1/credits` are
-available today; the rest of the surface ships behind
-`FILEONCHAIN_CLOUD_EVIDENCE_ENABLED`:
+available today; the rest of the surface ships behind the per-feature
+flags above:
 
 ```
 POST /api/v1/evidence               seal + settle an envelope (hash-only by default)
@@ -137,6 +190,41 @@ GET  /api/v1/retention              effective retention window for the org
 PATCH /api/v1/retention             upsert the org's retention window (days)
 GET  /api/v1/credits                credit balance and ledger        (exists)
 POST /api/v1/anchor                 settlement-only job              (exists)
+
+# Tenancy flag — adds a third API key scope
+POST   /api/organizations/:id/projects              create a project
+GET    /api/organizations/:id/projects              list (project-scoped to caller)
+PATCH  /api/projects/:id                            rename
+DELETE /api/projects/:id                            drop
+PATCH  /api/projects/:id/quotas                     update monthly caps + retention
+POST   /api/projects/:id/members                    add a member
+DELETE /api/projects/:id/members/:userId            remove
+POST   /api/projects/:id/signer                     generate / rotate / revoke the project's service key
+POST   /api/v1/evidence?server_sign_project=1       project-attributed envelope sealing
+
+# Webhooks flag
+GET    /api/v1/webhooks                             list endpoints
+POST   /api/v1/webhooks                             create (returns signing secret once)
+GET    /api/v1/webhooks/:id                         read
+PATCH  /api/v1/webhooks/:id                         update
+DELETE /api/v1/webhooks/:id                         soft-disable
+POST   /api/v1/webhooks/:id/rotate_secret           mint a fresh signing secret
+GET    /api/v1/webhooks/:id/deliveries              recent delivery audit
+POST   /api/v1/webhooks/deliveries/:id/redeliver    force a replay
+
+# Exports flag
+POST   /api/v1/exports                              start a build
+GET    /api/v1/exports                              list recent
+GET    /api/v1/exports/:id                          status
+DELETE /api/v1/exports/:id                          cancel / purge
+GET    /api/v1/exports/:id/download?token=…         stream the TAR
+
+# Compliance flag
+GET    /api/v1/compliance-reports                   list recent reports
+POST   /api/v1/compliance-reports                   on-demand generation
+GET    /api/v1/compliance-reports/:id               fetch the signed envelope
+GET    /api/v1/sla                                  current tier + limits
+PATCH  /api/v1/sla                                  admin-only tier change
 ```
 
 Design commitments for this surface, stated now: every write endpoint

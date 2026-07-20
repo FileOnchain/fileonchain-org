@@ -84,7 +84,7 @@ export default async function CloudSignerPage({ searchParams }: PageProps) {
               <SignerManager
                 orgId={effectiveOrgId}
                 signer={signer}
-                statusUrl={cloudSignerStatusUrl(effectiveOrgId)}
+                statusUrl={cloudSignerStatusUrl({ kind: "org", orgId: effectiveOrgId })}
               />
             ) : (
               <p className="text-sm text-muted">

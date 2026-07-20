@@ -4,6 +4,7 @@ import type { EvidenceEnvelope, VerificationReport } from "@fileonchain/verify";
 import { verifyEnvelope, verifyEvidenceJson } from "@fileonchain/verify";
 import { HttpError } from "@/lib/server/http-error";
 import { logActivity } from "@/lib/server/activity";
+import { enqueueWebhookDeliveries } from "@/lib/server/webhooks";
 import { db, evidenceEnvelopes } from "@/lib/db";
 import {
   requireOrgApiKey,
@@ -89,6 +90,12 @@ export const runServerVerify = async (
 
     await logActivity(apiKey.userId, "evidence_verified", {
       envelopeId: body.envelopeId,
+      status: report.status,
+    });
+
+    // Webhook fan-out (case A only — case B has no DB row to attribute).
+    void enqueueWebhookDeliveries(row.orgId, "evidence.verified", row.id, {
+      envelopeId: row.id,
       status: report.status,
     });
 

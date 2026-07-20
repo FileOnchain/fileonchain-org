@@ -2,6 +2,7 @@ import "server-only";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { HttpError } from "@/lib/server/http-error";
 import { logActivity } from "@/lib/server/activity";
+import { enqueueWebhookDeliveries } from "@/lib/server/webhooks";
 import {
   db,
   agentRuns,
@@ -99,6 +100,14 @@ export const submitAgentRun = async (
     envelopeId: submit.envelopeId,
     runId,
     agentId,
+  });
+
+  // Webhook fan-out — reuses the envelope id so consumers can correlate
+  // a run-sealed event with the evidence.sealed event of the same row.
+  void enqueueWebhookDeliveries(orgId, "agent_run.sealed", submit.envelopeId, {
+    runId,
+    agentId,
+    envelopeId: submit.envelopeId,
   });
 
   return { runId, agentId, envelopeId: submit.envelopeId };

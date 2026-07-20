@@ -3,6 +3,7 @@ import { and, eq, inArray, isNotNull, lt, sql } from "drizzle-orm";
 import { HttpError } from "@/lib/server/http-error";
 import { DEFAULT_RETENTION_DAYS } from "@/lib/db/migrations-helpers";
 import { db, evidenceEnvelopes, retentionPolicies } from "@/lib/db";
+import { enqueueWebhookDeliveries } from "@/lib/server/webhooks";
 
 /**
  * Retention service — per-org retention windows for stored envelopes and
@@ -76,6 +77,11 @@ export const applyRetentionToNewEnvelope = async (
  * Delete every envelope whose `expires_at < now()`. Returns the count so
  * the CLI / future cron can report. Batched in chunks to keep the
  * transaction short; loop until a batch returns zero rows.
+ *
+ * For each deleted envelope, fan out a `evidence.expired` webhook
+ * (idempotent on `(endpoint, envelopeId)`). The sweep path itself runs
+ * inside one transaction; the fan-out is per-row best-effort and never
+ * rolls back the delete.
  */
 export const sweepExpiredEnvelopes = async (
   { batchSize = 1000 }: { batchSize?: number } = {},
@@ -83,7 +89,12 @@ export const sweepExpiredEnvelopes = async (
   let total = 0;
   for (;;) {
     const rows = await db
-      .select({ id: evidenceEnvelopes.id })
+      .select({
+        id: evidenceEnvelopes.id,
+        orgId: evidenceEnvelopes.orgId,
+        profile: evidenceEnvelopes.profile,
+        subjectSha256: evidenceEnvelopes.subjectSha256,
+      })
       .from(evidenceEnvelopes)
       .where(
         and(
@@ -101,6 +112,13 @@ export const sweepExpiredEnvelopes = async (
       .returning({ id: evidenceEnvelopes.id });
     total += deleted.length;
     if (rows.length < batchSize) break;
+    for (const row of rows) {
+      void enqueueWebhookDeliveries(row.orgId, "evidence.expired", row.id, {
+        envelopeId: row.id,
+        profile: row.profile,
+        subjectSha256: row.subjectSha256,
+      });
+    }
   }
   return { deleted: total };
 };

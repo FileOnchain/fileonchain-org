@@ -69,8 +69,23 @@ const FEATURES: CloudFeature[] = [
     status: "Planned",
   },
   {
-    title: "Webhooks, exports, compliance reports, SLAs",
-    body: "Event delivery, bulk .evidence.json export, signed compliance summaries, and uptime / settlement-latency commitments for paid tiers.",
+    title: "Projects, quotas, per-project signers",
+    body: "Sub-org tenancy with monthly caps on envelopes + anchors + bytes anchored, and an optional per-project service signer for project-attributed envelope sealing.",
+    status: "Planned",
+  },
+  {
+    title: "Webhooks",
+    body: "Subscribe URLs to envelope and anchor events. HMAC-SHA-256 signed delivery with exponential backoff and a per-minute drain so retries happen within minutes, not hours.",
+    status: "Planned",
+  },
+  {
+    title: "Bulk `.evidence.json` exports",
+    body: "Stream every envelope (or a filtered subset) into a TAR archive of canonical `.evidence.json` files. Token-bound download links expire 24 hours after the build.",
+    status: "Planned",
+  },
+  {
+    title: "Compliance reports & SLAs",
+    body: "Monthly signed summaries plus tier-based uptime and settlement-latency promises, ready to share with auditors or partners.",
     status: "Planned",
   },
 ];

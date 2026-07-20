@@ -54,6 +54,7 @@ export default async function CloudSearchPage({ searchParams }: PageProps) {
           id: "preview",
           userId: session.user.id,
           orgId: effectiveOrgId,
+          projectId: null,
           scope: "org",
         },
         query,

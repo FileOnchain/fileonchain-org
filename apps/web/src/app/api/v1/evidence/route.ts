@@ -30,6 +30,7 @@ const asOrgApiKey = (row: NonNullable<Awaited<ReturnType<typeof authenticateApiK
   id: row.id,
   userId: row.userId,
   orgId: row.orgId,
+  projectId: row.projectId,
   scope: row.scope,
 });
 
@@ -39,6 +40,17 @@ const wantsServerSign = (request: Request): boolean => {
   const q = url.searchParams.get("server_sign");
   if (q === "1" || q === "true") return true;
   const header = request.headers.get("x-fileonchain-server-sign");
+  return header === "1" || header === "true";
+};
+
+/** Read the per-project server-sign opt-in from `?server_sign_project=`
+ *  or the header. Requires the body (or implied project scope from the
+ *  API key) to carry a project id; `submitEvidence` enforces that. */
+const wantsProjectServerSign = (request: Request): boolean => {
+  const url = new URL(request.url);
+  const q = url.searchParams.get("server_sign_project");
+  if (q === "1" || q === "true") return true;
+  const header = request.headers.get("x-fileonchain-server-sign-project");
   return header === "1" || header === "true";
 };
 
@@ -52,10 +64,29 @@ export async function POST(request: Request) {
   }
   try {
     const serverSign = wantsServerSign(request);
+    const serverSignProject = wantsProjectServerSign(request);
     const envelope = await parseEnvelopeBody(request);
+    // Optional `project` in the body — required when the API key is
+    // project-scoped (and may be omitted when the key is org-scoped,
+    // in which case the envelope lands under the key's own project
+    // scope if any).
+    const rawBody = await request.clone().text().catch(() => "");
+    let projectIdFromBody: string | undefined;
+    if (rawBody) {
+      try {
+        const parsed = JSON.parse(rawBody) as { project?: unknown };
+        if (typeof parsed?.project === "string") {
+          projectIdFromBody = parsed.project;
+        }
+      } catch {
+        // Already threw on the malformed body upstream; ignore here.
+      }
+    }
     const result = await submitEvidence(asOrgApiKey(apiKey), {
       envelope,
       serverSign,
+      serverSignProject,
+      projectId: projectIdFromBody,
     });
     return NextResponse.json({
       envelopeId: result.envelopeId,
