@@ -19,6 +19,7 @@ export type HttpErrorCode =
   | "rate_limited"
   | "not_implemented"
   | "org_scoped_key_required"
+  | "project_quota_exceeded"
   | "internal_error";
 
 const CODE_BY_STATUS: Record<number, HttpErrorCode> = {

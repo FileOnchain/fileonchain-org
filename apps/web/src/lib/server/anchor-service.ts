@@ -15,6 +15,7 @@ import {
 import { logActivity } from "@/lib/server/activity";
 import { runAnchorWorker } from "@/lib/server/anchor-worker";
 import { getUserRpcOverrides } from "@/lib/server/rpc-endpoints";
+import { enforceAnchorQuota } from "@/lib/server/quotas";
 import { microToUsdc } from "@/lib/usdc";
 
 export class AnchorRequestError extends Error {
@@ -38,6 +39,9 @@ export interface AnchorPayload {
   /** Originating platform id carried in the anchor payload (attribution
    * only); defaults to the server's ANCHOR_PLATFORM_ID (FileOnChain = "1"). */
   platformId?: string;
+  /** Optional project tenancy — when set, the job lives under the
+   *  project's quota counters; org/personal jobs leave it null. */
+  projectId?: string;
 }
 
 const MAX_CHUNKS = 100_000;
@@ -145,6 +149,22 @@ export const anchorWithAccount = async (
   ctx: AnchorContext,
   payload: AnchorPayload,
 ) => {
+  // Quota check first so over-cap requests never hit the workers, the
+  // credits ledger, or the chain senders. Re-thrown as
+  // `AnchorRequestError(402)` because the API contracts here use 402 for
+  // credit/quota issues (the route layer also recognizes it).
+  try {
+    await enforceAnchorQuota(payload.projectId ?? null, payload.fileSizeBytes);
+  } catch (error) {
+    if (error instanceof Error && error.name === "HttpError") {
+      throw new AnchorRequestError(
+        (error as Error).message,
+        402,
+      );
+    }
+    throw error;
+  }
+
   let byokKeyId: string | undefined;
   if (payload.paymentMethod === "byok") {
     const [key] = await db
@@ -185,6 +205,7 @@ export const anchorWithAccount = async (
       userId: ctx.userId,
       apiKeyId: ctx.apiKeyId,
       byokKeyId,
+      projectId: payload.projectId ?? null,
       cid: payload.cid,
       fileName: payload.fileName,
       fileSizeBytes: payload.fileSizeBytes,
