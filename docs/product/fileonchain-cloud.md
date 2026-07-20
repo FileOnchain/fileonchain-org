@@ -66,12 +66,25 @@ endpoint in this group.
   search across the org's envelopes. The schema adds
   `evidence_envelope` (per-org tenancy, GIN-indexed `tsvector` on
   subject/profile/keys/signers), and `retention_policy` for the
-  per-org retention window. Server-side signer is not implemented; the
-  Cloud stores envelopes the caller already sealed.
+  per-org retention window.
+- **Server-side signer (`server_sign`)** — opt in with
+  `?server_sign=1` (or header `x-fileonchain-server-sign: 1`) on the
+  ingestion / agent-run routes and the Cloud adds an **envelope**
+  signature using the org's `service` key. This attests only that the
+  Cloud assembled/exported the envelope — it is never an artifact
+  signature and makes no claim about who authored the subject, so the
+  two remain reported separately. Keys are per-org ed25519, generated /
+  rotated / revoked from `apps/web/src/app/cloud/signer` (owner/admin),
+  with the seed sealed at rest (`lib/crypto/secretbox.ts`); the public
+  key + status is served unauthenticated at
+  `GET /api/cloud/signer/:orgId` (the signer's `keyStatusUrl`).
+  Submissions requesting `server_sign` fail with 409 until the org has
+  generated a key.
 - **Agent-run sealing** — `POST /api/v1/agent-runs` stores an Agent
-  Evidence Profile envelope; `GET /api/v1/agent-runs/:runId` is the
-  run-centric view. The `agent_run` table is the `(runId, agentId,
-  envelopeId)` join key plus an audit trail.
+  Evidence Profile envelope (with optional `server_sign`);
+  `GET /api/v1/agent-runs/:runId` is the run-centric view. The
+  `agent_run` table is the `(runId, agentId, envelopeId)` join key plus
+  an audit trail.
 - **Hosted verification pages** — `apps/web/src/app/cloud/verify/[envelopeId]`
   is the shareable URL that runs the open verifier over a stored
   envelope and renders the check report. Same chip wording and grouped
@@ -82,10 +95,15 @@ endpoint in this group.
   `{ envelopeId }` (server fetches + ownership-checks) or `{ envelope }`
   (caller-supplied, no DB lookup).
 - **Retention** — `GET /api/v1/retention` returns the effective
-  window for the org; `PATCH /api/v1/retention` upserts. Default
-  window: 180 days. The sweep entry point is
-  `apps/web/scripts/retention-sweep.ts` — a documented single
-  invocation, no cron, no scheduled task.
+  window for the org; `PATCH /api/v1/retention` upserts (org-scoped API
+  key). The dashboard editor at `apps/web/src/app/cloud/retention`
+  writes through the session-authed
+  `PATCH /api/organizations/:id/retention` (owner/admin). Default
+  window: 180 days. New envelopes are stamped with `expires_at` at
+  submit time (`applyRetentionToNewEnvelope`); a daily Vercel Cron job
+  (`vercel.json` → `GET /api/cron/retention-sweep`, guarded by
+  `CRON_SECRET`) deletes expired rows. `apps/web/scripts/retention-sweep.ts`
+  remains the equivalent manual invocation for ops.
 
 ### Still future
 

@@ -33,6 +33,10 @@ const TYPE_LABELS: Record<ActivityType, { label: string; variant: BadgeVariant }
   evidence_sealed: { label: "Evidence sealed", variant: "primary" },
   agent_run_sealed: { label: "Agent run sealed", variant: "primary" },
   evidence_verified: { label: "Evidence verified", variant: "info" },
+  evidence_server_signed: { label: "Evidence server-signed", variant: "primary" },
+  retention_updated: { label: "Retention updated", variant: "default" },
+  cloud_signer_generated: { label: "Cloud signer generated", variant: "primary" },
+  cloud_signer_revoked: { label: "Cloud signer revoked", variant: "warning" },
 };
 
 export default async function LogsPage() {
