@@ -147,4 +147,20 @@ export const env = {
   get cronSecret(): string | undefined {
     return process.env.CRON_SECRET;
   },
+  /** Rate-limit overrides for the `/api/v1/*` API-key surface. Absent =
+   *  the hard-coded defaults in `lib/server/rate-limit.ts` apply. The
+   *  values are strings (numbers-as-strings from the env) so they can be
+   *  parsed via `Number(...)` and fall back to the defaults on NaN. */
+  get rateLimitV1PerMin(): string | undefined {
+    return process.env.RATE_LIMIT_V1_PER_MIN;
+  },
+  get rateLimitV1AnchorPerMin(): string | undefined {
+    return process.env.RATE_LIMIT_V1_ANCHOR_PER_MIN;
+  },
+  get rateLimitV1EvidencePerMin(): string | undefined {
+    return process.env.RATE_LIMIT_V1_EVIDENCE_PER_MIN;
+  },
+  get rateLimitV1IpPerMin(): string | undefined {
+    return process.env.RATE_LIMIT_V1_IP_PER_MIN;
+  },
 };

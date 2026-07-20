@@ -8,6 +8,12 @@ import {
   projectMembers,
 } from "@/lib/db";
 import { HttpError } from "@/lib/server/http-error";
+import {
+  enforceApiKeyRateLimit,
+  enforceIpRateLimit,
+  endpointKey,
+  clientIp,
+} from "@/lib/server/rate-limit";
 
 /**
  * API keys look like `fok_<32 base64url chars>`. Only the SHA-256 hash is
@@ -144,12 +150,23 @@ export const revokeApiKey = async (userId: string, id: string) => {
 
 /**
  * Resolve `Authorization: Bearer fok_…` to an active API key row (bumping
- * lastUsedAt), or null.
+ * lastUsedAt + enforcing the per-API-key + per-IP rate limit), or null.
  *
- * TODO: add rate limiting and request-size limits before real chain spends
- * run behind these keys.
+ * The IP bucket is checked even when the caller omits or sends a wrong
+ * key, so unauthenticated abuse is bounded before it reaches the service
+ * layer. The API-key bucket is only consulted after a valid key resolves
+ * — the per-IP cap covers the unauthenticated case without needing a
+ * dedicated anonymous counter.
  */
 export const authenticateApiKey = async (request: Request) => {
+  const endpoint = endpointKey(request);
+
+  // IP bucket runs unconditionally so anonymous traffic is bounded.
+  // Skip the call only when the caller's Authorization header matches
+  // the API-key shape — the per-IP bucket still applies below when a
+  // valid key resolves.
+  await enforceIpRateLimit(clientIp(request), endpoint);
+
   const header = request.headers.get("authorization") ?? "";
   if (!header.startsWith("Bearer fok_")) return null;
   const secret = header.slice("Bearer ".length).trim();
@@ -165,5 +182,10 @@ export const authenticateApiKey = async (request: Request) => {
     .update(apiKeys)
     .set({ lastUsedAt: new Date() })
     .where(eq(apiKeys.id, row.id));
+
+  // Per-key bucket — throws HttpError(429, "rate_limited") when over the
+  // endpoint's cap. The thrown error propagates to the route's
+  // `asRouteError(error)` catch with the standard `{ error, code }` shape.
+  await enforceApiKeyRateLimit(row.id, endpoint);
   return row;
 };
