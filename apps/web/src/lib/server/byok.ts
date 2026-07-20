@@ -13,9 +13,15 @@ export const serializeByokKey = (key: typeof byokKeys.$inferSelect) => ({
   createdAt: key.createdAt.toISOString(),
 });
 
-/* TODO: wire to real provider validation — for autonomys-auto-drive, call the
- * Auto Drive API (@autonomys/auto-drive `createAutoDriveApi({ apiKey })` +
- * an account/limits read) and report the real remaining credit. */
+/* DEFERRED: real provider-key validation for `autonomys-auto-drive` is
+ * intentionally a deterministic mock until we add `@autonomys/auto-drive`
+ * as a dependency and call `createAutoDriveApi({ apiKey })` plus an
+ * account/limits read against the ai3.storage API. Tracking issue: see
+ * the "Productionize mocked chain reads" PR follow-ups in the team
+ * backlog. The mock below is the documented contract — both `POST
+ * /api/byok` (add) and `POST /api/byok/[id]/validate` (revalidate) paths
+ * exercise the success and failure branches without a real provider
+ * key, so local dev keeps working without secrets. */
 
 /**
  * MOCK provider-key validation. Deterministic: plausible-length keys pass,
