@@ -53,17 +53,47 @@ Shipped and usable now:
 Planned capabilities — listed here so they are not mistaken for
 current ones:
 
-- **Managed evidence ingestion** — accept sealed envelopes (or seal
-  server-side on request), with retention policies and full-text /
-  claim-level **search** across an organization's evidence.
-- **Organizations and projects** — first-class tenancy with
-  project-scoped keys and signature scopes. The organization model
-  *partially exists* today (organizations, member roles
-  owner/admin/member, org-scoped API routes); projects, quotas, and
-  org-wide evidence views do not.
-- **Hosted verification pages** — a shareable URL that runs the open
-  verifier over an envelope and renders the check report. (The page is
-  a convenience rendering; the verdict is always reproducible locally.)
+### Wired behind `FILEONCHAIN_CLOUD_EVIDENCE_ENABLED`
+
+The backend, schema, and pages ship in this build. The routes and UI
+are not reachable for users until the env var is set to `1`. Org-scoped
+API keys (`scope = "org"`, `orgId != NULL`) are required by every
+endpoint in this group.
+
+- **Managed evidence ingestion** — `POST /api/v1/evidence` accepts a
+  sealed envelope, `GET /api/v1/evidence/:id` returns the canonical
+  envelope JSON, `GET /api/v1/evidence?query=…` is claim-level + signer
+  search across the org's envelopes. The schema adds
+  `evidence_envelope` (per-org tenancy, GIN-indexed `tsvector` on
+  subject/profile/keys/signers), and `retention_policy` for the
+  per-org retention window. Server-side signer is not implemented; the
+  Cloud stores envelopes the caller already sealed.
+- **Agent-run sealing** — `POST /api/v1/agent-runs` stores an Agent
+  Evidence Profile envelope; `GET /api/v1/agent-runs/:runId` is the
+  run-centric view. The `agent_run` table is the `(runId, agentId,
+  envelopeId)` join key plus an audit trail.
+- **Hosted verification pages** — `apps/web/src/app/cloud/verify/[envelopeId]`
+  is the shareable URL that runs the open verifier over a stored
+  envelope and renders the check report. Same chip wording and grouped
+  sections as `/verify` — the page is a convenience rendering; the
+  verdict is always reproducible locally.
+- **Server-side verify** — `POST /api/v1/verify` runs `@fileonchain/verify`
+  server-side and returns the same `VerificationReport` shape. Accepts
+  `{ envelopeId }` (server fetches + ownership-checks) or `{ envelope }`
+  (caller-supplied, no DB lookup).
+- **Retention** — `GET /api/v1/retention` returns the effective
+  window for the org; `PATCH /api/v1/retention` upserts. Default
+  window: 180 days. The sweep entry point is
+  `apps/web/scripts/retention-sweep.ts` — a documented single
+  invocation, no cron, no scheduled task.
+
+### Still future
+
+- **Organizations and projects** — first-class tenancy. The
+  organization model *partially exists* today (organizations, member
+  roles owner/admin/member); org-scoped API keys + org-scoped evidence
+  rows wire those into evidence flows in this build. Projects,
+  quotas, and per-project signature scopes are the follow-up.
 - **Webhooks** — envelope-sealed / receipt-confirmed / verification-run
   event delivery.
 - **Exports** — bulk export of an organization's envelopes as
@@ -74,8 +104,9 @@ current ones:
 
 ## Roadmap: target API shape
 
-The target public API surface (ROADMAP — only `/api/v1/anchor` and
-`/api/v1/credits` exist today):
+The public API surface — `/api/v1/anchor` and `/api/v1/credits` are
+available today; the rest of the surface ships behind
+`FILEONCHAIN_CLOUD_EVIDENCE_ENABLED`:
 
 ```
 POST /api/v1/evidence               seal + settle an envelope (hash-only by default)
@@ -84,6 +115,8 @@ GET  /api/v1/evidence?query=…       search claims/subjects across the org
 POST /api/v1/agent-runs             sealAgentRun as a service (Agent Evidence Profile)
 GET  /api/v1/agent-runs/:runId      run-centric view: envelopes for a run/session
 POST /api/v1/verify                 run the open verifier server-side, return the report
+GET  /api/v1/retention              effective retention window for the org
+PATCH /api/v1/retention             upsert the org's retention window (days)
 GET  /api/v1/credits                credit balance and ledger        (exists)
 POST /api/v1/anchor                 settlement-only job              (exists)
 ```
@@ -134,10 +167,17 @@ Using Cloud changes *who does the work*, not *what the evidence is*:
 - Settlement is live only on the networks the integration-status table
   marks as such; everything else is a roadmap adapter. Cloud rejects
   networks that are not open for anchoring.
-- No evidence ingestion, search, verification pages, webhooks,
-  exports, compliance reports, or SLAs yet (see roadmap above).
-- Organizations exist but are not yet wired through evidence flows or
-  signature scopes.
+- The evidence ingestion, agent-run, hosted verification, retention,
+  search, and server-side verify surfaces ship behind
+  `FILEONCHAIN_CLOUD_EVIDENCE_ENABLED` and are not reachable for users
+  until the flag is set. The Cloud schema, routes, services, and webapp
+  pages are wired and tested in this build; what is missing is the
+  decision to open the surface.
+- Webhooks, exports, compliance reports, and SLAs are still future (see
+  roadmap above).
+- Projects, per-project signature scopes, and per-project quotas are
+  still future. Organizations are wired through evidence flows in this
+  build (org-scoped API keys, org-scoped evidence rows).
 - Job status is polling-based; no push delivery.
 - The dashboard's chain-side reads (explorer views) still resolve
   through a mock layer in places where an indexer is not yet wired.
