@@ -115,6 +115,32 @@ export const env = {
   get cloudEvidenceEnabled(): boolean {
     return process.env.FILEONCHAIN_CLOUD_EVIDENCE_ENABLED === "1";
   },
+  /** Projects, per-project quotas, and per-project Cloud signers (the
+   * sub-org tenancy surface). Set FILEONCHAIN_CLOUD_TENANCY_ENABLED=1 to
+   * open `/cloud/projects/*`, the project-scoped API keys, and the quota
+   * gates on `/api/v1/evidence` / `/api/v1/agent-runs` / `/api/v1/anchor`. */
+  get cloudTenancyEnabled(): boolean {
+    return process.env.FILEONCHAIN_CLOUD_TENANCY_ENABLED === "1";
+  },
+  /** Webhooks (`/api/v1/webhooks/*` + `/cloud/webhooks` + the
+   * `webhooks-drain` cron). Set FILEONCHAIN_CLOUD_WEBHOOKS_ENABLED=1 to
+   * open the surface and start emitting events. */
+  get cloudWebhooksEnabled(): boolean {
+    return process.env.FILEONCHAIN_CLOUD_WEBHOOKS_ENABLED === "1";
+  },
+  /** Bulk `.evidence.json` exports (`/api/v1/exports/*` +
+   * `/cloud/exports` + the `exports-sweep` cron). Set
+   * FILEONCHAIN_CLOUD_EXPORTS_ENABLED=1 to open the surface. */
+  get cloudExportsEnabled(): boolean {
+    return process.env.FILEONCHAIN_CLOUD_EXPORTS_ENABLED === "1";
+  },
+  /** Compliance reports + SLAs (`/api/v1/compliance-reports/*`,
+   * `/api/v1/sla`, `/cloud/compliance` + the
+   * `compliance-reports-build` cron). Set
+   * FILEONCHAIN_CLOUD_COMPLIANCE_ENABLED=1 to open the surface. */
+  get cloudComplianceEnabled(): boolean {
+    return process.env.FILEONCHAIN_CLOUD_COMPLIANCE_ENABLED === "1";
+  },
   /** Shared secret guarding the scheduled cron routes. Vercel Cron sends it
    * as `Authorization: Bearer $CRON_SECRET`. Absent = the cron route rejects
    * every request (the sweep can still be run via the CLI). */
