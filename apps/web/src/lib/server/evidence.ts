@@ -42,22 +42,38 @@ import {
 /* ------------------------------------------------------------------ */
 
 /** Shape of `authenticateApiKey`'s row — typed here so callers don't have
- *  to import the Drizzle schema directly. */
+ *  to import the Drizzle schema directly. `scope` is the union over the
+ *  three Cloud evidence surfaces: org-scoped keys seal any envelope under
+ *  the org; project-scoped keys seal only into the named project. */
 export interface OrgApiKey {
   id: string;
   userId: string;
   orgId: string | null;
-  scope: "personal" | "org";
+  projectId: string | null;
+  scope: "personal" | "org" | "project";
 }
 
 /**
- * Require the authenticated API key to be org-scoped. Returns the resolved
- * org id on success; throws `org_scoped_key_required` (403) when the key
- * is personal. Use this at the top of every Cloud evidence route handler.
+ * Resolve the authed key to an org id. Throws `org_scoped_key_required`
+ * (403) when the caller presented a personal key. Both `org` and
+ * `project` scopes are accepted; project-scoped callers bind their
+ * project when they call `submitEvidence(..., { projectId })`.
  */
 export const requireOrgApiKey = (apiKey: OrgApiKey): string => {
-  if (!apiKey.orgId || apiKey.scope !== "org") throw orgScopedKeyRequired();
+  if (!apiKey.orgId || apiKey.scope === "personal")
+    throw orgScopedKeyRequired();
   return apiKey.orgId;
+};
+
+/** Resolve the caller's tenant — either the org (no project) or the
+ *  org+project pair. Throws `org_scoped_key_required` when the key is
+ *  personal. Use this when the route accepts an optional `project` body
+ *  parameter and the caller wants to assert a specific project. */
+export const requireTenantApiKey = (
+  apiKey: OrgApiKey,
+): { orgId: string; projectId: string | null } => {
+  const orgId = requireOrgApiKey(apiKey);
+  return { orgId, projectId: apiKey.projectId };
 };
 
 /** Org ids a user belongs to, for `/cloud/*` pages that span orgs. */

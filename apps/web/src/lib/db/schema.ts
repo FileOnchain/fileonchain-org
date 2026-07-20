@@ -126,10 +126,11 @@ export const authNonces = pgTable("auth_nonce", {
  *  (`/api/v1/anchor`, `/api/v1/credits`). `org` keys additionally hold an
  *  `orgId` and are required by the Cloud evidence surface
  *  (`/api/v1/evidence`, `/api/v1/agent-runs`, `/api/v1/verify`,
- *  `/api/v1/retention`). The `scope` column is denormalized from
- *  `orgId IS NOT NULL` so we can index / filter on it without the IS NOT
- *  NULL dance. */
-export type ApiKeyScope = "personal" | "org";
+ *  `/api/v1/retention`). `project` keys additionally hold a `projectId`
+ *  and can only seal into that project. The `scope` column is
+ *  denormalized from `orgId IS NOT NULL` / `projectId IS NOT NULL` so we
+ *  can index / filter on it without the IS NOT NULL dance. */
+export type ApiKeyScope = "personal" | "org" | "project";
 
 /** API keys — only the SHA-256 hash is stored; plaintext is shown once. */
 export const apiKeys = pgTable(
@@ -147,7 +148,14 @@ export const apiKeys = pgTable(
     orgId: text("org_id").references(() => organizations.id, {
       onDelete: "cascade",
     }),
-    /** Denormalized `personal` | `org`. Defaults to `personal`. */
+    /** Optional project tenancy — set for project-scoped keys; NULL
+     *  otherwise. Requires `orgId` to also be set (the project belongs to
+     *  an org). Cascade with the parent project; the FK is hand-appended
+     *  in the migration because the `project` table is declared below. */
+    projectId: text("project_id"),
+    /** Denormalized `personal` | `org` | `project`. Defaults to
+     *  `personal`. Backed by a CHECK constraint at the DB layer so a bad
+     *  write can't escape the enum. */
     scope: text("scope").$type<ApiKeyScope>().notNull().default("personal"),
     lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
@@ -158,6 +166,7 @@ export const apiKeys = pgTable(
   (t) => [
     index("api_key_user_created_idx").on(t.userId, t.createdAt),
     index("api_key_org_idx").on(t.orgId),
+    index("api_key_project_idx").on(t.projectId),
   ],
 );
 
@@ -230,7 +239,24 @@ export type ActivityType =
   | "evidence_server_signed"
   | "retention_updated"
   | "cloud_signer_generated"
-  | "cloud_signer_revoked";
+  | "cloud_signer_revoked"
+  | "project_created"
+  | "project_renamed"
+  | "project_deleted"
+  | "project_member_added"
+  | "project_member_removed"
+  | "project_quotas_updated"
+  | "webhook_created"
+  | "webhook_updated"
+  | "webhook_revoked"
+  | "webhook_secret_rotated"
+  | "webhook_delivery_failed"
+  | "export_requested"
+  | "export_completed"
+  | "export_downloaded"
+  | "compliance_report_generated"
+  | "compliance_report_downloaded"
+  | "sla_tier_changed";
 
 export type ActivityMetadata = Record<string, string | number | boolean | null>;
 
@@ -384,6 +410,10 @@ export const uploadJobs = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     apiKeyId: text("api_key_id").references(() => apiKeys.id),
     byokKeyId: text("byok_key_id").references(() => byokKeys.id),
+    /** Optional project tenancy — set when the job seals for a project.
+     *  Cascade with the parent project; the FK is hand-appended in the
+     *  migration because the `project` table is declared below. */
+    projectId: text("project_id"),
     cid: text("cid").notNull(),
     fileName: text("file_name").notNull(),
     fileSizeBytes: bigint("file_size_bytes", { mode: "number" }).notNull(),
@@ -445,6 +475,12 @@ export const evidenceEnvelopes = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     /** API key used at submission, when applicable — audit only. */
     apiKeyId: text("api_key_id").references(() => apiKeys.id),
+    /** Optional project tenancy — set when the envelope belongs to a
+     *  project. Quota counters key off this column (the source of truth
+     *  is `evidence_envelope.project_id`, not a separate counter table).
+     *  Cascade with the parent project; the FK is hand-appended in the
+     *  migration because the `project` table is declared below. */
+    projectId: text("project_id"),
     /** Profile id from the envelope, e.g. `org.fileonchain.agent/v1`. */
     profile: text("profile"),
     /**
@@ -494,6 +530,7 @@ export const evidenceEnvelopes = pgTable(
   (t) => [
     index("evidence_envelope_org_created_idx").on(t.orgId, t.createdAt),
     index("evidence_envelope_subject_idx").on(t.subjectSha256),
+    index("evidence_envelope_project_idx").on(t.projectId),
   ],
 );
 
@@ -560,16 +597,19 @@ export const retentionPolicies = pgTable("retention_policy", {
 export type CloudSignerScheme = "ed25519";
 
 /**
- * Per-org Cloud signing key used for server-side envelope sealing
- * (`server_sign`). The Cloud adds an ENVELOPE signature — a `service`
- * signer identity attesting it assembled/exported the envelope — never an
- * artifact signature (which would claim authorship of the subject). The
- * ed25519 seed is sealed at rest with `lib/crypto/secretbox.ts` (same
- * `iv.ciphertext.tag` base64 format as `byok_key`). The public key is
- * exposed unauthenticated at `/api/cloud/signer/[orgId]` so verifiers can
- * resolve `keyStatusUrl`. Rotation revokes the current row (sets
- * `revoked_at`) and inserts a new one; a partial unique index enforces at
- * most one active (`revoked_at IS NULL`) signer per org.
+ * Per-org (or per-project) Cloud signing key used for server-side
+ * envelope sealing (`server_sign` / `server_sign_project`). The Cloud
+ * adds an ENVELOPE signature — a `service` signer identity attesting it
+ * assembled/exported the envelope — never an artifact signature (which
+ * would claim authorship of the subject). The ed25519 seed is sealed at
+ * rest with `lib/crypto/secretbox.ts` (same `iv.ciphertext.tag` base64
+ * format as `byok_key`). The public key is exposed unauthenticated at
+ * `/api/cloud/signer/[orgId]` (and at `/api/cloud/signer/project/[projectId]`)
+ * so verifiers can resolve `keyStatusUrl`. Rotation revokes the current
+ * row (sets `revoked_at`) and inserts a new one; partial unique indexes
+ * enforce at most one active (`revoked_at IS NULL`) signer per org
+ * (when `project_id IS NULL`) and one active per project (when
+ * `project_id IS NOT NULL`).
  */
 export const cloudSigners = pgTable(
   "cloud_signer",
@@ -578,6 +618,12 @@ export const cloudSigners = pgTable(
     orgId: text("org_id")
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
+    /** Optional project tenancy — NULL means this is the org's service
+     *  signer; otherwise it is the project's service signer (and the org
+     *  link is implied via projects.org_id). Cascade with the parent
+     *  project; the FK is hand-appended in the migration because the
+     *  `project` table is declared below. */
+    projectId: text("project_id"),
     scheme: text("scheme").$type<CloudSignerScheme>().notNull().default("ed25519"),
     /** 32-byte lowercase-hex ed25519 public key (the verifiable identity). */
     publicKey: text("public_key").notNull(),
@@ -592,8 +638,335 @@ export const cloudSigners = pgTable(
   },
   (t) => [
     index("cloud_signer_org_idx").on(t.orgId),
-    uniqueIndex("cloud_signer_one_active_per_org")
-      .on(t.orgId)
-      .where(sql`${t.revokedAt} IS NULL`),
+    index("cloud_signer_project_idx").on(t.projectId),
+  ],
+);
+
+/* ------------------------------------------------------------------ */
+/* Project tenancy (gated behind FILEONCHAIN_CLOUD_TENANCY_ENABLED).
+ *
+ * A project is a sub-org unit: every project row belongs to one org, and
+ * members of that project are automatically members of the parent org
+ * (the membership row is never duplicated — the project view filters
+ * down from the org). Project roles are `lead` (manages quotas + signer
+ * + keys + members) and `contributor` (can seal into the project).
+ *
+ * All Cloud-only fields on these tables (project_id columns on
+ * evidence_envelope / upload_job / api_key / cloud_signer, quota
+ * counters read from those columns, project-scoped Cloud signers) live in
+ * DB columns only — they are NEVER inserted into the envelope JSON
+ * itself (CLAUDE.md:411-413). The same rule that applies to org tenancy
+ * extends one level down.                                         */
+/* ------------------------------------------------------------------ */
+
+export type ProjectRole = "lead" | "contributor";
+
+/** A project is a tenancy bucket inside an org. Slug-unique inside the
+ *  parent org; member-lead is the project creator. */
+export const projects = pgTable(
+  "project",
+  {
+    id: text("id").primaryKey().$defaultFn(uuid),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Per-project retention override. NULL = inherit the org's
+     *  `retention_policy` (or the global default). */
+    retentionDays: integer("retention_days"),
+    /** Soft caps — all NULL means unlimited. Enforced in
+     *  `submitEvidence` (envelopesPerMonth) and `anchorWithAccount`
+     *  (anchorsPerMonth + bytesAnchoredPerMonth). The counter is the row
+     *  count on `evidence_envelope.project_id` / `upload_job.project_id`,
+     *  not a separate counter table — `server_sign_project` is not needed
+     *  to make this work. */
+    envelopesPerMonth: integer("envelopes_per_month"),
+    anchorsPerMonth: integer("anchors_per_month"),
+    bytesAnchoredPerMonth: bigint("bytes_anchored_per_month", {
+      mode: "number",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("project_org_slug_unique").on(t.orgId, t.slug),
+    index("project_org_idx").on(t.orgId),
+  ],
+);
+
+/** Project membership — separate from `organization_member` so the
+ *  project roles can vary independently of org membership. Project
+ *  members must already be members of the parent org; the service layer
+ *  enforces that (it rejects adds that would create an inconsistent
+ *  view). */
+export const projectMembers = pgTable(
+  "project_member",
+  {
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").$type<ProjectRole>().notNull().default("contributor"),
+    joinedAt: timestamp("joined_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.projectId, t.userId] }),
+    index("project_member_user_idx").on(t.userId),
+  ],
+);
+
+/* ------------------------------------------------------------------ */
+/* Webhooks (gated behind FILEONCHAIN_CLOUD_WEBHOOKS_ENABLED).         */
+/* ------------------------------------------------------------------ */
+
+export type WebhookEventType =
+  | "evidence.sealed"
+  | "evidence.verified"
+  | "evidence.expired"
+  | "agent_run.sealed"
+  | "anchor.job.settled"
+  | "signer.rotated"
+  | "signer.revoked"
+  | "compliance_report.generated";
+
+/** An org's outbound webhook target. The signing secret is shown to the
+ *  caller exactly once at creation; the column stores its SHA-256 hex
+ *  digest so the server can detect leaks by comparing — but the actual
+ *  HMAC needs the plaintext (so the column actually holds the plaintext,
+ *  AES-256-GCM sealed just like BYOK and the Cloud signer seeds). See
+ *  `apps/web/src/lib/crypto/secretbox.ts`. */
+export const webhookEndpoints = pgTable(
+  "webhook_endpoint",
+  {
+    id: text("id").primaryKey().$defaultFn(uuid),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    description: text("description").notNull().default(""),
+    /** Sealed HMAC secret — `iv.ciphertext.tag`, base64. Same secretbox
+     *  format as BYOK / Cloud signers. */
+    encryptedSecret: text("encrypted_secret").notNull(),
+    /** Last 4 chars of the plaintext secret, for display only. */
+    secretPreview: text("secret_preview").notNull(),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    disabledAt: timestamp("disabled_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("webhook_endpoint_org_idx").on(t.orgId),
+  ],
+);
+
+/** Event subscriptions per endpoint. A subscription exists for each
+ *  `(endpoint, event_type)` the org has opted into; the deliveries table
+ *  fans out from the endpoint's subscriptions. */
+export const webhookSubscriptions = pgTable(
+  "webhook_subscription",
+  {
+    endpointId: text("endpoint_id")
+      .notNull()
+      .references(() => webhookEndpoints.id, { onDelete: "cascade" }),
+    eventType: text("event_type").$type<WebhookEventType>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.endpointId, t.eventType] }),
+  ],
+);
+
+/** One row per attempted delivery. The unique index on
+ *  `(endpoint_id, event_id)` is the fan-out idempotency key —
+ *  `enqueueWebhookDeliveries` re-runs are safe. `next_attempt_at` is the
+ *  drain cursor and the exponential backoff target. `delivered_at IS
+ *  NOT NULL` is the terminal success state; `attempts > 5` AND
+ *  `delivered_at IS NULL` is the terminal failure state. */
+export const webhookDeliveries = pgTable(
+  "webhook_delivery",
+  {
+    id: text("id").primaryKey().$defaultFn(uuid),
+    endpointId: text("endpoint_id")
+      .notNull()
+      .references(() => webhookEndpoints.id, { onDelete: "cascade" }),
+    /** Caller-supplied event id (e.g. the envelope's id, the anchor
+     *  job's id, the compliance report's id). Stable across re-deliveries. */
+    eventId: text("event_id").notNull(),
+    eventType: text("event_type").$type<WebhookEventType>().notNull(),
+    /** JSON body sent to the endpoint (canonical, signed). */
+    payload: jsonb("payload").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    lastError: text("last_error"),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("webhook_delivery_endpoint_event_unique").on(
+      t.endpointId,
+      t.eventId,
+    ),
+    index("webhook_delivery_due_idx")
+      .on(t.nextAttemptAt)
+      .where(sql`${t.deliveredAt} IS NULL`),
+  ],
+);
+
+/* ------------------------------------------------------------------ */
+/* Bulk `.evidence.json` exports (gated behind FILEONCHAIN_CLOUD_EXPORTS_ENABLED).
+ *
+ * A request becomes a build job (cursor-paginated reads of
+ * `evidence_envelope`, streamed into a server-local .zip). When the
+ * build is complete the row carries a one-time download token; the
+ * route at `/api/v1/exports/[id]/download` validates the token and
+ * streams the file. A daily cron sweeps rows past `expires_at` and
+ * deletes their server-local files.                                  */
+/* ------------------------------------------------------------------ */
+
+export type ExportJobStatus =
+  | "pending"
+  | "building"
+  | "ready"
+  | "expired"
+  | "failed";
+
+export type ExportFormat = "zip";
+
+/** Filter shape posted by the API caller. All fields optional; an empty
+ *  filter exports every envelope in the (org, project) scope. */
+export interface ExportJobFilter {
+  from?: string;
+  to?: string;
+  profile?: string;
+  signerIds?: string[];
+}
+
+export const exportJobs = pgTable(
+  "export_job",
+  {
+    id: text("id").primaryKey().$defaultFn(uuid),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    /** Optional project scope — NULL means the org's full set. */
+    projectId: text("project_id"),
+    requestedByUserId: text("requested_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    filter: jsonb("filter").$type<ExportJobFilter>().notNull().default({}),
+    format: text("format").$type<ExportFormat>().notNull().default("zip"),
+    /** When true, the build also emits an `agent-runs.json` index that
+     *  resolves each `runId` to its current envelope digest list. */
+    includeAgentRunIndex: boolean("include_agent_run_index")
+      .notNull()
+      .default(false),
+    status: text("status").$type<ExportJobStatus>().notNull().default("pending"),
+    envelopeCount: integer("envelope_count").notNull().default(0),
+    byteSize: bigint("byte_size", { mode: "number" }).notNull().default(0),
+    /** Server-local file path on the worker's filesystem (per-row;
+     *  cleaned up by `exports-sweep`). */
+    filePath: text("file_path"),
+    /** Opaque single-use token the download route checks against the
+     *  URL path so the link is not guessable. */
+    downloadToken: text("download_token"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("export_job_org_created_idx").on(t.orgId, t.createdAt),
+    index("export_job_expires_idx").on(t.expiresAt),
+  ],
+);
+
+/* ------------------------------------------------------------------ */
+/* Compliance reports + tier-based SLAs (gated behind FILEONCHAIN_CLOUD_COMPLIANCE_ENABLED).
+ *
+ * `org_sla` is one row per org, seeded `tier: 'free'` at org creation.
+ * Tier changes are admin-only. The report body is a JSON summary
+ * computed from `evidence_envelope` + `upload_job` + `agent_run` over
+ * the requested period; the Cloud signs it with the org's
+ * `service` signer (envelope signature only — never artifact), so the
+ * row carries the canonical `envelope_digest` of the report envelope.  */
+/* ------------------------------------------------------------------ */
+
+export type OrgTier = "free" | "team" | "enterprise";
+
+/** Per-org SLA. Seeded by `organizations.service` on create. */
+export const orgSlas = pgTable(
+  "org_sla",
+  {
+    orgId: text("org_id")
+      .primaryKey()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    tier: text("tier").$type<OrgTier>().notNull().default("free"),
+    /** Optional soft caps surfaced on tier upgrade; the quota engine
+     *  ignores these when null so teams / enterprise are not throttled
+     *  unless the org opts in to a cap. */
+    monthlyEnvelopesLimit: integer("monthly_envelopes_limit"),
+    monthlyAnchorsLimit: integer("monthly_anchors_limit"),
+    /** Promise — the dashboard plots this against rolling-window
+     *  observations; the surface never claims the promise was met
+     *  unless a delivered report covers the period. */
+    monthlyUptimePct: integer("monthly_uptime_pct").notNull().default(9900),
+    settlementLatencyP95Ms: integer("settlement_latency_p95_ms")
+      .notNull()
+      .default(60000),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+);
+
+export const complianceReports = pgTable(
+  "compliance_report",
+  {
+    id: text("id").primaryKey().$defaultFn(uuid),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    periodStart: timestamp("period_start", { withTimezone: true }).notNull(),
+    periodEnd: timestamp("period_end", { withTimezone: true }).notNull(),
+    generatedAt: timestamp("generated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    /** NULL when generated by the cron (system-generated). */
+    generatedByUserId: text("generated_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    /** Canonical `EvidenceEnvelope` JSON of the report body, with the
+     *  org's `service` signer envelope signature attached. The
+     *  envelope's `subject` carries the report id and period bounds. */
+    envelope: jsonb("envelope").notNull(),
+    envelopeDigest: text("envelope_digest").notNull(),
+  },
+  (t) => [
+    index("compliance_report_org_generated_idx").on(t.orgId, t.generatedAt),
+    index("compliance_report_org_period_idx").on(
+      t.orgId,
+      t.periodStart,
+      t.periodEnd,
+    ),
   ],
 );

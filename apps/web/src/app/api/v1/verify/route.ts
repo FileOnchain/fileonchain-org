@@ -26,6 +26,7 @@ const asOrgApiKey = (row: NonNullable<Awaited<ReturnType<typeof authenticateApiK
   id: row.id,
   userId: row.userId,
   orgId: row.orgId,
+  projectId: row.projectId,
   scope: row.scope,
 });
 

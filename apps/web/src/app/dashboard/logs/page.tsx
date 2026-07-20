@@ -37,6 +37,23 @@ const TYPE_LABELS: Record<ActivityType, { label: string; variant: BadgeVariant }
   retention_updated: { label: "Retention updated", variant: "default" },
   cloud_signer_generated: { label: "Cloud signer generated", variant: "primary" },
   cloud_signer_revoked: { label: "Cloud signer revoked", variant: "warning" },
+  project_created: { label: "Project created", variant: "primary" },
+  project_renamed: { label: "Project renamed", variant: "default" },
+  project_deleted: { label: "Project deleted", variant: "warning" },
+  project_member_added: { label: "Project member added", variant: "primary" },
+  project_member_removed: { label: "Project member removed", variant: "default" },
+  project_quotas_updated: { label: "Project quotas updated", variant: "default" },
+  webhook_created: { label: "Webhook created", variant: "primary" },
+  webhook_updated: { label: "Webhook updated", variant: "default" },
+  webhook_revoked: { label: "Webhook revoked", variant: "warning" },
+  webhook_secret_rotated: { label: "Webhook secret rotated", variant: "default" },
+  webhook_delivery_failed: { label: "Webhook delivery failed", variant: "warning" },
+  export_requested: { label: "Export requested", variant: "accent" },
+  export_completed: { label: "Export ready", variant: "success" },
+  export_downloaded: { label: "Export downloaded", variant: "default" },
+  compliance_report_generated: { label: "Compliance report generated", variant: "primary" },
+  compliance_report_downloaded: { label: "Compliance report downloaded", variant: "default" },
+  sla_tier_changed: { label: "SLA tier changed", variant: "default" },
 };
 
 export default async function LogsPage() {
