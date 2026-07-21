@@ -347,28 +347,50 @@ export const authorizeDownload = async (
   return row;
 };
 
-/** Best-effort delete of a job + its file. Used by both the sweep and
- *  the per-row DELETE route. The filesystem delete is idempotent — a
- *  missing file is fine. */
+/** Best-effort delete of a job + its file. Used by the per-row DELETE
+ *  route. The filesystem delete is idempotent — a missing file is
+ *  fine. (The sweep uses the batched `purgeExportJobsBatch` below.) */
 export const purgeExportJob = async (
   jobId: string,
-): Promise<{ removedFile: boolean; removedRow: boolean }> => {
+): Promise<{ removedFile: boolean }> => {
   const [row] = await db
     .select({ filePath: exportJobs.filePath })
     .from(exportJobs)
     .where(eq(exportJobs.id, jobId))
     .limit(1);
-  if (row?.filePath) {
-    await rm(row.filePath, { force: true }).catch(() => {
-      // ignore — file may already be gone.
-    });
-    return { removedFile: true, removedRow: true };
-  }
-  return { removedFile: false, removedRow: false };
+  if (!row?.filePath) return { removedFile: false };
+  await rm(row.filePath, { force: true }).catch(() => {
+    // ignore — file may already be gone.
+  });
+  return { removedFile: true };
+};
+
+/** Batched purge for the sweep's per-tick workload. Reads every
+ *  job's `file_path` in a single SELECT, then unlinks all files in
+ *  parallel via `Promise.all`. The SELECT is the round-trip we care
+ *  about — collapsing `N` per-id queries into one is the win;
+ *  parallelizing the unlinks just removes a serial local-IO step. */
+const purgeExportJobsBatch = async (
+  ids: ReadonlyArray<string>,
+): Promise<void> => {
+  if (ids.length === 0) return;
+  const rows = await db
+    .select({ id: exportJobs.id, filePath: exportJobs.filePath })
+    .from(exportJobs)
+    .where(inArray(exportJobs.id, ids));
+  await Promise.all(
+    rows.map(async (row) => {
+      if (!row.filePath) return;
+      await rm(row.filePath, { force: true }).catch(() => {
+        // ignore — file may already be gone.
+      });
+    }),
+  );
 };
 
 /** Daily sweep. Marks expired rows + removes their files. Batched the
- *  same way `sweepExpiredEnvelopes` does. */
+ *  same way `sweepExpiredEnvelopes` does, with the per-row file fetch
+ *  + unlink collapsed into a single `purgeExportJobsBatch` call. */
 export const sweepExpiredExportJobs = async (
   { batchSize = 200 }: { batchSize?: number } = {},
 ): Promise<{ deleted: number }> => {
@@ -386,7 +408,7 @@ export const sweepExpiredExportJobs = async (
       .limit(batchSize);
     if (due.length === 0) break;
     const ids = due.map((r) => r.id);
-    for (const id of ids) await purgeExportJob(id);
+    await purgeExportJobsBatch(ids);
     await db.delete(exportJobs).where(inArray(exportJobs.id, ids));
     total += ids.length;
     if (due.length < batchSize) break;
