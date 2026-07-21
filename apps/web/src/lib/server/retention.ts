@@ -3,7 +3,10 @@ import { and, eq, inArray, isNotNull, lt, sql } from "drizzle-orm";
 import { HttpError } from "@/lib/server/http-error";
 import { DEFAULT_RETENTION_DAYS } from "@/lib/db/migrations-helpers";
 import { db, evidenceEnvelopes, retentionPolicies } from "@/lib/db";
-import { enqueueWebhookDeliveries } from "@/lib/server/webhooks";
+import {
+  enqueueWebhookDeliveriesBatch,
+  type PendingWebhookEvent,
+} from "@/lib/server/webhooks";
 
 /**
  * Retention service — per-org retention windows for stored envelopes and
@@ -112,13 +115,24 @@ export const sweepExpiredEnvelopes = async (
       .returning({ id: evidenceEnvelopes.id });
     total += deleted.length;
     if (rows.length < batchSize) break;
-    for (const row of rows) {
-      void enqueueWebhookDeliveries(row.orgId, "evidence.expired", row.id, {
-        envelopeId: row.id,
-        profile: row.profile,
-        subjectSha256: row.subjectSha256,
-      });
-    }
+
+    // One batched fan-out per sweep loop instead of one DB round trip
+    // per expired envelope — the webhooks helper groups by
+    // `(orgId, eventType)` so a sweep that touches K envelopes across
+    // G ≤ K unique orgs runs G endpoint-lookups + G INSERTs instead
+    // of K + K. The fan-out is best-effort and never rolls back the
+    // delete.
+    const fanout: PendingWebhookEvent[] = rows.map((r) => ({
+      orgId: r.orgId,
+      eventId: r.id,
+      eventType: "evidence.expired",
+      payload: {
+        envelopeId: r.id,
+        profile: r.profile,
+        subjectSha256: r.subjectSha256,
+      },
+    }));
+    void enqueueWebhookDeliveriesBatch(fanout);
   }
   return { deleted: total };
 };

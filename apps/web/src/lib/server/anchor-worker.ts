@@ -322,10 +322,23 @@ export const runAnchorWorker = async (
   rpcOverrides: CustomRpcMap = {},
   platformId: string = env.anchorPlatformId,
 ): Promise<AnchorWorkerResult> => {
-  const txs: UploadJobTx[] = [];
-  for (const chainId of chainIds) {
-    const result = await anchorOnChain(jobId, cid, chainId, platformId, rpcOverrides);
-    txs.push(result.tx);
-  }
+  if (chainIds.length === 0) return { txs: [] };
+  // Each `anchorOnChain` is independent — own RPC, own signer, own
+  // nonce space — so fan the sends out and let the slowest chain
+  // dictate the wall clock rather than the sum. Results are
+  // re-ordered to match the input so `upload_job.tx_hashes` keeps
+  // its position-per-chain shape (the worker swallows the partial
+  // work on a sibling's failure — the caller's existing refund +
+  // fail-the-job semantics stay intact regardless of ordering).
+  const settled = await Promise.allSettled(
+    chainIds.map((chainId) =>
+      anchorOnChain(jobId, cid, chainId, platformId, rpcOverrides),
+    ),
+  );
+  const txs: UploadJobTx[] = chainIds.map((_, idx) => {
+    const s = settled[idx]!;
+    if (s.status === "rejected") throw s.reason;
+    return s.value.tx;
+  });
   return { txs };
 };

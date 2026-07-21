@@ -187,6 +187,93 @@ export const enqueueWebhookDeliveries = async (
   }
 };
 
+/** Batch fan-out for many events at once. Groups the input by
+ *  `(orgId, eventType)` so the endpoint subscription lookup runs once
+ *  per unique group instead of once per row (retention sweeping a
+ *  thousand envelopes otherwise fires 2000 round trips). Idempotency
+ *  guarantee matches the single-row variant: the unique
+ *  `(endpoint_id, event_id)` index absorbs any re-deliveries. */
+export interface PendingWebhookEvent {
+  orgId: string;
+  eventId: string;
+  eventType: WebhookEventType;
+  payload: Record<string, unknown>;
+}
+export const enqueueWebhookDeliveriesBatch = async (
+  events: ReadonlyArray<PendingWebhookEvent>,
+): Promise<void> => {
+  if (events.length === 0) return;
+  try {
+    // Group by (orgId, eventType) so a single endpoint lookup covers
+    // every event in the group; we then fan the resulting (endpoint ×
+    // event) pairs into one INSERT per group.
+    const groups = new Map<string, PendingWebhookEvent[]>();
+    const groupKey = (orgId: string, et: WebhookEventType) => `${orgId}|${et}`;
+    for (const ev of events) {
+      const key = groupKey(ev.orgId, ev.eventType);
+      const arr = groups.get(key) ?? [];
+      arr.push(ev);
+      groups.set(key, arr);
+    }
+
+    // Resolve endpoints for each group in parallel — they're
+    // independent reads. With the connection-pool dimension bounded
+    // by the DB driver, parallelism here replaces the per-row SELECT
+    // of the single-row variant.
+    const endpointSets = await Promise.all(
+      Array.from(groups.entries()).map(async ([key, group]) => {
+        const [orgId, eventType] = key.split("|") as [string, WebhookEventType];
+        const endpoints = await db
+          .select({ id: webhookEndpoints.id })
+          .from(webhookEndpoints)
+          .innerJoin(
+            webhookSubscriptions,
+            and(
+              eq(webhookSubscriptions.endpointId, webhookEndpoints.id),
+              eq(webhookSubscriptions.eventType, eventType),
+            ),
+          )
+          .where(
+            and(
+              eq(webhookEndpoints.orgId, orgId),
+              isNull(webhookEndpoints.disabledAt),
+            ),
+          );
+        return { group, endpoints, eventType };
+      }),
+    );
+
+    // One INSERT per group. Total writes collapses from
+    // `sum(events.length) × endpoints(group)` (single-row variant) to
+    // `groups.size`. A group with zero subscribers writes nothing.
+    for (const { group, endpoints, eventType } of endpointSets) {
+      if (endpoints.length === 0) continue;
+      const values: typeof webhookDeliveries.$inferInsert[] = [];
+      for (const ev of group) {
+        for (const ep of endpoints) {
+          values.push({
+            endpointId: ep.id,
+            eventId: ev.eventId,
+            eventType,
+            payload: ev.payload,
+          });
+        }
+      }
+      await db
+        .insert(webhookDeliveries)
+        .values(values)
+        .onConflictDoNothing({
+          target: [webhookDeliveries.endpointId, webhookDeliveries.eventId],
+        });
+    }
+  } catch (error) {
+    console.error("webhooks: batch enqueue failed", {
+      count: events.length,
+      error,
+    });
+  }
+};
+
 /** Send one pending delivery to its endpoint. Returns true on a 2xx
  *  response; false on any other outcome (and updates the row to record
  *  the retry schedule + last error). */
