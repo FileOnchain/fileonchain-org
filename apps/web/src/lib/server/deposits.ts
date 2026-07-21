@@ -13,8 +13,9 @@ import {
   depositCursors,
   creditLedger,
 } from "@/lib/db";
-import { logActivity } from "@/lib/server/activity";
+import { logActivities } from "@/lib/server/activity";
 import { microToUsdc } from "@/lib/usdc";
+import { SCAN_WINDOW_BLOCKS, CONFIRMED_TAG, RPC_TRANSPORT_OPTS } from "@/lib/scan-window";
 
 /**
  * USDC Transfer-event watcher. The cron entry is
@@ -25,22 +26,24 @@ import { microToUsdc } from "@/lib/usdc";
  * `isVerifiable` predicate the confirm route uses), the watcher:
  *   1. Reads `deposit_cursor.last_scanned_block` (0 if missing).
  *   2. Pulls `Transfer(to, value)` logs from `usdcContract` between
- *      that block and the chain's head.
+ *      that block and the last finalized block on the chain.
  *   3. Filters logs whose `to` matches a `pending` deposit address on
  *      this chain.
  *   4. For each matching log, runs an atomic confirm-and-credit
  *      transaction: SELECT … FOR UPDATE the matching pending deposit
  *      (by `(chain_id, deposit_address, amount_micro_usdc)`),
- *      UPDATE to `confirmed` + INSERT into `credit_ledger` +
- *      `logActivity('deposit_auto_confirmed')`. The unique
+ *      UPDATE to `confirmed` + INSERT into `credit_ledger`. The unique
  *      `deposit.tx_hash` index guarantees a hash already credited
  *      cannot be re-applied.
- *   5. Bumps the cursor to the chain head (one chain's RPC failure
- *      cannot stall another chain).
+ *   5. Bumps the cursor to the head (one chain's RPC failure cannot
+ *      stall another chain).
  *
  * A hash collision (the watcher and the manual confirm race) is
  * resolved at the DB layer: the unique index rejects the second
  * commit; whichever path lands first wins, the other rolls back.
+ *
+ * `confirmedAt` and the matched deposit row flow back out of the
+ * transaction so the activity log can be emitted without re-SELECTing.
  */
 
 /** Mirror of the predicate in `api/credits/deposit/[id]/confirm/route.ts`
@@ -55,14 +58,21 @@ const isVerifiable = (
   !!chain.usdcContract &&
   chain.usdcContract !== ZERO_ADDRESS;
 
-/** Single confirmation. Returns true when a deposit was credited, false
- *  when the log was a no-op (no matching pending deposit / already
- *  claimed / amount mismatch). Throws when the DB transaction fails —
- *  the caller decides whether to swallow or surface. */
+interface ConfirmedDeposit {
+  id: string;
+  userId: string;
+  chainId: ChainId;
+  amountMicroUsdc: bigint;
+}
+
+/** Single confirmation. Returns the confirmed deposit row when a credit
+ *  was applied, `null` when the log was a no-op (no matching pending
+ *  deposit / already claimed / amount mismatch). Throws when the DB
+ *  transaction fails — the caller decides whether to swallow or surface. */
 const confirmTransfer = async (
   log: { txHash: `0x${string}`; to: `0x${string}`; value: bigint },
   chainId: ChainId,
-): Promise<{ confirmed: boolean; depositId?: string }> => {
+): Promise<ConfirmedDeposit | null> => {
   // The watcher matches on `(chain_id, deposit_address, amount)` so an
   // over-funded log (value > amount) still credits the deposit row —
   // the leftover sits at the address, which is exactly what we want
@@ -82,7 +92,7 @@ const confirmTransfer = async (
       )
       .limit(1)
       .for("update");
-    if (!pending) return { confirmed: false };
+    if (!pending) return null;
 
     // The unique `deposit.tx_hash` index makes a second commit fail
     // before we even get here, so any pre-claim by the manual confirm
@@ -93,7 +103,7 @@ const confirmTransfer = async (
       .from(deposits)
       .where(eq(deposits.txHash, log.txHash))
       .limit(1);
-    if (existing) return { confirmed: false };
+    if (existing) return null;
 
     const [updated] = await tx
       .update(deposits)
@@ -109,7 +119,7 @@ const confirmTransfer = async (
         ),
       )
       .returning();
-    if (!updated) return { confirmed: false };
+    if (!updated) return null;
 
     await tx.insert(creditLedger).values({
       userId: updated.userId,
@@ -118,7 +128,12 @@ const confirmTransfer = async (
       refType: "deposit",
       refId: updated.id,
     });
-    return { confirmed: true, depositId: updated.id };
+    return {
+      id: updated.id,
+      userId: updated.userId,
+      chainId: updated.chainId as ChainId,
+      amountMicroUsdc: updated.amountMicroUsdc,
+    };
   });
 };
 
@@ -134,7 +149,7 @@ const scanChain = async (
   const { toViemChain } = await import("@fileonchain/sdk/evm");
   const client = createPublicClient({
     chain: toViemChain(chain),
-    transport: http(chain.rpcUrl),
+    transport: http(chain.rpcUrl, RPC_TRANSPORT_OPTS),
   });
 
   const [cursor] = await db
@@ -145,11 +160,17 @@ const scanChain = async (
   const fromBlock = cursor ? Number(cursor.lastScannedBlock) + 1 : 0;
 
   // Cap the scan window so a long outage cannot produce a multi-day
-  // `getLogs` request that the RPC rejects. 10_000 blocks ≈ 33h on
-  // Sepolia (12s blocks) and 5.5h on Auto EVM Chronos (2s blocks).
-  const head = await client.getBlockNumber();
-  const toBlock = Number(head);
-  const safeTo = Math.min(toBlock, fromBlock + 9_999);
+  // `getLogs` request that the RPC rejects. Walking up to the last
+  // finalized block (not `latest`) keeps the cursor honest through
+  // reorgs — a dropped block simply gets re-scanned on the next tick.
+  // viem 2.53 exposes `finalized` as a `BlockTag` on `getBlock` (the
+  // cheaper `getBlockNumber` always returns `latest`).
+  const headBlock = await client.getBlock({
+    blockTag: CONFIRMED_TAG,
+    includeTransactions: false,
+  });
+  const toBlock = Number(headBlock.number);
+  const safeTo = Math.min(toBlock, fromBlock + SCAN_WINDOW_BLOCKS);
 
   if (fromBlock > safeTo) {
     return { chainId: chain.id, fromBlock, toBlock: safeTo, confirmed: 0 };
@@ -181,22 +202,24 @@ const scanChain = async (
   }
 
   let confirmed = 0;
-  const matched: Array<{ txHash: `0x${string}`; depositId: string }> = [];
+  const matched: Array<{ txHash: `0x${string}`; deposit: ConfirmedDeposit }> = [];
   for (const log of logs) {
-    const to = (log.args.to as `0x${string}`).toLowerCase();
-    if (!pendingSet.has(to)) continue;
+    const to = log.args.to;
+    const value = log.args.value;
+    if (typeof to !== "string" || typeof value !== "bigint") continue;
+    const toLower = to.toLowerCase();
+    if (!pendingSet.has(toLower)) continue;
     try {
-      const result = await confirmTransfer(
-        {
-          txHash: log.transactionHash!,
-          to: log.args.to as `0x${string}`,
-          value: log.args.value as bigint,
-        },
+      const confirmedDeposit = await confirmTransfer(
+        { txHash: log.transactionHash!, to: to as `0x${string}`, value },
         chain.id,
       );
-      if (result.confirmed && result.depositId) {
+      if (confirmedDeposit) {
         confirmed += 1;
-        matched.push({ txHash: log.transactionHash!, depositId: result.depositId });
+        matched.push({
+          txHash: log.transactionHash!,
+          deposit: confirmedDeposit,
+        });
       }
     } catch (error) {
       // One bad log must not poison the rest of the batch. The deposit
@@ -220,22 +243,21 @@ const scanChain = async (
       set: { lastScannedBlock: safeTo, updatedAt: new Date() },
     });
 
-  // Activity logs run outside the per-log transaction so a logging
-  // failure cannot roll back the credit.
-  for (const m of matched) {
-    const [row] = await db
-      .select({ userId: deposits.userId, amountMicroUsdc: deposits.amountMicroUsdc, chainId: deposits.chainId })
-      .from(deposits)
-      .where(eq(deposits.id, m.depositId))
-      .limit(1);
-    if (!row) continue;
-    await logActivity(row.userId, "deposit_auto_confirmed", {
-      depositId: m.depositId,
-      chainId: row.chainId,
-      amountUsdc: microToUsdc(row.amountMicroUsdc),
-      txHash: m.txHash,
-    });
-  }
+  // One batch INSERT for the whole tick — N round trips collapsed to
+  // one. The data `confirmTransfer` returned is enough for the
+  // activity log; no extra `SELECT` against `deposits` here.
+  await logActivities(
+    matched.map((m) => ({
+      userId: m.deposit.userId,
+      type: "deposit_auto_confirmed",
+      metadata: {
+        depositId: m.deposit.id,
+        chainId: m.deposit.chainId,
+        amountUsdc: microToUsdc(m.deposit.amountMicroUsdc),
+        txHash: m.txHash,
+      },
+    })),
+  );
 
   return { chainId: chain.id, fromBlock, toBlock: safeTo, confirmed };
 };
@@ -250,26 +272,23 @@ export interface DepositWatchReport {
   totalConfirmed: number;
 }
 
-/** Walk every verifiable EVM chain in turn. A failure on one chain does
- *  not stop the others — they are independent RPCs and independent
- *  cursors. The cron route just reports the aggregate. */
+/** Walk every verifiable EVM chain in parallel. A failure on one chain
+ *  does not stop the others — they are independent RPCs and independent
+ *  cursors. `Promise.allSettled` keeps the per-chain errors observable
+ *  without short-circuiting. The cron route just reports the aggregate. */
 export const runDepositWatch = async (): Promise<DepositWatchReport> => {
   const verifiable = CHAINS.filter(isVerifiable);
-  const results: DepositWatchReport["chains"] = [];
-  for (const chain of verifiable) {
-    try {
-      results.push(await scanChain(chain));
-    } catch (error) {
-      console.error("[deposits-watch] chain scan failed", {
-        chainId: chain.id,
-        error,
-      });
-      // Still record a zero-confirmed entry so the caller sees the
-      // chain was attempted, and leave the cursor at its prior value
-      // so the next tick retries from the same starting block.
-      results.push({ chainId: chain.id, fromBlock: 0, toBlock: 0, confirmed: 0 });
-    }
-  }
-  const totalConfirmed = results.reduce((acc, r) => acc + r.confirmed, 0);
-  return { chains: results, totalConfirmed };
+  const settled = await Promise.allSettled(
+    verifiable.map((chain) => scanChain(chain)),
+  );
+  const chains = settled.map((s, idx) => {
+    if (s.status === "fulfilled") return s.value;
+    const chainId = verifiable[idx]!.id;
+    console.error("[deposits-watch] chain scan failed", { chainId, error: s.reason });
+    // Leave the cursor at its prior value so the next tick retries
+    // from the same starting block.
+    return { chainId, fromBlock: 0, toBlock: 0, confirmed: 0 };
+  });
+  const totalConfirmed = chains.reduce((acc, r) => acc + r.confirmed, 0);
+  return { chains, totalConfirmed };
 };

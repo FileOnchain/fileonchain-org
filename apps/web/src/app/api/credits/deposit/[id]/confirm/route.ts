@@ -6,6 +6,7 @@ import { requireUser, asRouteError } from "@/lib/auth";
 import { creditAccount } from "@/lib/server/credits";
 import { logActivity } from "@/lib/server/activity";
 import { microToUsdc } from "@/lib/usdc";
+import { RPC_TRANSPORT_OPTS } from "@/lib/scan-window";
 
 /**
  * Confirm a pending USDC deposit.
@@ -52,7 +53,7 @@ const verifyUsdcTransfer = async (
     await Promise.all([import("viem"), import("@fileonchain/sdk/evm")]);
   const client = createPublicClient({
     chain: toViemChain(chain),
-    transport: http(chain.rpcUrl),
+    transport: http(chain.rpcUrl, RPC_TRANSPORT_OPTS),
   });
 
   const receipt = await client
