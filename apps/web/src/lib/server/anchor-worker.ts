@@ -8,6 +8,7 @@ import {
   type ChainId,
 } from "@fileonchain/sdk";
 import { env } from "@/lib/env";
+import { RPC_TRANSPORT_OPTS } from "@/lib/scan-window";
 import {
   validateRpcUrl,
   withRpcOverride,
@@ -50,7 +51,7 @@ const anchorOnEvm = async (
   const walletClient = createWalletClient({
     account: privateKeyToAccount(privateKey as `0x${string}`),
     chain: viemChain,
-    transport: http(chain.rpcUrl),
+    transport: http(chain.rpcUrl, RPC_TRANSPORT_OPTS),
   });
   // anchorCID emits the free file-level registry event and waits for its
   // receipt — the block data goes straight into the job's tx record.

@@ -11,11 +11,17 @@ import type { UploadJobTx } from "@/lib/db/schema";
  * broadcasts.
  */
 
+/** Hard timeout per TronGrid HTTP call (TronGrid doesn't expose a
+ *  client-side retry knob like viem does). Matches
+ *  `RPC_TRANSPORT_OPTS.timeout` from `lib/scan-window.ts`. */
+const TRON_TIMEOUT_MS = 15_000;
+
 const post = async <T>(base: string, path: string, body: unknown): Promise<T> => {
   const res = await fetch(`${base}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(TRON_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`TRON node error ${res.status} on ${path}`);
   return (await res.json()) as T;
