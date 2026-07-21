@@ -15,25 +15,6 @@ import type { AnchorOutcome, AnchorRequest } from "./types";
 
 export type { AnchorOutcome, AnchorRequest } from "./types";
 
-/** Keep the (stub) indexer fed with what just landed on-chain. */
-const reportAnchoredUpload = (request: AnchorRequest, receipt: ChunkedAnchorReceipt) => {
-  void fetch("/api/upload-fallback", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      network: request.chain.id,
-      cidList: request.chunks.map((chunk) => ({
-        cid: chunk.cid,
-        nextCid: chunk.nextCid,
-      })),
-      hash: receipt.txHash,
-      blockNumber: receipt.blockNumber ?? 0,
-    }),
-  }).catch(() => {
-    // Indexing is best-effort; the chain is the source of truth.
-  });
-};
-
 /** Platform attribution carried in the anchor payload. */
 const defaultPlatformId = (request: AnchorRequest): string =>
   request.platformId ?? process.env.NEXT_PUBLIC_FILEONCHAIN_PLATFORM_ID ?? "1";
@@ -43,6 +24,11 @@ const defaultPlatformId = (request: AnchorRequest): string =>
  * routed per family. Throws ChainNotProvisionedError (from @fileonchain/sdk)
  * when the chain has nothing deployed to anchor against — callers decide
  * whether to surface that or fall back to a simulated anchor.
+ *
+ * The real on-chain indexer (`lib/indexer/scan.ts` + the
+ * `/api/cron/indexer-scan` cron) reads these events from the chain
+ * itself; the browser side deliberately doesn't POST a copy back to
+ * the server's own API.
  */
 export const anchorFileOnChain = async (
   rawRequest: AnchorRequest,
@@ -87,8 +73,6 @@ export const anchorFileOnChain = async (
       receipt = await sendHederaAnchor(request);
       break;
   }
-
-  reportAnchoredUpload(request, receipt);
 
   return {
     txHash: receipt.txHash,
