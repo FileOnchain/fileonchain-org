@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   CHAINS,
   getChain,
@@ -145,10 +145,11 @@ const filtersApplyToHits = (
   if (filters.status && filters.status !== "all") {
     if (!hits.some((h) => h.status === filters.status)) return false;
   }
-  // The category filter is dropped — categories imply off-chain file
-  // metadata, which we don't attest to. The UI keeps the filter
-  // visible for back-compat but it no longer narrows the feed; that
-  // change is intentional and surfaces in the explorer copy.
+  // The category filter is intentionally a no-op — it implies off-chain
+  // file metadata, which we don't attest to. The UI keeps the filter
+  // visible for back-compat but no value narrows the feed; that
+  // contract is documented in the explorer copy.
+  void filters.category;
   return true;
 };
 
@@ -367,7 +368,3 @@ export const getChunksForFile = async (
   }
   return Array.from(dedup.values()).sort((a, b) => a.index - b.index);
 };
-
-// Suppress an unused-import warning when the category filter gets
-// dropped — keep the type exported for back-compat.
-void isNotNull;
