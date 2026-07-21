@@ -20,9 +20,25 @@
 /** Maximum block range scanned per cron tick. */
 export const SCAN_WINDOW_BLOCKS = 9_999;
 
-/** Block-tag used by `getLogs` / `getBlockNumber` so the cap above
- *  catches up to the latest finalized block instead of `latest`. A
- *  reorg that drops a finalized block is impossible by definition, so
- *  the unique `(chain, tx, log)` index guarantees the worst case is
- *  a re-read next tick, not a missing row. */
+/** Block-tag used by `getBlock` so the cap above catches up to the
+ *  latest finalized block instead of `latest`. A reorg that drops a
+ *  finalized block is impossible by definition, so the unique
+ *  `(chain, tx, log)` index guarantees the worst case is a re-read
+ *  next tick, not a missing row. */
 export const CONFIRMED_TAG = "finalized" as const;
+
+/** viem `http()` transport options shared by every EVM scanner +
+ *  the manual-confirm route. Caps each request so a hung RPC can't
+ *  stall a cron tick, and retries on transient failures (the most
+ *  common being rate-limit responses from public providers). */
+export const RPC_TRANSPORT_OPTS = {
+  /** Per-request timeout. A slow RPC is treated as a failure after
+   *  this many ms so a cron tick always completes within the
+   *  Vercel-function budget (60s on Hobby, 300s on Pro). */
+  timeout: 15_000,
+  /** Retry transient RPC errors (network reset, 5xx, rate-limit).
+   *  `retryCount` includes the original attempt; viem exposes
+   *  `retryDelay` for exponential backoff. */
+  retryCount: 3,
+  retryDelay: 500,
+} as const;

@@ -13,9 +13,9 @@ import {
   depositCursors,
   creditLedger,
 } from "@/lib/db";
-import { logActivity } from "@/lib/server/activity";
+import { logActivities } from "@/lib/server/activity";
 import { microToUsdc } from "@/lib/usdc";
-import { SCAN_WINDOW_BLOCKS, CONFIRMED_TAG } from "@/lib/scan-window";
+import { SCAN_WINDOW_BLOCKS, CONFIRMED_TAG, RPC_TRANSPORT_OPTS } from "@/lib/scan-window";
 
 /**
  * USDC Transfer-event watcher. The cron entry is
@@ -149,7 +149,7 @@ const scanChain = async (
   const { toViemChain } = await import("@fileonchain/sdk/evm");
   const client = createPublicClient({
     chain: toViemChain(chain),
-    transport: http(chain.rpcUrl),
+    transport: http(chain.rpcUrl, RPC_TRANSPORT_OPTS),
   });
 
   const [cursor] = await db
@@ -243,17 +243,21 @@ const scanChain = async (
       set: { lastScannedBlock: safeTo, updatedAt: new Date() },
     });
 
-  // Activity logs run outside the per-log transaction so a logging
-  // failure cannot roll back the credit. We use the data `confirmTransfer`
-  // returned — no extra `SELECT` against `deposits` here.
-  for (const m of matched) {
-    await logActivity(m.deposit.userId, "deposit_auto_confirmed", {
-      depositId: m.deposit.id,
-      chainId: m.deposit.chainId,
-      amountUsdc: microToUsdc(m.deposit.amountMicroUsdc),
-      txHash: m.txHash,
-    });
-  }
+  // One batch INSERT for the whole tick — N round trips collapsed to
+  // one. The data `confirmTransfer` returned is enough for the
+  // activity log; no extra `SELECT` against `deposits` here.
+  await logActivities(
+    matched.map((m) => ({
+      userId: m.deposit.userId,
+      type: "deposit_auto_confirmed",
+      metadata: {
+        depositId: m.deposit.id,
+        chainId: m.deposit.chainId,
+        amountUsdc: microToUsdc(m.deposit.amountMicroUsdc),
+        txHash: m.txHash,
+      },
+    })),
+  );
 
   return { chainId: chain.id, fromBlock, toBlock: safeTo, confirmed };
 };

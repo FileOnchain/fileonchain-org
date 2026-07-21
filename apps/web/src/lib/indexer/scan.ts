@@ -1,8 +1,9 @@
 import "server-only";
-import { CHAINS, isChainActive, type ChainId, type ChainConfig, ZERO_ADDRESS, parseAnchorPayload } from "@fileonchain/sdk";
+import { CHAINS, isChainActive, type ChainId, type ChainConfig, ZERO_ADDRESS } from "@fileonchain/sdk";
 import { db, indexedAnchorEvents, indexerCursors } from "@/lib/db";
 import { eq } from "drizzle-orm";
-import { SCAN_WINDOW_BLOCKS, CONFIRMED_TAG } from "@/lib/scan-window";
+import { SCAN_WINDOW_BLOCKS, CONFIRMED_TAG, RPC_TRANSPORT_OPTS } from "@/lib/scan-window";
+import { decodeAnchorRows } from "@/lib/indexer/decode";
 
 /**
  * EVM-only on-chain anchor scanner. Walks every chain whose
@@ -45,7 +46,7 @@ const scanEvmChain = async (
   const { toViemChain } = await import("@fileonchain/sdk/evm");
   const client = createPublicClient({
     chain: toViemChain(chain),
-    transport: http(chain.rpcUrl),
+    transport: http(chain.rpcUrl, RPC_TRANSPORT_OPTS),
   });
 
   const [cursor] = await db
@@ -116,36 +117,15 @@ const scanEvmChain = async (
   );
 
   // Decode + filter to events whose `uri` parses as a real FileOnChain
-  // anchor payload. Anything that isn't ours (e.g. a chain re-deploy
-  // by another contract) is silently dropped — we never store a row
-  // we can't surface honestly.
-  type Decoded = {
-    txHash: `0x${string}`;
-    logIndex: number;
-    blockNumber: number;
-    blockTimestamp: Date;
-    submitter: `0x${string}`;
-    cid: string;
-    payload: object;
-  };
-  const decoded: Decoded[] = [];
-  for (const log of [...cidLogs, ...chunkLogs]) {
-    const uri = log.args.uri;
-    if (typeof uri !== "string") continue;
-    const payload = parseAnchorPayload(uri);
-    if (!payload) continue;
-    const blockTimestamp = blockNumber(log.blockNumber, blockTimestamps);
-    if (!blockTimestamp) continue; // getLogs shouldn't emit a log without a block, but be defensive
-    decoded.push({
-      txHash: log.transactionHash!,
-      logIndex: log.logIndex!,
-      blockNumber: Number(log.blockNumber!),
-      blockTimestamp,
-      submitter: (log.args.submitter as string).toLowerCase() as `0x${string}`,
-      cid: payload.cid,
-      payload,
-    });
-  }
+  // anchor payload. The decoder is a pure function (see
+  // `lib/indexer/decode.ts`) so a future test runner can exercise it
+  // without standing up Drizzle or a viem fixture.
+  const decoded = decodeAnchorRows(
+    [...cidLogs, ...chunkLogs],
+    blockTimestamps,
+    chain.id,
+    chain.registryContract,
+  );
 
   if (decoded.length > 0) {
     await db
@@ -177,14 +157,6 @@ const scanEvmChain = async (
     });
 
   return { chainId: chain.id, fromBlock, toBlock: safeTo, eventsAdded: decoded.length };
-};
-
-const blockNumber = (
-  raw: bigint | null | undefined,
-  cache: Map<bigint, Date>,
-): Date | null => {
-  if (raw === null || raw === undefined) return null;
-  return cache.get(raw) ?? null;
 };
 
 export interface IndexerScanReport {
