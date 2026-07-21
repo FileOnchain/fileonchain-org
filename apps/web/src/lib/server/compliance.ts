@@ -183,8 +183,11 @@ export const summarizePeriod = async (
   ] = await Promise.all([
     db
       .select({
+        // Only `profile` is read off the rows — the profile-bucketed
+        // count below is the sole consumer. The row fetch still walks
+        // the (org_id, created_at) index, but a slimmer projection
+        // saves a few hundred bytes per row over the period window.
         profile: evidenceEnvelopes.profile,
-        subjectSha256: evidenceEnvelopes.subjectSha256,
       })
       .from(evidenceEnvelopes)
       .where(
