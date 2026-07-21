@@ -319,44 +319,46 @@ const postDelivery = async (
 
 /** Dispatch a single delivery by id. Updates the row's `attempts`,
  *  `delivered_at`, `last_error`, and `next_attempt_at` accordingly.
- *  No-op when the delivery is already delivered or absent. */
+ *  No-op when the delivery is already delivered or absent.
+ *
+ *  The delivery row read was previously followed by a separate
+ *  endpoint read chained on the FK. Both rows live in this tick's
+ *  Postgres trip together via INNER JOIN — one round trip instead
+ *  of two. The disabled-endpoint branch is left as a partial-state
+ *  guard (a previously-drained endpoint may have been disabled
+ *  between the lease claim and the dispatch). */
 export const dispatchDelivery = async (
   deliveryId: string,
 ): Promise<{ dispatched: boolean; ok: boolean }> => {
   const [row] = await db
     .select({
       id: webhookDeliveries.id,
-      endpointId: webhookDeliveries.endpointId,
       eventId: webhookDeliveries.eventId,
       eventType: webhookDeliveries.eventType,
       payload: webhookDeliveries.payload,
       attempts: webhookDeliveries.attempts,
+      endpointUrl: webhookEndpoints.url,
+      endpointSecret: webhookEndpoints.encryptedSecret,
+      endpointDisabledAt: webhookEndpoints.disabledAt,
     })
     .from(webhookDeliveries)
+    .innerJoin(
+      webhookEndpoints,
+      eq(webhookEndpoints.id, webhookDeliveries.endpointId),
+    )
     .where(eq(webhookDeliveries.id, deliveryId))
     .limit(1);
-  if (!row) return { dispatched: false, ok: false };
-
-  const [endpoint] = await db
-    .select({
-      url: webhookEndpoints.url,
-      encryptedSecret: webhookEndpoints.encryptedSecret,
-      disabledAt: webhookEndpoints.disabledAt,
-    })
-    .from(webhookEndpoints)
-    .where(eq(webhookEndpoints.id, row.endpointId))
-    .limit(1);
-  if (!endpoint || endpoint.disabledAt) {
-    // Endpoint is gone or disabled — leave the row as-is and stop
+  if (!row || row.endpointDisabledAt) {
+    // Endpoint gone or disabled — leave the row as-is and stop
     // touching it. Operators can re-enable or delete it from the
     // dashboard.
     return { dispatched: false, ok: false };
   }
 
-  const secret = openWebhookSecret(endpoint.encryptedSecret);
+  const secret = openWebhookSecret(row.endpointSecret);
   const body = JSON.stringify(row.payload);
   const result = await postDelivery(
-    endpoint.url,
+    row.endpointUrl,
     secret,
     body,
     row.id,
