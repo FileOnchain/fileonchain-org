@@ -51,7 +51,7 @@ export async function POST(request: Request) {
   }
   try {
     const serverSign = wantsServerSign(request);
-    const envelope = await parseEnvelopeBody(request);
+    const { envelope } = await parseEnvelopeBody(request);
     const result = await submitAgentRun(asOrgApiKey(apiKey), {
       envelope,
       serverSign,

@@ -451,10 +451,14 @@ export const summarizeClaims = (
 };
 
 /** Parse a JSON body and re-validate it as a protocol envelope. Throws
- *  `bad_request` (400) on either step so the route handler can return 400. */
+ *  `bad_request` (400) on either step so the route handler can return
+ *  400. Also surfaces any sibling `project` field on the same JSON so
+ *  the caller doesn't have to clone a consumed Request body to read
+ *  it (Fetch's `clone()` after a body read is implementation-defined
+ *  and was previously masking `projectIdFromBody = undefined`). */
 export const parseEnvelopeBody = async (
   request: Request,
-): Promise<EvidenceEnvelope> => {
+): Promise<{ envelope: EvidenceEnvelope; projectId?: string }> => {
   const raw = await request.text();
   if (!raw) throw new HttpError(400, "Empty request body", "bad_request");
 
@@ -466,5 +470,20 @@ export const parseEnvelopeBody = async (
       "bad_request",
     );
   }
-  return envelope;
+  // Sibling `project` is optional and rides alongside the envelope
+  // when an org-scoped caller wants to bind the envelope to a
+  // project. parseEnvelope already validated the JSON structure, so
+  // this re-parse is best-effort and never throws — a pathologically
+  // shaped but still-protocol-valid body just leaves `projectId`
+  // undefined.
+  let projectId: string | undefined;
+  try {
+    const parsed = JSON.parse(raw) as { project?: unknown };
+    if (typeof parsed.project === "string") {
+      projectId = parsed.project;
+    }
+  } catch {
+    /* unreachable: parseEnvelope already JSON-parsed the same string */
+  }
+  return { envelope, projectId };
 };
