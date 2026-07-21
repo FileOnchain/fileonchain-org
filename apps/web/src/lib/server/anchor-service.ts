@@ -12,7 +12,7 @@ import {
   debitCredits,
   InsufficientCreditsError,
 } from "@/lib/server/credits";
-import { logActivity } from "@/lib/server/activity";
+import { logActivity, logActivities } from "@/lib/server/activity";
 import { runAnchorWorker } from "@/lib/server/anchor-worker";
 import { getUserRpcOverrides } from "@/lib/server/rpc-endpoints";
 import { enforceAnchorQuota } from "@/lib/server/quotas";
@@ -281,20 +281,36 @@ export const anchorWithAccount = async (
     .where(eq(uploadJobs.id, job.id))
     .returning();
 
-  await logActivity(ctx.userId, "upload_anchor", {
-    jobId: job.id,
-    cid: payload.cid,
-    chains: payload.chainIds.join(","),
-    chunkCount: payload.chunkCount,
-    paymentMethod: payload.paymentMethod,
-    source: ctx.source,
-  });
-  if (ctx.source === "api") {
-    await logActivity(ctx.userId, "api_call", {
-      endpoint: "/api/v1/anchor",
-      jobId: job.id,
-    });
-  }
+  // Always log the `upload_anchor` row; also log `api_call` when the
+  // request came in through the API surface. The two rows travel
+  // together in a single batched INSERT so the success path doesn't
+  // pay two round trips.
+  await logActivities([
+    {
+      userId: ctx.userId,
+      type: "upload_anchor",
+      metadata: {
+        jobId: job.id,
+        cid: payload.cid,
+        chains: payload.chainIds.join(","),
+        chunkCount: payload.chunkCount,
+        paymentMethod: payload.paymentMethod,
+        source: ctx.source,
+      },
+    },
+    ...(ctx.source === "api"
+      ? [
+          {
+            userId: ctx.userId,
+            type: "api_call" as const,
+            metadata: {
+              endpoint: "/api/v1/anchor",
+              jobId: job.id,
+            },
+          },
+        ]
+      : []),
+  ]);
 
   // Webhook fan-out — `anchor.job.settled` replaces the
   // `/api/v1/anchor/[id]` polling endpoint for org-scoped consumers.

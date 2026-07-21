@@ -105,14 +105,18 @@ export const countBytesAnchoredThisMonth = async (
 
 /** Throw `project_quota_exceeded` (429) when sealing this envelope
  *  would push the project over its envelopesPerMonth cap. No-op when
- *  no project or no cap. */
+ *  no project or no cap. The project row + the envelope count are
+ *  independent reads, so they fan out together — total latency is the
+ *  slowest read, not the sum. */
 export const enforceEnvelopeQuota = async (
   projectId: string | null,
 ): Promise<void> => {
   if (!projectId) return;
-  const project = await projectQuotaRow(projectId);
+  const [project, used] = await Promise.all([
+    projectQuotaRow(projectId),
+    countEnvelopesThisMonth(projectId),
+  ]);
   if (!project || project.envelopesPerMonth == null) return;
-  const used = await countEnvelopesThisMonth(projectId);
   if (used >= project.envelopesPerMonth) {
     throwQuotaExceeded("envelopes", project.envelopesPerMonth, used);
   }
@@ -120,28 +124,39 @@ export const enforceEnvelopeQuota = async (
 
 /** Throw `project_quota_exceeded` (429) when settling this anchor job
  *  would push the project over its `anchorsPerMonth` or
- *  `bytesAnchoredPerMonth` caps. No-op when no project or no cap. */
+ *  `bytesAnchoredPerMonth` caps. No-op when no project or no cap.
+ *
+ *  All three reads (project + two aggregates) are independent, so they
+ *  fan out in one `Promise.all` — total latency is the slowest read,
+ *  not the sum. The waste on a fully uncapped project (two
+ *  short-circuited aggregate SELECTs) is bounded by the indexed scan
+ *  on `(project_id, created_at)`; a project with even one cap set
+ *  wins the round trip. */
 export const enforceAnchorQuota = async (
   projectId: string | null,
   bytes: number,
 ): Promise<void> => {
   if (!projectId) return;
-  const project = await projectQuotaRow(projectId);
+  const [project, anchorsUsed, bytesUsed] = await Promise.all([
+    projectQuotaRow(projectId),
+    countAnchorsThisMonth(projectId),
+    countBytesAnchoredThisMonth(projectId),
+  ]);
   if (!project) return;
-  if (project.anchorsPerMonth != null) {
-    const used = await countAnchorsThisMonth(projectId);
-    if (used >= project.anchorsPerMonth) {
-      throwQuotaExceeded("anchors", project.anchorsPerMonth, used);
-    }
+  if (
+    project.anchorsPerMonth != null &&
+    anchorsUsed >= project.anchorsPerMonth
+  ) {
+    throwQuotaExceeded("anchors", project.anchorsPerMonth, anchorsUsed);
   }
-  if (project.bytesAnchoredPerMonth != null) {
-    const used = await countBytesAnchoredThisMonth(projectId);
-    if (used + bytes > project.bytesAnchoredPerMonth) {
-      throwQuotaExceeded(
-        "bytes_anchored",
-        project.bytesAnchoredPerMonth,
-        used,
-      );
-    }
+  if (
+    project.bytesAnchoredPerMonth != null &&
+    bytesUsed + bytes > project.bytesAnchoredPerMonth
+  ) {
+    throwQuotaExceeded(
+      "bytes_anchored",
+      project.bytesAnchoredPerMonth,
+      bytesUsed,
+    );
   }
 };

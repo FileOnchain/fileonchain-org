@@ -167,43 +167,57 @@ export const listProjects = async (
 
   return Promise.all(
     rows.map(async (row) => {
-      const role = await membershipOf(userId, row.id);
-      const [{ value: memberCount }] = await db
-        .select({ value: count() })
-        .from(projectMembers)
-        .where(eq(projectMembers.projectId, row.id));
-      return { ...row, role, memberCount };
+      // role + memberCount are independent reads — fan them out so
+      // the per-row cost is one round trip, not two. For a member
+      // of N projects this turns the listing's tail from 2N
+      // sequential SELECTs into N.
+      const [role, countRow] = await Promise.all([
+        membershipOf(userId, row.id),
+        db
+          .select({ value: count() })
+          .from(projectMembers)
+          .where(eq(projectMembers.projectId, row.id))
+          .limit(1),
+      ]);
+      return { ...row, role, memberCount: Number(countRow[0]?.value ?? 0) };
     }),
   );
 };
 
 /** Single project detail with quota columns exposed. 404 when the user
- *  is not a project member. */
+ *  is not a project member. Membership check + project row fetch are
+ *  independent reads — fan them out together so the detail endpoint
+ *  pays one round trip instead of two. */
 export const getProject = async (
   userId: string,
   projectId: string,
 ): Promise<ProjectDetail> => {
-  await requireProjectRole(userId, projectId, ["lead", "contributor"]);
-  const [row] = await db
-    .select()
-    .from(projects)
-    .where(eq(projects.id, projectId))
-    .limit(1);
-  if (!row) throw new ProjectError(404, "Project not found");
-  const role = await membershipOf(userId, projectId);
+  const [role, project] = await Promise.all([
+    membershipOf(userId, projectId),
+    db
+      .select()
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1)
+      .then(([row]) => row),
+  ]);
+  if (!project) throw new ProjectError(404, "Project not found");
+  if (!role) throw new ProjectError(404, "Project not found");
   return {
-    id: row.id,
-    orgId: row.orgId,
-    name: row.name,
-    slug: row.slug,
+    id: project.id,
+    orgId: project.orgId,
+    name: project.name,
+    slug: project.slug,
     role,
     memberCount: 0,
-    retentionDays: row.retentionDays,
-    envelopesPerMonth: row.envelopesPerMonth,
-    anchorsPerMonth: row.anchorsPerMonth,
+    retentionDays: project.retentionDays,
+    envelopesPerMonth: project.envelopesPerMonth,
+    anchorsPerMonth: project.anchorsPerMonth,
     bytesAnchoredPerMonth:
-      row.bytesAnchoredPerMonth != null ? Number(row.bytesAnchoredPerMonth) : null,
-    createdAt: row.createdAt,
+      project.bytesAnchoredPerMonth != null
+        ? Number(project.bytesAnchoredPerMonth)
+        : null,
+    createdAt: project.createdAt,
     description: null,
   };
 };

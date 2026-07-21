@@ -65,23 +65,12 @@ export async function POST(request: Request) {
   try {
     const serverSign = wantsServerSign(request);
     const serverSignProject = wantsProjectServerSign(request);
-    const envelope = await parseEnvelopeBody(request);
-    // Optional `project` in the body — required when the API key is
-    // project-scoped (and may be omitted when the key is org-scoped,
-    // in which case the envelope lands under the key's own project
-    // scope if any).
-    const rawBody = await request.clone().text().catch(() => "");
-    let projectIdFromBody: string | undefined;
-    if (rawBody) {
-      try {
-        const parsed = JSON.parse(rawBody) as { project?: unknown };
-        if (typeof parsed?.project === "string") {
-          projectIdFromBody = parsed.project;
-        }
-      } catch {
-        // Already threw on the malformed body upstream; ignore here.
-      }
-    }
+    // `projectId` rides on the same body JSON as the envelope —
+    // `parseEnvelopeBody` returns both in one read so the route layer
+    // doesn't have to try (and silently fail) to clone a consumed
+    // Request body.
+    const { envelope, projectId: projectIdFromBody } =
+      await parseEnvelopeBody(request);
     const result = await submitEvidence(asOrgApiKey(apiKey), {
       envelope,
       serverSign,

@@ -166,94 +166,99 @@ export const summarizePeriod = async (
   periodStart: Date,
   periodEnd: Date,
 ): Promise<ComplianceSummary> => {
-  // Envelopes sealed in the period + profile-bucketed counts + signer breakdown.
-  const envelopeRows = await db
-    .select({
-      profile: evidenceEnvelopes.profile,
-      subjectSha256: evidenceEnvelopes.subjectSha256,
-    })
-    .from(evidenceEnvelopes)
-    .where(
-      and(
-        eq(evidenceEnvelopes.orgId, orgId),
-        gte(evidenceEnvelopes.createdAt, periodStart),
-        lte(evidenceEnvelopes.createdAt, periodEnd),
+  // Fan every period-scoped read out in parallel — they're all
+  // independent (different tables or different filters) — so the
+  // monthly cron + on-demand endpoint pay one round trip's worth of
+  // latency instead of seven. `uploadJobs` is keyed on user_id (the
+  // per-org filter is a known no-op until a future migration adds
+  // `org_id`); the other six counters are org-scoped as written.
+  const [
+    envelopeRows,
+    envelopesVerifiedCount,
+    anchorRows,
+    agentRunCount,
+    policyRows,
+    sla,
+    signerRowsRaw,
+  ] = await Promise.all([
+    db
+      .select({
+        // Only `profile` is read off the rows — the profile-bucketed
+        // count below is the sole consumer. The row fetch still walks
+        // the (org_id, created_at) index, but a slimmer projection
+        // saves a few hundred bytes per row over the period window.
+        profile: evidenceEnvelopes.profile,
+      })
+      .from(evidenceEnvelopes)
+      .where(
+        and(
+          eq(evidenceEnvelopes.orgId, orgId),
+          gte(evidenceEnvelopes.createdAt, periodStart),
+          lte(evidenceEnvelopes.createdAt, periodEnd),
+        ),
       ),
-    );
+    countScalar(sql`
+      SELECT coalesce(SUM(${evidenceEnvelopes.verificationCount}), 0) AS value
+      FROM ${evidenceEnvelopes}
+      WHERE ${evidenceEnvelopes.orgId} = ${orgId}
+        AND ${evidenceEnvelopes.lastVerifiedAt} >= ${periodStart}
+        AND ${evidenceEnvelopes.lastVerifiedAt} <= ${periodEnd}
+    `),
+    db
+      .select({
+        status: uploadJobs.status,
+        completedAt: uploadJobs.completedAt,
+      })
+      .from(uploadJobs)
+      .where(
+        and(
+          eq(uploadJobs.userId, orgId),
+          gte(uploadJobs.createdAt, periodStart),
+          lte(uploadJobs.createdAt, periodEnd),
+        ),
+      ),
+    countScalar(sql`
+      SELECT count(*) AS value
+      FROM ${agentRuns}
+      WHERE ${agentRuns.orgId} = ${orgId}
+        AND ${agentRuns.createdAt} >= ${periodStart}
+        AND ${agentRuns.createdAt} <= ${periodEnd}
+    `),
+    db
+      .select({ windowDays: retentionPolicies.windowDays })
+      .from(retentionPolicies)
+      .where(eq(retentionPolicies.orgId, orgId))
+      .limit(1),
+    ensureOrgSla(orgId),
+    db.execute(sql`
+      SELECT org_id, project_id, public_key, revoked_at
+      FROM cloud_signer
+      WHERE org_id = ${orgId}
+      ORDER BY created_at DESC
+      LIMIT 20
+    `) as unknown as Promise<{
+      rows?: Array<{
+        org_id: string;
+        project_id: string | null;
+        public_key: string;
+        revoked_at: string | Date | null;
+      }>;
+    }>,
+  ]);
 
   const profiles: Record<string, { count: number }> = {};
-  const signers: Record<string, number> = {};
   for (const row of envelopeRows) {
     const p = row.profile ?? "unknown";
     profiles[p] ??= { count: 0 };
     profiles[p].count += 1;
   }
 
-  // Verification totals.
-  const envelopesVerifiedCount = await countScalar(sql`
-    SELECT coalesce(SUM(${evidenceEnvelopes.verificationCount}), 0) AS value
-    FROM ${evidenceEnvelopes}
-    WHERE ${evidenceEnvelopes.orgId} = ${orgId}
-      AND ${evidenceEnvelopes.lastVerifiedAt} >= ${periodStart}
-      AND ${evidenceEnvelopes.lastVerifiedAt} <= ${periodEnd}
-  `);
-
-  // Anchors completed/failed in the period.
-  const anchorRows = await db
-    .select({
-      status: uploadJobs.status,
-      completedAt: uploadJobs.completedAt,
-    })
-    .from(uploadJobs)
-    .where(
-      and(
-        eq(uploadJobs.userId, orgId),
-        gte(uploadJobs.createdAt, periodStart),
-        lte(uploadJobs.createdAt, periodEnd),
-      ),
-    );
-  // Note: uploadJobs is keyed on userId, not orgId; the SQL above is a
-  // safe no-op (returns zero rows) until a future migration adds an
-  // orgId column. The other counters are org-scoped.
-
-  // Agent-run sealed in the period.
-  const agentRunCount = await countScalar(sql`
-    SELECT count(*) AS value
-    FROM ${agentRuns}
-    WHERE ${agentRuns.orgId} = ${orgId}
-      AND ${agentRuns.createdAt} >= ${periodStart}
-      AND ${agentRuns.createdAt} <= ${periodEnd}
-  `);
-
-  // Retention summary.
-  const [policy] = await db
-    .select({ windowDays: retentionPolicies.windowDays })
-    .from(retentionPolicies)
-    .where(eq(retentionPolicies.orgId, orgId))
-    .limit(1);
-  const retention: ComplianceSummary["retention"] = policy
-    ? { windowDays: policy.windowDays, source: "policy" }
+  const retention: ComplianceSummary["retention"] = policyRows[0]?.windowDays !=
+    null
+    ? { windowDays: policyRows[0].windowDays, source: "policy" }
     : { windowDays: 180, source: "default" };
 
-  // SLA row.
-  const sla = await ensureOrgSla(orgId);
-
-  // Signers in use during the period (active or recently revoked).
-  const signerRows = await db.execute(sql`
-    SELECT org_id, project_id, public_key, revoked_at
-    FROM cloud_signer
-    WHERE org_id = ${orgId}
-    ORDER BY created_at DESC
-    LIMIT 20
-  `) as unknown as {
-    rows?: Array<{
-      org_id: string;
-      project_id: string | null;
-      public_key: string;
-      revoked_at: string | Date | null;
-    }>;
-  };
-  const signersInUse = (signerRows.rows ?? []).map((r) => ({
+  const signersInUse = (signerRowsRaw.rows ?? []).map((r) => ({
     orgId: r.org_id,
     projectId: r.project_id,
     publicKey: r.public_key,
@@ -270,10 +275,13 @@ export const summarizePeriod = async (
       anchorsFailed: anchorRows.filter((r) => r.status === "failed").length,
     },
     profiles,
-    signers: Object.entries(signers).map(([id, count]) => ({
-      id,
-      count,
-    })),
+    // Signer attribution per envelope is not currently aggregated; the
+    // per-envelope signer_id list is captured in the claim_summary
+    // column via `summarizeClaims` (evidence.ts), but the compliance
+    // summary keeps a stable, empty array so the report shape doesn't
+    // shift underneath a downstream consumer. Compute on demand when a
+    // report field needs it.
+    signers: [],
     retention,
     signersInUse,
     sla: {
