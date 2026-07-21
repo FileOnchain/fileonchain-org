@@ -11,7 +11,7 @@ import { orgScopedKeyRequired } from "@/lib/server/http-error";
 import { logActivity } from "@/lib/server/activity";
 import { signEnvelopeForOrg, signEnvelopeForScope } from "@/lib/server/cloud-signer";
 import { getProjectOrgId } from "@/lib/server/projects";
-import { applyRetentionToNewEnvelope } from "@/lib/server/retention";
+import { getEffectiveRetention } from "@/lib/server/retention";
 import { enforceEnvelopeQuota } from "@/lib/server/quotas";
 import { enqueueWebhookDeliveries } from "@/lib/server/webhooks";
 import {
@@ -215,6 +215,20 @@ export const submitEvidence = async (
   const profile = sealed.profile ?? null;
   const claimSummary = summarizeClaims(sealed);
 
+  // Resolve the retention window pre-insert so we can bake
+  // `expires_at` into the row directly. Avoids a separate UPDATE +
+  // `applyRetentionToNewEnvelope` round trip, and closes a window
+  // where a transient DB error after the INSERT would leave the row
+  // with `expires_at IS NULL` — invisible to the sweep forever.
+  // The `Default` fallback (`windowDays` from `DEFAULT_RETENTION_DAYS`)
+  // matches the old function's behavior, so this is a refactor, not
+  // a behavior change.
+  const { windowDays } = await getEffectiveRetention(orgId);
+  const createdAt = new Date();
+  const expiresAt = new Date(
+    createdAt.getTime() + windowDays * 24 * 60 * 60 * 1000,
+  );
+
   const [row] = await db
     .insert(evidenceEnvelopes)
     .values({
@@ -229,13 +243,10 @@ export const submitEvidence = async (
       envelope: sealed,
       envelopeDigest,
       claimSummary,
+      expiresAt,
     })
     .returning();
   if (!row) throw new HttpError(500, "Insert returned no row", "internal_error");
-
-  // Stamp `expires_at` from the org's retention window. Without this the
-  // sweep is a permanent no-op (every row would have a NULL expiry).
-  await applyRetentionToNewEnvelope(id, orgId, row.createdAt);
 
   await logActivity(
     apiKey.userId,
