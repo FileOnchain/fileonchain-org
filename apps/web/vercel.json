@@ -15,6 +15,18 @@
     {
       "path": "/api/cron/compliance-reports-build",
       "schedule": "0 4 1 * *"
+    },
+    {
+      "path": "/api/cron/rate-limit-sweep",
+      "schedule": "27 4 * * *"
+    },
+    {
+      "path": "/api/cron/deposits-watch",
+      "schedule": "57 2 * * *"
+    },
+    {
+      "path": "/api/cron/indexer-scan",
+      "schedule": "47 1 * * *"
     }
   ]
 }

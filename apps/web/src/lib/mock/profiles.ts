@@ -1,5 +1,7 @@
+import "server-only";
 import { type ChainFamily } from "@fileonchain/sdk";
-import { getUploaderAggregates } from "@/lib/mock/cid-indexer";
+import { getUploaderAggregates } from "@/lib/indexer/queries";
+import { mockLinkedAddress, guessFamily } from "@/lib/mock/wallet-fakes";
 
 /* TODO: wire to a real identity registry (linked-wallet attestations) and
  * indexer-side aggregation. Linking a wallet should verify a signed message
@@ -37,8 +39,7 @@ export interface PublicProfile {
 }
 
 /* ----------------------------------------------------------------------------
- * Deterministic mock helpers — everything derives from the address string so
- * SSR and the client always agree.
+ * Server-only helpers (deterministic, DB-backed)
  * --------------------------------------------------------------------------- */
 
 const hashString = (value: string): number => {
@@ -50,100 +51,73 @@ const hashString = (value: string): number => {
   return h;
 };
 
-const HEX = "0123456789abcdef";
-const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-
-const charsFrom = (seed: string, alphabet: string, length: number): string => {
-  let out = "";
-  let h = hashString(seed);
-  for (let i = 0; i < length; i++) {
-    h = Math.imul(h ^ (h >>> 13), 2654435761) >>> 0;
-    out += alphabet[h % alphabet.length];
-  }
-  return out;
-};
-
-/**
- * Deterministic companion address for a (primary address, family) pair, in
- * that family's canonical shape. Stands in for the wallet a user would
- * actually connect during a real link flow.
- */
-export const mockLinkedAddress = (primary: string, family: ChainFamily): string => {
-  const seed = `${primary}:${family}`;
-  switch (family) {
-    case "evm":
-      return `0x${charsFrom(seed, HEX, 40)}`;
-    case "aptos":
-      return `0x${charsFrom(seed, HEX, 64)}`;
-    case "substrate":
-      return `5${charsFrom(seed, BASE58, 47)}`;
-    case "solana":
-      return charsFrom(seed, BASE58, 44);
-    case "cosmos":
-      return `cosmos1${charsFrom(seed, BASE58.toLowerCase(), 38)}`;
-    case "sui":
-    case "starknet":
-      return `0x${charsFrom(seed, HEX, 64)}`;
-    case "near":
-      return `${charsFrom(seed, HEX, 12)}.near`;
-    case "tron":
-      return `T${charsFrom(seed, BASE58, 33)}`;
-    case "cardano":
-      return `addr1${charsFrom(seed, BASE58.toLowerCase(), 53)}`;
-    case "ton":
-      return `EQ${charsFrom(seed, BASE58, 46)}`;
-    case "hedera":
-      return `0.0.${(hashString(seed) % 9_000_000) + 1_000_000}`;
-  }
-};
-
-/** Mock handles for the seeded uploaders so the leaderboard feels inhabited. */
-const HANDLES = [
-  "permaweb.eth",
-  "chunkwright",
-  "anchorsmith",
-  "cidkeeper",
-  "blockbinder",
-  "ledgerloom",
-] as const;
-
-/** Which extra runtimes each seeded profile has linked (varies by address). */
-const linkedFamiliesFor = (address: string): ChainFamily[] => {
-  const all: ChainFamily[] = ["substrate", "solana", "aptos"];
-  const n = hashString(address) % (all.length + 1);
-  return all.slice(0, n);
-};
-
+/** Build a profile row from one uploader aggregate. */
 const buildProfile = (
   address: string,
-  stats: ProfileStats,
-  index: number,
+  stats: { files: number; bytes: number; anchors: number; chains: number; donatedUsdc: number },
+  i: number,
 ): PublicProfile => {
-  const linkedWallets: LinkedWallet[] = linkedFamiliesFor(address).map(
-    (family, i) => ({
-      family,
-      address: mockLinkedAddress(address, family),
-      linkedAt: 1_735_689_600 + index * 86_400 * 11 + i * 86_400 * 3,
-    }),
-  );
+  const family = guessFamily(address);
+  const linkedWallets: LinkedWallet[] = [];
+  for (const f of ["solana", "aptos", "substrate", "near", "cosmos"] as ChainFamily[]) {
+    if (f === family) continue;
+    linkedWallets.push({
+      family: f,
+      address: mockLinkedAddress(address, f),
+      linkedAt: 1_700_000_000 + (i * 86_400) % (365 * 86_400),
+    });
+  }
   return {
     address,
-    family: "evm",
-    handle: HANDLES[index % HANDLES.length],
+    family,
+    handle: hashString(address) % 1000 === 0 ? `handle.${(hashString(address) % 9999).toString(36)}` : undefined,
     linkedWallets,
     stats,
-    firstSeen: 1_735_689_600 + index * 86_400 * 9,
+    firstSeen: 1_700_000_000 - ((hashString(address) % (365 * 86_400 * 3))),
   };
 };
 
-/* ----------------------------------------------------------------------------
- * Public surface
- * --------------------------------------------------------------------------- */
+/**
+ * Resolve any of a profile's linked addresses back to the canonical
+ * profile, then merge in the indexer's uploader aggregates. The mock
+ * derives the "linked wallet" set deterministically — a real identity
+ * registry would resolve signed attestations instead.
+ */
+const resolveProfile = async (
+  queryAddress: string,
+): Promise<{ profile: PublicProfile; known: boolean } | null> => {
+  const aggregates = await getUploaderAggregates();
+  const matched = aggregates.find((agg) => {
+    if (agg.address.toLowerCase() === queryAddress.toLowerCase()) return true;
+    // Match any of the deterministic companion addresses — the public
+    // profile page accepts both the canonical id and a linked one.
+    for (const f of ["solana", "aptos", "substrate", "near", "cosmos"] as ChainFamily[]) {
+      if (mockLinkedAddress(queryAddress, f).toLowerCase() === queryAddress.toLowerCase()) {
+        return true;
+      }
+    }
+    return false;
+  });
+  if (!matched) return null;
+  const profile = buildProfile(
+    matched.address,
+    {
+      files: matched.files,
+      bytes: matched.bytes,
+      anchors: matched.anchors,
+      chains: matched.chains,
+      donatedUsdc: hashString(matched.address) % 40,
+    },
+    aggregates.findIndex((a) => a.address === matched.address),
+  );
+  return { profile, known: matched.anchors > 0 };
+};
 
 /**
- * Ranked leaderboard of uploaders. File/byte/anchor numbers come from the
- * cid-indexer aggregates so they always match the explorer; donation totals
- * are seeded here (TODO: aggregate real DonationEscrow events per donor).
+ * Ranked leaderboard of uploaders. File/anchor numbers come from the
+ * indexer aggregates so they always match the explorer; donation
+ * totals are seeded here (TODO: aggregate real DonationEscrow events
+ * per donor).
  */
 export const getLeaderboard = async (): Promise<PublicProfile[]> => {
   const aggregates = await getUploaderAggregates();
@@ -166,34 +140,43 @@ export const getLeaderboard = async (): Promise<PublicProfile[]> => {
   return profiles.map((p, i) => ({ ...p, rank: i + 1 }));
 };
 
-/**
- * Resolve a profile by its canonical address OR any linked wallet address.
- * Unknown addresses get an empty profile (zero stats, no links) so any
- * freshly connected wallet still has a public page.
- */
+/** Resolve an address (canonical or linked) to its public profile. */
 export const getProfile = async (address: string): Promise<PublicProfile> => {
-  const needle = address.trim();
-  const lowered = needle.toLowerCase();
-  const board = await getLeaderboard();
-  const known = board.find(
-    (p) =>
-      p.address.toLowerCase() === lowered ||
-      p.linkedWallets.some((w) => w.address.toLowerCase() === lowered),
-  );
-  if (known) return known;
+  const direct = await resolveProfile(address);
+  if (direct) return direct.profile;
+
+  // Fallback for an address with zero indexer activity — synthesize a
+  // profile from the address shape alone so the page renders something
+  // (with stats=0 + noindex robots). The page will already mark the
+  // returned profile as "no public anchors" via the metadata helper.
+  const family = guessFamily(address);
   return {
-    address: needle,
-    family: guessFamily(needle),
+    address,
+    family,
+    handle: undefined,
     linkedWallets: [],
     stats: { files: 0, bytes: 0, anchors: 0, chains: 0, donatedUsdc: 0 },
-    firstSeen: Math.floor(Date.now() / 1000),
+    firstSeen: 0,
   };
 };
 
-/** Best-effort family guess from an address's shape. */
-export const guessFamily = (address: string): ChainFamily => {
-  if (address.startsWith("0x")) {
-    return address.length > 50 ? "aptos" : "evm";
+/**
+ * Look up a profile by a fallback that tries the canonical address
+ * first, then any deterministic companion. Used by the public profile
+ * page when the URL contains a linked-wallet address.
+ */
+export const resolveProfileByAddress = async (
+  address: string,
+): Promise<PublicProfile> => {
+  const direct = await resolveProfile(address);
+  if (direct) return direct.profile;
+  // Try the canonical mapping: any linked address resolves to its primary.
+  for (const f of ["solana", "aptos", "substrate", "near", "cosmos"] as ChainFamily[]) {
+    const canonical = mockLinkedAddress(address, f);
+    if (canonical !== address) {
+      const r = await resolveProfile(canonical);
+      if (r) return r.profile;
+    }
   }
-  return address.startsWith("5") ? "substrate" : "solana";
+  return getProfile(address);
 };

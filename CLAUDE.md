@@ -321,11 +321,17 @@ semver ranges. Repo-level Claude Code skills live in `.claude/skills/`
 
 `apps/web/src/lib/mock/*` returns deterministic fake data and is the seam for
 real integration. Each file carries a `/* TODO: wire to … */` marker naming
-the real call to make (`registry.ts` → contract reads; `cid-indexer.ts` → an
-indexer; `cache.ts`, `donations.ts` → their contracts). `upload.ts` survives
-only as the fallback `useFileUploader` uses when `lib/anchor` throws
-`ChainNotProvisionedError`. When implementing real behavior, replace the mock
-body and keep the exported signature stable so callers don't change.
+the real call to make (`registry.ts` → contract reads; `cache.ts`,
+`donations.ts` → their contracts). `upload.ts` survives only as the fallback
+`useFileUploader` uses when `lib/anchor` throws `ChainNotProvisionedError`.
+
+`cid-indexer.ts` is the exception: the underlying data is real now (the
+DB-backed indexer at `lib/indexer/queries.ts`, fed by the
+`/api/cron/indexer-scan` cron on Sepolia + Auto EVM Chronos). The mock
+path stays as a thin re-export file so consumers don't need to change
+their import paths. When implementing real behavior for any other mock,
+replace the mock body and keep the exported signature stable so callers
+don't change.
 
 ### Account backend (auth, DB, credits, API keys, BYOK)
 

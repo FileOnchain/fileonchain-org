@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
-import { keccak256, stringToBytes } from "viem";
 import { getChain, ZERO_ADDRESS, type ChainConfig } from "@fileonchain/sdk";
 import { db, deposits } from "@/lib/db";
 import { requireUser, asRouteError } from "@/lib/auth";
@@ -11,13 +10,25 @@ import { microToUsdc } from "@/lib/usdc";
 /**
  * Confirm a pending USDC deposit.
  *
- * On chains whose USDC token is recorded in the registry (`usdcContract` —
- * the deployed MockUSDC on testnets), confirmation is verified on-chain:
- * the client submits the transfer's tx hash and the route checks the
- * receipt carries a USDC Transfer to the deposit address covering the
- * declared amount. Chains without a verifiable token keep the mock seam
- * (deterministic fake hash, client's word). TODO: replace the mock branch
- * with a Transfer watcher / permit2 pull as more chains provision.
+ * Confirmation is real on chains whose USDC token is recorded in the
+ * registry (`usdcContract` — the deployed MockUSDC on Sepolia + Auto
+ * EVM Chronos today). The route verifies the supplied tx hash by
+ * fetching its receipt and checking for a `Transfer` log to the
+ * deposit address that covers the declared amount. On a match, the
+ * route updates the deposit row and credits the user.
+ *
+ * The `/api/cron/deposits-watch` watcher auto-confirms the same
+ * deposits against the on-chain `Transfer` event stream — so this
+ * endpoint is a manual convenience for users who want their credit
+ * the moment they hit send rather than waiting for the next tick.
+ * The unique `deposit.tx_hash` index guarantees a manual confirm and
+ * an auto watcher can never both win on the same hash.
+ *
+ * Chains without a verifiable token (no `usdcContract`) reject at the
+ * route layer with 400 — every chain the UI lets a user create a
+ * deposit on today is verifiable, so the prior mock seam was
+ * unreachable in practice. New chains must add a `usdcContract` to
+ * their `ChainConfig` to be selectable for deposits.
  */
 
 const isVerifiable = (
@@ -95,51 +106,57 @@ export async function POST(
     }
 
     const chain = getChain(pending.chainId);
-    let txHash: string;
+    if (!isVerifiable(chain)) {
+      return NextResponse.json(
+        { error: "This chain does not support on-chain deposit verification" },
+        { status: 400 },
+      );
+    }
+    if (!body.txHash || !/^0x[0-9a-fA-F]{64}$/.test(body.txHash)) {
+      return NextResponse.json(
+        { error: "This chain verifies deposits on-chain — provide the USDC transfer tx hash" },
+        { status: 400 },
+      );
+    }
 
-    if (isVerifiable(chain)) {
-      if (!body.txHash || !/^0x[0-9a-fA-F]{64}$/.test(body.txHash)) {
-        return NextResponse.json(
-          { error: "This chain verifies deposits on-chain — provide the USDC transfer tx hash" },
-          { status: 400 },
-        );
+    // One tx confirms one deposit: the unique `deposit.tx_hash` index
+    // rejects a second commit at the DB layer. We check here so the
+    // user gets a clean 409 instead of a constraint-violation 500.
+    const [claimed] = await db
+      .select({ id: deposits.id })
+      .from(deposits)
+      .where(eq(deposits.txHash, body.txHash));
+    if (claimed) {
+      return NextResponse.json(
+        { error: "That transaction already confirmed a deposit" },
+        { status: 409 },
+      );
+    }
+    try {
+      await verifyUsdcTransfer(
+        chain,
+        body.txHash as `0x${string}`,
+        pending.depositAddress,
+        pending.amountMicroUsdc,
+      );
+    } catch (error) {
+      if (error instanceof DepositVerifyError) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
       }
-      // One tx confirms one deposit: block replaying a hash another deposit
-      // already claimed.
-      const [claimed] = await db
-        .select({ id: deposits.id })
-        .from(deposits)
-        .where(eq(deposits.txHash, body.txHash));
-      if (claimed) {
-        return NextResponse.json(
-          { error: "That transaction already confirmed a deposit" },
-          { status: 409 },
-        );
-      }
-      try {
-        await verifyUsdcTransfer(
-          chain,
-          body.txHash as `0x${string}`,
-          pending.depositAddress,
-          pending.amountMicroUsdc,
-        );
-      } catch (error) {
-        if (error instanceof DepositVerifyError) {
-          return NextResponse.json({ error: error.message }, { status: 400 });
-        }
-        throw error;
-      }
-      txHash = body.txHash;
-    } else {
-      // Mock seam — chains without a recorded USDC token.
-      txHash = keccak256(stringToBytes(`fileonchain-deposit-tx:${id}`));
+      throw error;
     }
 
     // Guarded update: only the owner's still-pending deposit can confirm,
-    // so replaying the request cannot double-credit.
+    // so replaying the request cannot double-credit. The unique
+    // `tx_hash` index is the last-line defense against the manual +
+    // watcher race.
     const [deposit] = await db
       .update(deposits)
-      .set({ status: "confirmed", confirmedAt: new Date(), txHash })
+      .set({
+        status: "confirmed",
+        confirmedAt: new Date(),
+        txHash: body.txHash,
+      })
       .where(
         and(
           eq(deposits.id, id),
