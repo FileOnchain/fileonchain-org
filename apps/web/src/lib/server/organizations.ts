@@ -118,28 +118,34 @@ export const getOrganization = async (
   userId: string,
   orgId: string,
 ): Promise<OrganizationDetail> => {
-  const role = await membershipOf(userId, orgId);
+  // All three reads are independent (different tables or different
+  // filters on the same orgId) — fan them out so the detail endpoint
+  // pays one round trip instead of three. The 404/403 evaluation
+  // moves below the await so the parallel fetches can race without
+  // changing the response shape.
+  const [role, org, members] = await Promise.all([
+    membershipOf(userId, orgId),
+    db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, orgId))
+      .limit(1)
+      .then(([row]) => row),
+    db
+      .select({
+        userId: organizationMembers.userId,
+        name: users.name,
+        email: users.email,
+        role: organizationMembers.role,
+        joinedAt: organizationMembers.joinedAt,
+      })
+      .from(organizationMembers)
+      .innerJoin(users, eq(users.id, organizationMembers.userId))
+      .where(eq(organizationMembers.orgId, orgId))
+      .orderBy(organizationMembers.joinedAt),
+  ]);
   if (!role) throw new OrgError(404, "Organization not found");
-
-  const [org] = await db
-    .select()
-    .from(organizations)
-    .where(eq(organizations.id, orgId))
-    .limit(1);
   if (!org) throw new OrgError(404, "Organization not found");
-
-  const members = await db
-    .select({
-      userId: organizationMembers.userId,
-      name: users.name,
-      email: users.email,
-      role: organizationMembers.role,
-      joinedAt: organizationMembers.joinedAt,
-    })
-    .from(organizationMembers)
-    .innerJoin(users, eq(users.id, organizationMembers.userId))
-    .where(eq(organizationMembers.orgId, orgId))
-    .orderBy(organizationMembers.joinedAt);
 
   return {
     id: org.id,
