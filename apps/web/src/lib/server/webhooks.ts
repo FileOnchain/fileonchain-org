@@ -1,6 +1,6 @@
 import "server-only";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { and, eq, isNull, lte, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import {
   db,
   webhookDeliveries,
@@ -319,44 +319,46 @@ const postDelivery = async (
 
 /** Dispatch a single delivery by id. Updates the row's `attempts`,
  *  `delivered_at`, `last_error`, and `next_attempt_at` accordingly.
- *  No-op when the delivery is already delivered or absent. */
+ *  No-op when the delivery is already delivered or absent.
+ *
+ *  The delivery row read was previously followed by a separate
+ *  endpoint read chained on the FK. Both rows live in this tick's
+ *  Postgres trip together via INNER JOIN — one round trip instead
+ *  of two. The disabled-endpoint branch is left as a partial-state
+ *  guard (a previously-drained endpoint may have been disabled
+ *  between the lease claim and the dispatch). */
 export const dispatchDelivery = async (
   deliveryId: string,
 ): Promise<{ dispatched: boolean; ok: boolean }> => {
   const [row] = await db
     .select({
       id: webhookDeliveries.id,
-      endpointId: webhookDeliveries.endpointId,
       eventId: webhookDeliveries.eventId,
       eventType: webhookDeliveries.eventType,
       payload: webhookDeliveries.payload,
       attempts: webhookDeliveries.attempts,
+      endpointUrl: webhookEndpoints.url,
+      endpointSecret: webhookEndpoints.encryptedSecret,
+      endpointDisabledAt: webhookEndpoints.disabledAt,
     })
     .from(webhookDeliveries)
+    .innerJoin(
+      webhookEndpoints,
+      eq(webhookEndpoints.id, webhookDeliveries.endpointId),
+    )
     .where(eq(webhookDeliveries.id, deliveryId))
     .limit(1);
-  if (!row) return { dispatched: false, ok: false };
-
-  const [endpoint] = await db
-    .select({
-      url: webhookEndpoints.url,
-      encryptedSecret: webhookEndpoints.encryptedSecret,
-      disabledAt: webhookEndpoints.disabledAt,
-    })
-    .from(webhookEndpoints)
-    .where(eq(webhookEndpoints.id, row.endpointId))
-    .limit(1);
-  if (!endpoint || endpoint.disabledAt) {
-    // Endpoint is gone or disabled — leave the row as-is and stop
+  if (!row || row.endpointDisabledAt) {
+    // Endpoint gone or disabled — leave the row as-is and stop
     // touching it. Operators can re-enable or delete it from the
     // dashboard.
     return { dispatched: false, ok: false };
   }
 
-  const secret = openWebhookSecret(endpoint.encryptedSecret);
+  const secret = openWebhookSecret(row.endpointSecret);
   const body = JSON.stringify(row.payload);
   const result = await postDelivery(
-    endpoint.url,
+    row.endpointUrl,
     secret,
     body,
     row.id,
@@ -393,30 +395,68 @@ export const dispatchDelivery = async (
   return { dispatched: true, ok: false };
 };
 
+/** How long a leased row is held by a single drain tick. Picked to
+ *  comfortably outlive the 15s POST timeout in `postDelivery` while
+ *  staying far shorter than the 5-minute re-tick cadence — a crashed
+ *  drain releases its rows after this many seconds, so the worst-case
+ *  delivery delay is one lease period. The lease is purely a
+ *  mutual-exclusion marker; attempts and `delivered_at` are unchanged
+ *  until `dispatchDelivery` writes its terminal UPDATE. */
+const DRAIN_LEASE_MS = 30_000;
+
 /** Drain every delivery whose `next_attempt_at` has passed and that is
  *  still under the attempt cap. Returns the number attempted. Called
- *  by the `webhooks-drain` cron route once per minute. */
+ *  by the `webhooks-drain` cron route once per minute.
+ *
+ *  Concurrency contract: claim rows under a `FOR UPDATE SKIP LOCKED`
+ *  lease inside a single transaction so two overlapping drain ticks
+ *  can never both grab the same row. The lease pushes
+ *  `next_attempt_at` forward by `DRAIN_LEASE_MS`; if the tick that
+ *  claimed a row crashes mid-batch, the lease expires and the next
+ *  tick picks it up — the dispatcher's existing terminal UPDATE
+ *  still bumps `attempts`, so retries resume at the correct backoff
+ *  position on the second pass.
+ *
+ *  After claiming, the dispatcher fans out in parallel — every
+ *  delivery does its own (SELECT delivery) + (SELECT endpoint) + POST
+ *  + UPDATE pattern, and a slow endpoint on one row no longer blocks
+ *  the rest of the batch. */
 export const drainDueDeliveries = async (
   { limit = 200 }: { limit?: number } = {},
 ): Promise<{ attempted: number }> => {
-  const now = new Date();
-  const due = await db
-    .select({ id: webhookDeliveries.id })
-    .from(webhookDeliveries)
-    .where(
-      and(
-        isNull(webhookDeliveries.deliveredAt),
-        lte(webhookDeliveries.nextAttemptAt, now),
-        sql`${webhookDeliveries.attempts} < ${MAX_ATTEMPTS}`,
-      ),
-    )
-    .limit(limit);
+  const claimedIds: string[] = await db.transaction(async (tx) => {
+    const result = await tx.execute(sql`
+      UPDATE "webhook_delivery"
+      SET "next_attempt_at" = NOW() + INTERVAL '${sql.raw(
+        String(DRAIN_LEASE_MS),
+      )} milliseconds'
+      WHERE "id" IN (
+        SELECT "id" FROM "webhook_delivery"
+        WHERE "delivered_at" IS NULL
+          AND "next_attempt_at" <= NOW()
+          AND "attempts" < ${MAX_ATTEMPTS}
+        ORDER BY "next_attempt_at" ASC
+        LIMIT ${limit}
+        FOR UPDATE SKIP LOCKED
+      )
+      RETURNING "id"
+    `);
+    return ((result.rows ?? []) as Array<{ id: string }>).map((r) => r.id);
+  });
+
+  if (claimedIds.length === 0) return { attempted: 0 };
+
+  // Parallel dispatch. A slow endpoint on one row no longer stalls
+  // the rest of the batch — every row pays its own 15s POST budget
+  // independently. `allSettled` so one failure can't poison siblings.
+  const outcomes = await Promise.allSettled(
+    claimedIds.map((id) => dispatchDelivery(id)),
+  );
   let attempted = 0;
-  for (const row of due) {
-    const { ok } = await dispatchDelivery(row.id);
-    if (ok) attempted += 1;
+  for (const outcome of outcomes) {
+    if (outcome.status === "fulfilled" && outcome.value.ok) attempted += 1;
   }
-  return { attempted: attempted };
+  return { attempted };
 };
 
 /** Inspect a row by id without dispatching. Used by the
