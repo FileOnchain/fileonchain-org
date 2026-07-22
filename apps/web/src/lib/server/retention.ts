@@ -59,23 +59,6 @@ export const setRetentionPolicy = async (
     });
 };
 
-/** Stamp `expires_at` on a freshly-sealed envelope. */
-export const applyRetentionToNewEnvelope = async (
-  envelopeId: string,
-  orgId: string,
-  createdAt: Date,
-): Promise<Date | null> => {
-  const { windowDays } = await getEffectiveRetention(orgId);
-  const expiresAt = new Date(
-    createdAt.getTime() + windowDays * 24 * 60 * 60 * 1000,
-  );
-  await db
-    .update(evidenceEnvelopes)
-    .set({ expiresAt })
-    .where(eq(evidenceEnvelopes.id, envelopeId));
-  return expiresAt;
-};
-
 /**
  * Delete every envelope whose `expires_at < now()`. Returns the count so
  * the CLI / future cron can report. Batched in chunks to keep the
@@ -114,14 +97,16 @@ export const sweepExpiredEnvelopes = async (
       .where(inArray(evidenceEnvelopes.id, ids))
       .returning({ id: evidenceEnvelopes.id });
     total += deleted.length;
-    if (rows.length < batchSize) break;
 
-    // One batched fan-out per sweep loop instead of one DB round trip
-    // per expired envelope — the webhooks helper groups by
-    // `(orgId, eventType)` so a sweep that touches K envelopes across
-    // G ≤ K unique orgs runs G endpoint-lookups + G INSERTs instead
-    // of K + K. The fan-out is best-effort and never rolls back the
-    // delete.
+    // Fan out per deleted batch — INCLUDING the final partial batch
+    // (the previous code skipped this when `rows.length < batchSize`,
+    // which is the common case for a quiet org, so `evidence.expired`
+    // webhooks never fired for small sweeps). One batched fan-out per
+    // sweep loop instead of one DB round trip per expired envelope —
+    // the webhooks helper groups by `(orgId, eventType)` so a sweep
+    // that touches K envelopes across G ≤ K unique orgs runs G
+    // endpoint-lookups + G INSERTs instead of K + K. The fan-out is
+    // best-effort and never rolls back the delete.
     const fanout: PendingWebhookEvent[] = rows.map((r) => ({
       orgId: r.orgId,
       eventId: r.id,
@@ -133,6 +118,8 @@ export const sweepExpiredEnvelopes = async (
       },
     }));
     void enqueueWebhookDeliveriesBatch(fanout);
+
+    if (rows.length < batchSize) break;
   }
   return { deleted: total };
 };
