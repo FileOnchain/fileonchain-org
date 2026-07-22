@@ -11,8 +11,10 @@ import {
 import {
   db,
   agentRuns,
+  apiKeys,
   complianceReports,
   evidenceEnvelopes,
+  organizationMembers,
   orgSlas,
   organizations,
   retentionPolicies,
@@ -169,9 +171,13 @@ export const summarizePeriod = async (
   // Fan every period-scoped read out in parallel — they're all
   // independent (different tables or different filters) — so the
   // monthly cron + on-demand endpoint pay one round trip's worth of
-  // latency instead of seven. `uploadJobs` is keyed on user_id (the
-  // per-org filter is a known no-op until a future migration adds
-  // `org_id`); the other six counters are org-scoped as written.
+  // latency instead of seven. The anchor-count bucket filters
+  // `upload_job` rows through a CTE that resolves the row's org
+  // via `api_key.org_id` (when the row has an api_key_id) or
+  // `organization_member.org_id` (when the row is session-authed
+  // and api_key_id is null). The previous code filtered by
+  // `user_id = orgId`, which always returned 0 (the columns are
+  // different UUIDs).
   const [
     envelopeRows,
     envelopesVerifiedCount,
@@ -211,11 +217,20 @@ export const summarizePeriod = async (
       })
       .from(uploadJobs)
       .where(
-        and(
-          eq(uploadJobs.userId, orgId),
-          gte(uploadJobs.createdAt, periodStart),
-          lte(uploadJobs.createdAt, periodEnd),
-        ),
+        // Resolve the org via the same access path as the producer:
+        // the API key for API-key-authed jobs, or the user's
+        // membership for session-authed jobs (api_key_id IS NULL).
+        // The subquery lifts this out so the filter is a single IN
+        // against the resolved org ids within the period window.
+        sql`${uploadJobs.id} IN (
+          SELECT uj.id FROM ${uploadJobs} uj
+          LEFT JOIN ${apiKeys} ak ON ak.id = uj.api_key_id
+          LEFT JOIN ${organizationMembers} om
+            ON om.user_id = uj.user_id AND ak.id IS NULL
+          WHERE (ak.org_id = ${orgId} OR om.org_id = ${orgId})
+            AND uj.created_at >= ${periodStart}
+            AND uj.created_at <= ${periodEnd}
+        )`,
       ),
     countScalar(sql`
       SELECT count(*) AS value
