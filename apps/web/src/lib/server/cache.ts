@@ -4,10 +4,9 @@ import {
   ZERO_ADDRESS,
   cachePaymentsAbi,
   isChainActive,
-  type CacheTier,
   type ChainConfig,
 } from "@fileonchain/sdk";
-import type { MockCacheEntry } from "@/lib/mock/cache";
+import type { CacheTier, MockCacheEntry } from "@/lib/mock/cache";
 import { RPC_TRANSPORT_OPTS } from "@/lib/scan-window";
 
 /**

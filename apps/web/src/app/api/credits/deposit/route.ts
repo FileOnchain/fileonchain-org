@@ -43,11 +43,13 @@ const deriveDepositAddress = (userId: string): `0x${string}` => {
   if (!mnemonic) {
     throw new Error("DEPOSIT_TREASURY_MNEMONIC unset — configure the treasury seed first");
   }
-  const root = mnemonicToAccount(mnemonic.trim(), { accountIndex: 0, change: 0 });
-  return hdKeyToAccount(
-    root.getHdKey(),
-    `m/44'/60'/${deriveUserIndex(userId)}'/0/0`,
-  ).address;
+  const root = mnemonicToAccount(mnemonic.trim(), {
+    accountIndex: 0,
+    changeIndex: 0,
+  });
+  return hdKeyToAccount(root.getHdKey(), {
+    path: `m/44'/60'/${deriveUserIndex(userId)}'/0/0`,
+  }).address;
 };
 
 export async function POST(request: Request) {
