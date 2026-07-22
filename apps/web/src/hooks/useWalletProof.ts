@@ -11,6 +11,8 @@ import { useStarknetWallet } from "@/hooks/useStarknetWallet";
 import { useNearWallet } from "@/hooks/useNearWallet";
 import { useTronWallet } from "@/hooks/useTronWallet";
 import { useCardanoWallet } from "@/hooks/useCardanoWallet";
+import { useTonWallet } from "@/hooks/useTonWallet";
+import { useHederaWallet } from "@/hooks/useHederaWallet";
 import { useWalletStates } from "@/states/wallet";
 import {
   buildStarknetTypedData,
@@ -26,6 +28,9 @@ export interface WalletProof {
   nonce: string;
   publicKey?: string;
   fullMessage?: string;
+  /** TON Connect binds a `timestamp` + `domain` into the signed digest. */
+  timestamp?: number;
+  domain?: string;
 }
 
 const requestNonce = async (
@@ -60,6 +65,8 @@ export const useWalletProof = () => {
   const near = useNearWallet();
   const tron = useTronWallet();
   const cardano = useCardanoWallet();
+  const ton = useTonWallet();
+  const hedera = useHederaWallet();
   const substrateAccount = useWalletStates((s) => s.selectedAccount);
   const setSelectedAccount = useWalletStates((s) => s.setSelectedAccount);
   const setAccounts = useWalletStates((s) => s.setAccounts);
@@ -184,10 +191,29 @@ export const useWalletProof = () => {
           const { signature, key } = await cardano.signData(message);
           return { family, address, signature, nonce, publicKey: key };
         }
-        case "ton":
-        case "hedera":
-          // Kept out of WALLET_FAMILIES — see lib/auth/wallet-message.ts.
-          throw new Error(`Wallet sign-in is not yet supported for ${family}`);
+        case "ton": {
+          const address = ton.address ?? (await ton.connect());
+          const { nonce, issuedAt } = await requestNonce(family, address);
+          const message = buildWalletMessage({ family, address, nonce, issuedAt });
+          const { signature, publicKey, timestamp, domain } =
+            await ton.signMessage(message);
+          return {
+            family,
+            address,
+            signature,
+            nonce,
+            publicKey,
+            timestamp,
+            domain,
+          };
+        }
+        case "hedera": {
+          const address = hedera.address ?? (await hedera.connect());
+          const { nonce, issuedAt } = await requestNonce(family, address);
+          const message = buildWalletMessage({ family, address, nonce, issuedAt });
+          const { signature, publicKey } = await hedera.signMessage(message);
+          return { family, address, signature, nonce, publicKey };
+        }
       }
     },
     [
@@ -200,6 +226,8 @@ export const useWalletProof = () => {
       near,
       tron,
       cardano,
+      ton,
+      hedera,
       substrateAccount,
       setAccounts,
       setSelectedAccount,

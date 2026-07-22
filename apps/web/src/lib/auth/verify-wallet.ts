@@ -17,15 +17,16 @@ export interface WalletVerificationInput {
   address: string;
   /**
    * Family-shaped signature: hex (evm, substrate, aptos, tron), base64
-   * (solana, cosmos, near, sui — sui's embeds the public key), a JSON felt
-   * array (starknet), or COSE_Sign1 CBOR hex (cardano).
+   * (solana, cosmos, near, sui, ton, hedera), a JSON felt array (starknet),
+   * or COSE_Sign1 CBOR hex (cardano).
    */
   signature: string;
   nonce: string;
   /**
    * The signer's key where signatures don't recover it: aptos (hex
    * ed25519), cosmos (base64 secp256k1), near ("ed25519:…"), cardano
-   * (COSE_Key CBOR hex). Unused elsewhere.
+   * (COSE_Key CBOR hex), ton (hex ed25519), hedera (hex ed25519/ECDSA).
+   * Unused elsewhere.
    */
   publicKey?: string;
   /**
@@ -33,6 +34,12 @@ export interface WalletVerificationInput {
    * — they return it as `fullMessage`, which is what the signature covers.
    */
   fullMessage?: string;
+  /**
+   * TON Connect binds a `timestamp` + `domain` into the signed digest.
+   * Required for the TON verifier; unused elsewhere.
+   */
+  timestamp?: number;
+  domain?: string;
 }
 
 export type WalletVerificationResult =
@@ -181,11 +188,14 @@ const verifyForFamily = async (
       return verifyCardano(input, message);
     }
 
-    case "ton":
-    case "hedera":
-      // Anchoring works on these families; sign-in doesn't yet — TON needs
-      // a TON Connect proof flow, Hedera a HashConnect pairing. Keep them
-      // out of WALLET_FAMILIES (wallet-message.ts) until that lands.
-      throw new Error(`Wallet sign-in is not yet supported for ${input.family}`);
+    case "ton": {
+      const { verifyTon } = await import("./verifiers/ton");
+      return verifyTon(input, message);
+    }
+
+    case "hedera": {
+      const { verifyHedera } = await import("./verifiers/hedera");
+      return verifyHedera(input, message);
+    }
   }
 };
