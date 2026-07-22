@@ -6,34 +6,42 @@ import { useDonationsStates } from "@/states/donations";
 
 /**
  * DonationImpactStrip — ledger-style animated totals derived from the
- * donations feed: amount raised, distinct donors, and funded targets.
- * Gives the donations page a sense of collective impact above the feed.
+ * donations feed: amount raised (donation count for now), distinct
+ * donors, and funded targets.
+ *
+ * The donations feed carries **native-token wei** strings from the
+ * `Donated` event, not USDC strings as the legacy mock did — the
+ * previous version summed `"10 USDC"` and `"5"` as if both were USD,
+ * which is wrong as soon as any chain carries real native donations.
+ * Until we have a price oracle across chains we report the donation
+ * **count** instead of an unsound "raised" total, and stop applying a
+ * `USDC` suffix. This keeps the surface honest while we ship the
+ * price-oracle follow-up.
  */
 export const DonationImpactStrip = () => {
   const feed = useDonationsStates((s) => s.feed);
 
-  const { totalUsdc, donors, targets } = React.useMemo(() => {
+  const { donations, donors, targets } = React.useMemo(() => {
     const donorSet = new Set<string>();
     const targetSet = new Set<string>();
-    let total = 0;
     for (const d of feed) {
       donorSet.add(d.donor.toLowerCase());
       targetSet.add(`${d.recipientType}:${d.target}`);
-      // Mock amounts are human-readable strings like "10 USDC".
-      const amount = Number.parseFloat(d.amount);
-      if (Number.isFinite(amount)) total += amount;
     }
-    return { totalUsdc: total, donors: donorSet.size, targets: targetSet.size };
+    return {
+      donations: feed.length,
+      donors: donorSet.size,
+      targets: targetSet.size,
+    };
   }, [feed]);
 
   return (
     <div className="grid grid-cols-1 gap-6 rounded-2xl border border-border bg-surface p-6 sm:grid-cols-3 sm:gap-8">
       <StatCounter
-        value={totalUsdc}
-        label="Raised for pinning"
-        hint="All recipients, USDC"
-        format={(n) => n.toFixed(0)}
-        suffix=" USDC"
+        value={donations}
+        label="Donations"
+        hint="Across every chain"
+        format={(n) => Math.round(n).toString()}
       />
       <StatCounter
         value={donors}

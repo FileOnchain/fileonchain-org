@@ -59,6 +59,19 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
   const uniqueSubmitters = new Set(hits.map((h) => h.submitter));
   const submitter = hits[0]?.submitter;
 
+  // Lazily warm the tx→payload RPC fetcher for the most-recent anchor
+  // hit so the next interaction can render decoded payloads without an
+  // extra roundtrip. Fail soft: a 404 leaves the existing txHash row
+  // visible and falls back to the indexer DB hit.
+  React.useEffect(() => {
+    const first = anchoredHits[0];
+    if (!first) return;
+    void fetch(
+      `/api/v1/explorer/tx/${encodeURIComponent(first.chainId)}/${first.txHash}`,
+      { cache: "no-store" },
+    ).catch(() => undefined);
+  }, [anchoredHits]);
+
   return (
     <PageShell size="wide" padding="lg">
       {/* Breadcrumb */}

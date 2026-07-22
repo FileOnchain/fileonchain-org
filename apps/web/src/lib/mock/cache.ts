@@ -48,7 +48,9 @@ export interface MockCacheEntry {
   allowList: `0x${string}`[];
 }
 
-/* TODO: wire to real CachePayments contract calls */
+/* Unprovisioned chains fall back to this seed data — see
+ * `lib/server/cache.ts` for the contract event scan that powers real
+ * chains. */
 
 const seedEntry = (
   idSeed: string,

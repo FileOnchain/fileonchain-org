@@ -100,6 +100,15 @@ export interface ChainConfig {
    */
   integrationStatus?: IntegrationStatus;
   testnet: boolean;
+  /**
+   * Optional Subscan-style mirror API base URL used to resolve a CID to a
+   * substrate extrinsic. Substrate chains only — the explorer/indexer
+   * cannot natively resolve a tx-hash to a block, so we lean on the
+   * chain's public mirror. Subscan-backed asset hubs require an API key
+   * per request; until `SUBSCAN_API_KEY` is provisioned, those chains
+   * leave this field empty and `getCIDRecord` falls back to the mock.
+   */
+  mirrorApiUrl?: string;
 }
 
 export const ZERO_ADDRESS =
@@ -703,6 +712,7 @@ export const CHAINS: readonly ChainConfig[] = [
     status: "active",
     integrationStatus: "webapp-integrated",
     testnet: false,
+    mirrorApiUrl: "https://explorer.autonomys.xyz/api",
   },
   {
     id: "substrate:autonomys-taurus",
@@ -725,6 +735,7 @@ export const CHAINS: readonly ChainConfig[] = [
     status: "active",
     integrationStatus: "webapp-integrated",
     testnet: true,
+    mirrorApiUrl: "https://explorer.taurus.autonomys.xyz/api",
   },
   {
     id: "substrate:polkadot-asset-hub",

@@ -7,6 +7,7 @@ import { ChainBadge } from "@/components/ui/ChainBadge";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useDonationsStates } from "@/states/donations";
+import type { MockDonation } from "@/lib/mock/donations";
 import { getChain } from "@fileonchain/sdk";
 import { truncateCID } from "@/lib/cid/format";
 import { FiHeart } from "react-icons/fi";
@@ -27,9 +28,37 @@ const formatAgo = (ts: number): string => {
 
 /**
  * DonationsFeed — recent donations feed. Renders memo + donor + amount.
+ *
+ * On mount we hydrate the Zustand store from `/api/donations/recent`,
+ * which reads the `Donated` event stream across every provisioned EVM
+ * chain via `lib/server/donations.ts`. Real events are native-token
+ * amounts in wei — the contract is `payable` — so we prepend the native
+ * symbol from the chain's metadata on render.
  */
 export const DonationsFeed = () => {
   const feed = useDonationsStates((s) => s.feed);
+  const addDonation = useDonationsStates((s) => s.addDonation);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/donations/recent?limit=20", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as { donations?: MockDonation[] };
+        if (cancelled || !data.donations) return;
+        for (const donation of data.donations) {
+          addDonation(donation);
+        }
+      } catch {
+        // Network failure: keep the seeded state.
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [addDonation]);
 
   if (feed.length === 0) {
     return (

@@ -7,9 +7,10 @@ import {
 } from "@fileonchain/sdk";
 
 /* Provisioned EVM chains read the real FileRegistry through
- * lib/registry/reads.ts; these mocks remain the fallback for chains with
- * nothing deployed (and the polkadot-query path still TODO).
- */
+ * `lib/registry/reads.ts`; substrate chains with a configured
+ * `mirrorApiUrl` read through the Subscan / explorer mirror API. These
+ * mocks remain the fallback for chains with nothing deployed and for
+ * substrate chains without a mirror key. */
 
 /**
  * Deterministic pseudo-random hash derived from a CID + chain id. Same input

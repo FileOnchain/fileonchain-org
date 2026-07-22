@@ -8,12 +8,14 @@ import { Badge } from "@/components/ui/Badge";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useCacheStates } from "@/states/cache";
+import type { MockCacheEntry } from "@/lib/mock/cache";
 
 interface CacheMyListProps {
   onManageAccess: (id: `0x${string}`) => void;
 }
 
 const formatSize = (bytes: number): string => {
+  if (bytes <= 0) return "—";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
@@ -23,10 +25,41 @@ const formatSize = (bytes: number): string => {
 /**
  * CacheMyList — current cache entries with size, expiry, access-list count,
  * and a Manage access button per row.
+ *
+ * On mount we hydrate the Zustand store from `/api/cache/entries`, which
+ * reads the user's real `CachePayments` entries via the contract event
+ * scan in `lib/server/cache.ts`. When the request fails (no session, no
+ * wallet row, or RPC error) we keep the seeded entries so the page stays
+ * explorable in dev.
  */
 export const CacheMyList = ({ onManageAccess }: CacheMyListProps) => {
   const entries = useCacheStates((s) => s.entries);
   const removeEntry = useCacheStates((s) => s.removeEntry);
+  const addEntry = useCacheStates((s) => s.addEntry);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/cache/entries", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as { entries?: MockCacheEntry[] };
+        if (cancelled || !data.entries) return;
+        // Merge: each real entry replaces any seeded entry with the same
+        // id (so we don't show the same row twice), and we surface
+        // contract-only entries first.
+        for (const entry of data.entries) {
+          addEntry(entry);
+        }
+      } catch {
+        // Network failure: keep the seeded state.
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [addEntry]);
 
   if (entries.length === 0) {
     return (
