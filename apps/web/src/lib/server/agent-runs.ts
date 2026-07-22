@@ -3,6 +3,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { HttpError } from "@/lib/server/http-error";
 import { logActivity } from "@/lib/server/activity";
 import { enqueueWebhookDeliveries } from "@/lib/server/webhooks";
+import { isUniqueViolation } from "@/lib/server/preferences";
 import {
   db,
   agentRuns,
@@ -85,15 +86,22 @@ export const submitAgentRun = async (
       agentId,
       envelopeId: submit.envelopeId,
     });
-  } catch {
+  } catch (error) {
     // The unique index on (orgId, runId, envelopeId) catches duplicate
     // resubmits — same caller, same run, same envelope. Surface that as
-    // 409 rather than a generic 500.
-    throw new HttpError(
-      409,
-      `Agent run already recorded for runId=${runId} agentId=${agentId}`,
-      "conflict",
-    );
+    // 409 rather than a generic 500. Other DB errors (connection
+    // drops, FK violations, schema drift) bubble up so the caller sees
+    // a real 5xx rather than a misleading 409 conflict — the previous
+    // `catch {}` masked every error as a duplicate and turned outages
+    // into silent re-submissions.
+    if (isUniqueViolation(error)) {
+      throw new HttpError(
+        409,
+        `Agent run already recorded for runId=${runId} agentId=${agentId}`,
+        "conflict",
+      );
+    }
+    throw error;
   }
 
   await logActivity(apiKey.userId, "agent_run_sealed", {
