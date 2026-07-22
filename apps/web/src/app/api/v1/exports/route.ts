@@ -6,6 +6,7 @@ import {
   CLOUD_EXPORTS_DISABLED_BODY,
   isCloudExportsEnabled,
 } from "@/lib/server/cloud-feature";
+import { getProjectOrgId } from "@/lib/server/projects";
 import {
   createExportJob,
   listExportJobs,
@@ -65,6 +66,20 @@ export async function POST(request: Request) {
         "project-scoped API keys can only export their own project",
         "bad_request",
       );
+    }
+    // Cross-tenant leak guard: when the caller names a project, verify
+    // it belongs to the org whose key they're holding. Org-scoped keys
+    // previously trusted the body's projectId without checking — a key
+    // for org A could name a projectId belonging to org B and the
+    // export would attempt to walk envelopes from a tenant the caller
+    // is not a member of. Project-scoped keys are already constrained
+    // by the previous check, but the same projectOrgId comparison
+    // applies — defense in depth.
+    if (projectIdRaw) {
+      const projectOrgId = await getProjectOrgId(projectIdRaw);
+      if (!projectOrgId || projectOrgId !== apiKey.orgId) {
+        throw new HttpError(404, "Project not found", "not_found");
+      }
     }
     const jobId = await createExportJob(apiKey.orgId, apiKey.userId, {
       projectId: projectIdRaw,
