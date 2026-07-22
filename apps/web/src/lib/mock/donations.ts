@@ -14,7 +14,9 @@ export interface MockDonation {
   txHash: `0x${string}`;
 }
 
-/* TODO: wire to real DonationEscrow.donate events */
+/* Unprovisioned chains fall back to this seed data — see
+ * `lib/server/donations.ts` for the `Donated` event scan that powers
+ * real chains. */
 
 const seed = (
   idSeed: string,
