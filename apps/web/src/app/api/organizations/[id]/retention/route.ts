@@ -6,6 +6,10 @@ import {
   setRetentionPolicy,
 } from "@/lib/server/retention";
 import { logActivity } from "@/lib/server/activity";
+import {
+  CLOUD_DISABLED_BODY,
+  isCloudEvidenceEnabled,
+} from "@/lib/server/cloud-feature";
 import { asOrgError } from "../../shared";
 
 type Params = { params: Promise<{ id: string }> };
@@ -15,9 +19,17 @@ type Params = { params: Promise<{ id: string }> };
  * dashboard. Distinct from the API-key path `PATCH /api/v1/retention`: the
  * dashboard authenticates by session, so we re-check org membership here and
  * require owner/admin. Positive integer days only.
+ *
+ * Gated on `FILEONCHAIN_CLOUD_EVIDENCE_ENABLED` — the retention policy is
+ * the evidence surface's per-org TTL, so the editor is part of the closed
+ * Cloud feature (the API-key path under `/api/v1/retention` has the same
+ * gate).
  */
 
 export async function GET(_request: Request, { params }: Params) {
+  if (!isCloudEvidenceEnabled()) {
+    return NextResponse.json(CLOUD_DISABLED_BODY, { status: 503 });
+  }
   try {
     const userId = await requireUser();
     const { id } = await params;
@@ -30,6 +42,9 @@ export async function GET(_request: Request, { params }: Params) {
 }
 
 export async function PATCH(request: Request, { params }: Params) {
+  if (!isCloudEvidenceEnabled()) {
+    return NextResponse.json(CLOUD_DISABLED_BODY, { status: 503 });
+  }
   try {
     const userId = await requireUser();
     const { id } = await params;
