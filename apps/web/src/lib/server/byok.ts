@@ -1,5 +1,6 @@
 import "server-only";
 import type { byokKeys, ByokProvider, ByokStatus } from "@/lib/db/schema";
+import { env } from "@/lib/env";
 
 /** JSON shape for BYOK keys — never includes the (encrypted) key material. */
 export const serializeByokKey = (key: typeof byokKeys.$inferSelect) => ({
@@ -13,24 +14,49 @@ export const serializeByokKey = (key: typeof byokKeys.$inferSelect) => ({
   createdAt: key.createdAt.toISOString(),
 });
 
-/* DEFERRED: real provider-key validation for `autonomys-auto-drive` is
- * intentionally a deterministic mock until we add `@autonomys/auto-drive`
- * as a dependency and call `createAutoDriveApi({ apiKey })` plus an
- * account/limits read against the ai3.storage API. Tracking issue: see
- * the "Productionize mocked chain reads" PR follow-ups in the team
- * backlog. The mock below is the documented contract — both `POST
- * /api/byok` (add) and `POST /api/byok/[id]/validate` (revalidate) paths
- * exercise the success and failure branches without a real provider
- * key, so local dev keeps working without secrets. */
+/* Real provider-key validation for `autonomys-auto-drive` calls the
+ * Auto Drive HTTP API directly (no SDK install — the workspace already
+ * keeps chain SDKs dynamic-imported so heavy deps don't bleed into the
+ * server bundle). The account probe at `/accounts/@me` authenticates by
+ * `Authorization: Bearer <key>` and returns 200 on a valid key, 401/403
+ * on an invalid one. 5xx/network errors throw so the route does not
+ * downgrade a working user key to `invalid` because the provider is
+ * having a bad day. */
+
+/** Auto Drive HTTP API base — overridable via `AUTODRIVE_API_URL`. */
+const AUTODRIVE_BASE =
+  env.autodriveApiUrl ?? "https://mainnet.auto-drive.autonomys.xyz/api";
+
+/** Validate an Auto Drive API key against the account-probe endpoint. */
+const validateAutoDriveKey = async (key: string): Promise<ByokStatus> => {
+  const res = await fetch(`${AUTODRIVE_BASE}/accounts/@me`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${key.trim()}`,
+      "X-Auth-Provider": "apikey",
+    },
+    signal: AbortSignal.timeout(8_000),
+    cache: "no-store",
+  });
+  if (res.ok) return "valid";
+  if (res.status === 401 || res.status === 403) return "invalid";
+  // Provider outage / rate-limit / network: throw so the calling route
+  // surfaces the previous `valid` status rather than overwriting it.
+  throw new Error(`Auto Drive validation failed: HTTP ${res.status}`);
+};
 
 /**
- * MOCK provider-key validation. Deterministic: plausible-length keys pass,
- * so local flows can exercise both outcomes without a real provider account.
+ * Validate a provider key for the given BYOK provider.
+ *
+ * 200 from the account probe → "valid"; 401/403 → "invalid";
+ * any other status or network failure throws (the route preserves the
+ * prior stored status in that case rather than silently downgrading a
+ * working key).
  */
 export const validateProviderKey = async (
-  _provider: ByokProvider,
+  provider: ByokProvider,
   key: string,
 ): Promise<ByokStatus> => {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  return key.trim().length >= 20 ? "valid" : "invalid";
+  if (provider !== "autonomys-auto-drive") return "invalid";
+  return validateAutoDriveKey(key);
 };

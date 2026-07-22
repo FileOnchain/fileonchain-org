@@ -163,4 +163,18 @@ export const env = {
   get rateLimitV1IpPerMin(): string | undefined {
     return process.env.RATE_LIMIT_V1_IP_PER_MIN;
   },
+  /** Override for the Auto Drive account-probe endpoint used by
+   * `validateProviderKey` in `lib/server/byok.ts`. Absent = the public
+   * mainnet base URL. Set `AUTODRIVE_API_URL` to point at a staging
+   * mirror in tests. */
+  get autodriveApiUrl(): string | undefined {
+    return process.env.AUTODRIVE_API_URL;
+  },
+  /** Treasury BIP-39 mnemonic that owns the per-user deposit-address tree.
+   * Absent = `/api/credits/deposit` rejects with 503. Set
+   * `DEPOSIT_TREASURY_MNEMONIC` to a fresh 24-word seed; the treasury
+   * sweeps the derived addresses into a hot wallet. */
+  get depositTreasuryMnemonic(): string | undefined {
+    return process.env.DEPOSIT_TREASURY_MNEMONIC;
+  },
 };
