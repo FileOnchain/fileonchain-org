@@ -6,6 +6,7 @@ import {
   CLOUD_COMPLIANCE_DISABLED_BODY,
   isCloudComplianceEnabled,
 } from "@/lib/server/cloud-feature";
+import { requireOrgRole } from "@/lib/server/organizations";
 import { getComplianceReport } from "@/lib/server/compliance";
 import { logActivity } from "@/lib/server/activity";
 
@@ -16,7 +17,9 @@ import { logActivity } from "@/lib/server/activity";
  *   - API key (org/project scope) — returns the report immediately
  *   - Session                    — looks up a membership-derived org
  *                                  and returns the report (used by
- *                                  /cloud/compliance)
+ *                                  /cloud/compliance). The session
+ *                                  path now verifies membership
+ *                                  before reading the report.
  */
 
 export async function GET(
@@ -39,6 +42,10 @@ export async function GET(
       if (!queryOrgId) {
         return NextResponse.json({ error: "Missing orgId" }, { status: 400 });
       }
+      // Verify the session user is a member of the org they claim —
+      // without this, any signed-in user could read any org's report
+      // by passing its id. GET is non-mutating, so any role is fine.
+      await requireOrgRole(userId, queryOrgId, ["owner", "admin", "member"]);
       orgId = queryOrgId;
     }
     if (!orgId) {

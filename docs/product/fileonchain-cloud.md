@@ -86,10 +86,15 @@ endpoint in this group.
   `agent_run` table is the `(runId, agentId, envelopeId)` join key plus
   an audit trail.
 - **Hosted verification pages** — `apps/web/src/app/cloud/verify/[envelopeId]`
-  is the shareable URL that runs the open verifier over a stored
-  envelope and renders the check report. Same chip wording and grouped
-  sections as `/verify` — the page is a convenience rendering; the
-  verdict is always reproducible locally.
+  runs the open verifier over a stored envelope and renders the check
+  report. Same chip wording and grouped sections as `/verify` — the
+  page is a convenience rendering; the verdict is always reproducible
+  locally. The page is **org-member-only** (session auth via
+  `auth()`; non-members are redirected to `/login`). Public,
+  shareable verification of stored envelopes is **not** part of this
+  build — for a public verification path, use `/verify` with the
+  envelope JSON uploaded by the requester, or expose the
+  `evidence_envelope` JSON via the org's own application.
 - **Server-side verify** — `POST /api/v1/verify` runs `@fileonchain/verify`
   server-side and returns the same `VerificationReport` shape. Accepts
   `{ envelopeId }` (server fetches + ownership-checks) or `{ envelope }`

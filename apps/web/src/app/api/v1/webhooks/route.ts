@@ -38,7 +38,17 @@ const isValidUrl = (s: unknown): s is string => {
   if (typeof s !== "string") return false;
   try {
     const u = new URL(s);
-    return u.protocol === "https:" || u.protocol === "http:";
+    // HTTPS is the only scheme a production receiver should advertise.
+    // http:// is allowed only for localhost / 127.0.0.1 / ::1 so dev
+    // tooling (ngrok, local tunnels) can wire up without a proxy —
+    // a public http:// endpoint would be a downgrade + MITM risk for
+    // the HMAC-signed delivery.
+    if (u.protocol === "https:") return true;
+    if (u.protocol === "http:") {
+      const host = u.hostname.toLowerCase();
+      return host === "localhost" || host === "127.0.0.1" || host === "::1";
+    }
+    return false;
   } catch {
     return false;
   }
@@ -93,7 +103,11 @@ export async function POST(request: Request) {
       events?: unknown;
     } | null;
     if (!isValidUrl(body?.url)) {
-      throw new HttpError(400, "url must be an http(s) URL", "bad_request");
+      throw new HttpError(
+        400,
+        "url must be an https:// URL (or http://localhost for dev)",
+        "bad_request",
+      );
     }
     const events: WebhookEventType[] = Array.isArray(body?.events)
       ? body.events.filter(isEventType)

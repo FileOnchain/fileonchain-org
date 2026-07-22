@@ -40,7 +40,7 @@ wired end-to-end.
   several systems are **multi-system settlement receipts** —
   independent attestations, never a proof between systems.
 
-## Launch set (last verified 2026-07-11)
+## Launch set (last verified 2026-07-22)
 
 | System | Role | Adapter package | `integrationStatus` | Last verified |
 | --- | --- | --- | --- | --- |
@@ -48,9 +48,41 @@ wired end-to-end.
 | Autonomys Taurus (`substrate:autonomys-taurus`) | Storage + settlement (testnet) | `@fileonchain/sdk-substrate` | `webapp-integrated` | 2026-07-11 |
 | Solana (`solana:mainnet`) | Settlement (native SPL Memo, no deployment) | `@fileonchain/sdk-solana` | `webapp-integrated` | 2026-07-11 |
 | Solana Devnet (`solana:devnet`) | Settlement (testnet) | `@fileonchain/sdk-solana` | `webapp-integrated` | 2026-07-11 |
-| Ethereum Sepolia (`evm:11155111`) | Settlement (anchor-only FileRegistry contract) | `@fileonchain/sdk-evm` | `testnet-deployed` | 2026-07-11 |
-| Auto EVM Chronos (`evm:8700`) | Settlement (anchor-only FileRegistry contract, testnet) | `@fileonchain/sdk-evm` | `testnet-deployed` | 2026-07-11 |
-| Auto EVM mainnet (`evm:870`) | Settlement target — flips when the Chronos-tested registry lands on the mainnet domain | `@fileonchain/sdk-evm` | `testnet-deployed` (mainnet pending) | 2026-07-11 |
+| Ethereum Sepolia (`evm:11155111`) | Settlement (anchor-only FileRegistry contract) | `@fileonchain/sdk-evm` | `testnet-deployed` (PAYG + server-worker QA pending) | 2026-07-22 |
+| Auto EVM Chronos (`evm:8700`) | Settlement (anchor-only FileRegistry contract, testnet) | `@fileonchain/sdk-evm` | `testnet-deployed` (PAYG + server-worker QA pending) | 2026-07-22 |
+| Auto EVM mainnet (`evm:870`) | Settlement target — flips when the Chronos-tested registry lands on the mainnet domain | `@fileonchain/sdk-evm` | `testnet-deployed` (mainnet pending) | 2026-07-22 |
+| Cosmos Hub Testnet (`cosmos:theta-testnet-001`) | Settlement (tx memo, testnet) | `@fileonchain/sdk-cosmos` | `webapp-integrated` | 2026-07-22 |
+| TRON Nile (`tron:nile`) | Settlement (memo, testnet) | `@fileonchain/sdk-tron` | `webapp-integrated` | 2026-07-22 |
+| Cardano Preprod (`cardano:preprod`) | Settlement (tx metadata, testnet) | `@fileonchain/sdk-cardano` | `webapp-integrated` | 2026-07-22 |
+| TON Testnet (`ton:testnet`) | Settlement (transfer comment, testnet) | `@fileonchain/sdk-ton` | `webapp-integrated` | 2026-07-22 |
+
+**Memo-family mainnet promotion path** — the four `*:-mainnet` entries
+remain `status: "planned"` / `integrationStatus: "implemented"` /
+`memoAnchoring` unset. To open mainnet for a family, fund the testnet
+signer (runbook at `docs/deploy/memo-families.md`), confirm a credits
+upload renders on the live explorer, then on the corresponding mainnet
+entry set `status: "active"` + `memoAnchoring: true` +
+`integrationStatus: "webapp-integrated"` plus the `ANCHOR_*` env var for
+the family. The flip is a one-line change per entry — the SDKs are
+testnet-integrated already.
+
+**Sepolia / Chronos promotion path** — the `evm:11155111` and
+`evm:8700` entries are stuck at `testnet-deployed` because the
+end-to-end PAYG-and-server-worker QA has not yet been recorded. The
+boxes to tick (per `docs/chains/checklist.md`):
+
+1. PAYG browser-wallet upload on each chain successfully sends a
+   transaction through `apps/web/src/lib/anchor/evm` and the
+   resulting payload parses with `parseAnchorPayload`.
+2. Server worker is real: `ANCHOR_EVM_PRIVATE_KEY` funded on both
+   testnets, and a credits/BYOK upload through `anchor-worker.ts`
+   produces a real tx (not the deterministic mock) on each chain.
+3. Explorer links resolve visibly (`buildTxUrl` / `buildAddressUrl`).
+
+When all three are observed, bump both entries to
+`integrationStatus: "webapp-integrated"` and stamp the date. The
+indexer cron (`/api/cron/indexer-scan`) is already pulling events
+from both chains, so the server-discovery leg is wired.
 
 ## Roadmap adapters
 

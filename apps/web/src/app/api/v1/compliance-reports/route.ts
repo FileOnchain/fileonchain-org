@@ -6,6 +6,7 @@ import {
   CLOUD_COMPLIANCE_DISABLED_BODY,
   isCloudComplianceEnabled,
 } from "@/lib/server/cloud-feature";
+import { requireOrgRole } from "@/lib/server/organizations";
 import {
   generateComplianceReport,
   listComplianceReports,
@@ -16,6 +17,9 @@ import {
  * `POST /api/v1/compliance-reports`         on-demand generation
  *
  * Auth: org-scoped API key OR session (for the dashboard UI).
+ * Session paths now verify membership before listing or generating —
+ * the previous code accepted any `orgId` from the query/body, which
+ * let any signed-in user list or generate reports for any org.
  */
 
 export async function GET(request: Request) {
@@ -26,12 +30,13 @@ export async function GET(request: Request) {
     const apiKey = await authenticateApiKey(request);
     let orgId: string | null = apiKey?.orgId ?? null;
     if (!orgId) {
-      await requireUser();
+      const userId = await requireUser();
       const url = new URL(request.url);
       const queryOrgId = url.searchParams.get("orgId");
       if (!queryOrgId) {
         return NextResponse.json({ error: "Missing orgId" }, { status: 400 });
       }
+      await requireOrgRole(userId, queryOrgId, ["owner", "admin", "member"]);
       orgId = queryOrgId;
     }
     if (!orgId)
@@ -70,6 +75,10 @@ export async function POST(request: Request) {
     if (!orgId) {
       throw new HttpError(400, "Missing orgId", "bad_request");
     }
+    // Generate requires owner/admin — on-demand report generation
+    // signs the report body with the org's Cloud signer and should
+    // require the same authority as tier changes.
+    await requireOrgRole(userId, orgId, ["owner", "admin"]);
     const periodStart =
       typeof body?.periodStart === "string"
         ? new Date(body.periodStart)

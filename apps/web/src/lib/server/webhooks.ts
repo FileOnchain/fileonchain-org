@@ -9,6 +9,7 @@ import {
   type WebhookEventType,
 } from "@/lib/db";
 import { sealSecret, openSecret } from "@/lib/crypto/secretbox";
+import { isCloudWebhooksEnabled } from "@/lib/server/cloud-feature";
 
 /**
  * Webhook delivery service. The outbox pattern: every Cloud event
@@ -137,13 +138,19 @@ export const openWebhookSecret = (sealed: string): string => openSecret(sealed);
  *  index on (endpoint_id, event_id) makes this idempotent: re-running
  *  the same event (e.g. after a partial failure) does not duplicate
  *  rows. Fire-and-forget: callers should `queueMicrotask` so the API
- *  response is not blocked on fan-out. */
+ *  response is not blocked on fan-out.
+ *
+ *  Fast no-op when the webhooks feature flag is off — defence in depth
+ *  so a producer that fires before the flag is flipped (e.g. a
+ *  queued write still draining when ops turns the surface off) never
+ *  inserts a row that would later dispatch to a half-built endpoint. */
 export const enqueueWebhookDeliveries = async (
   orgId: string,
   eventType: WebhookEventType,
   eventId: string,
   payload: Record<string, unknown>,
 ): Promise<void> => {
+  if (!isCloudWebhooksEnabled()) return;
   try {
     const endpoints = await db
       .select({

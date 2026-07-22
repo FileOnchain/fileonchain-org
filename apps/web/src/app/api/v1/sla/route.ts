@@ -6,16 +6,22 @@ import {
   CLOUD_COMPLIANCE_DISABLED_BODY,
   isCloudComplianceEnabled,
 } from "@/lib/server/cloud-feature";
+import { requireOrgRole } from "@/lib/server/organizations";
 import { ensureOrgSla, updateOrgSla } from "@/lib/server/compliance";
 
 /**
  * `GET   /api/v1/sla`             current SLA (lazy-seeds 'free' tier)
  * `PATCH /api/v1/sla`             update tier / limits (admin path)
  *
- * Tier changes require org admin/owner — PATCH checks against
- * `requireOrgRole` upstream in the dashboard session path; the v1
- * bearer-key route restricts to org-scoped keys so a personal key
- * cannot change a tier.
+ * Auth modes:
+ *  - API key — `orgId` is read off the key's scope; the doc comment
+ *              that says "the role check is upstream" was incorrect
+ *              (the v1 surface accepts the orgId from a query/body
+ *              when no key is present, so the membership check has
+ *              to live here for the session path).
+ *  - Session — `orgId` is read from `?orgId=` / body, and the
+ *              requester must be a member of that org. PATCH further
+ *              requires owner/admin; GET any member.
  */
 
 export async function GET(request: Request) {
@@ -26,12 +32,17 @@ export async function GET(request: Request) {
     const apiKey = await authenticateApiKey(request);
     let orgId: string | null = apiKey?.orgId ?? null;
     if (!orgId) {
-      await requireUser();
+      const userId = await requireUser();
       const url = new URL(request.url);
       const queryOrgId = url.searchParams.get("orgId");
       if (!queryOrgId) {
         return NextResponse.json({ error: "Missing orgId" }, { status: 400 });
       }
+      // Verify the session user is actually a member of the org they
+      // claim — without this, any signed-in user could read any org's
+      // SLA by passing its id. The role list is permissive (any
+      // member) because GET is non-mutating.
+      await requireOrgRole(userId, queryOrgId, ["owner", "admin", "member"]);
       orgId = queryOrgId;
     }
     if (!orgId) {
@@ -63,12 +74,20 @@ export async function PATCH(request: Request) {
     let orgId: string | null = apiKey?.orgId ?? null;
     let actingUserId: string | null = apiKey?.userId ?? null;
     if (!orgId) {
-      actingUserId = await requireUser();
+      const userId = await requireUser();
       const body = (await request.json().catch(() => null)) as {
         orgId?: unknown;
       } | null;
       const fromBody = typeof body?.orgId === "string" ? body.orgId : "";
-      orgId = fromBody || null;
+      if (!fromBody) {
+        throw new HttpError(400, "Missing orgId", "bad_request");
+      }
+      // Verify the session user is an owner/admin of the org they
+      // claim — tier changes are sensitive (they shift SLA caps and
+      // billing posture) and require admin authority.
+      await requireOrgRole(userId, fromBody, ["owner", "admin"]);
+      actingUserId = userId;
+      orgId = fromBody;
     }
     if (!orgId) {
       throw new HttpError(401, "Could not resolve org", "unauthorized");

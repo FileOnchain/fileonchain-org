@@ -934,7 +934,14 @@ export const CHAINS: readonly ChainConfig[] = [
     palletContract: null,
     memoAnchoring: true,
     bech32Prefix: "cosmos",
-    status: "planned",
+    // v1 memo-family QA on the testnet is wired end-to-end:
+    // `lib/anchor/cosmos` builds the memo payload, the SDK signs via
+    // `ANCHOR_COSMOS_MNEMONIC`, and the explorer renders the carrier.
+    // Mainnet flip (`memoAnchoring: true` on `cosmos:cosmoshub-4`) is
+    // gated on testnet signers being funded + a credits upload observed
+    // on the live explorer — see `docs/deploy/memo-families.md`.
+    status: "active",
+    integrationStatus: "webapp-integrated",
     testnet: true,
   },
   // Sui — provisioned once the Move module address lands
@@ -1102,7 +1109,14 @@ export const CHAINS: readonly ChainConfig[] = [
     moduleAddress: null,
     palletContract: null,
     memoAnchoring: true,
-    status: "planned",
+    // v1 memo-family QA on the testnet is wired end-to-end:
+    // `lib/anchor/tron` builds the `extra_data` payload, the SDK
+    // signs via `ANCHOR_TRON_PRIVATE_KEY`, and the explorer renders
+    // the carrier. Mainnet flip is gated on testnet signers being
+    // funded + a credits upload observed on the live TronGrid
+    // explorer — see `docs/deploy/memo-families.md`.
+    status: "active",
+    integrationStatus: "webapp-integrated",
     testnet: true,
   },
   // Cardano — metadata-only MVP (no Plutus); rpcUrl expects a Blockfrost-compatible API
@@ -1144,7 +1158,15 @@ export const CHAINS: readonly ChainConfig[] = [
     moduleAddress: null,
     palletContract: null,
     memoAnchoring: true,
-    status: "planned",
+    // v1 memo-family QA on the testnet is wired end-to-end:
+    // `lib/anchor/cardano` builds the CIP-20 label 674 metadata,
+    // the SDK signs via `ANCHOR_CARDANO_SIGNING_KEY` and submits
+    // through `ANCHOR_CARDANO_BLOCKFROST_KEY`. Mainnet flip is
+    // gated on testnet signers being funded + a credits upload
+    // observed on the live Blockfrost explorer — see
+    // `docs/deploy/memo-families.md`.
+    status: "active",
+    integrationStatus: "webapp-integrated",
     testnet: true,
   },
   // TON — anchors ride transfer comments via TON Connect
@@ -1186,7 +1208,14 @@ export const CHAINS: readonly ChainConfig[] = [
     moduleAddress: null,
     palletContract: null,
     memoAnchoring: true,
-    status: "planned",
+    // v1 memo-family QA on the testnet is wired end-to-end:
+    // `lib/anchor/ton` builds the wallet-v4 transfer comment, the
+    // SDK signs via `ANCHOR_TON_MNEMONIC` (and optionally
+    // `ANCHOR_TON_API_KEY`). Mainnet flip is gated on testnet
+    // signers being funded + a credits upload observed on the live
+    // TON viewer — see `docs/deploy/memo-families.md`.
+    status: "active",
+    integrationStatus: "webapp-integrated",
     testnet: true,
   },
   // Hedera — anchors are HCS messages; hcsTopicId is the provisioning switch
