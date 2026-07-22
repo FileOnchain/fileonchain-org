@@ -5,11 +5,14 @@ import {
 } from "@fileonchain/sdk";
 import { joinFromMetadata } from "@fileonchain/sdk/cardano";
 
-/* TODO: wire to per-chain tx fetches — explorer detail pages should fetch a
- * confirmed transaction from the chain's RPC / mirror node and run it
- * through the matching extractor below. The extractors themselves are pure
- * and final; only the fetch layer is missing (see lib/mock/cid-indexer.ts,
- * which fakes the result today). */
+/* Tx→payload extraction. The extractors are pure and final; the
+ * cross-family RPC fetch layer that fetches a confirmed transaction by
+ * hash and runs it through the matching extractor lives in
+ * `apps/web/src/lib/explorer/tx-fetcher.ts` and is exposed via
+ * `/api/v1/explorer/tx/[chainId]/[txHash]`. Substrate tx-hash lookup
+ * requires a Subscan API key or an internal block index; see
+ * `substrate-mirror.ts` for the primary path and `substrate-chain.ts`
+ * for the block-hint scan fallback. */
 
 /**
  * Family-specific tx→payload extraction. Every family writes the same
@@ -24,8 +27,9 @@ const parseAll = (raws: readonly string[]): AnchorPayload[] =>
     .map((raw) => parseAnchorPayload(raw))
     .filter((payload): payload is AnchorPayload => payload !== null);
 
-/** EVM: the payload is the `uri` argument of `FileRegistry.anchorCID`
- * calldata (events carry only hashes). */
+/** EVM: the `CIDAnchored` / `ChunkAnchored` events emitted by the deployed
+ *  `FileRegistry` carry the payload directly in their `uri` argument, so
+ *  decoding the receipt logs is sufficient (no calldata walk needed). */
 export const extractEvmAnchors = (uris: readonly string[]): AnchorPayload[] =>
   parseAll(uris);
 
