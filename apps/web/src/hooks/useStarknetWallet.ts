@@ -4,7 +4,11 @@ import { useCallback } from "react";
 import { useWalletStates } from "@/states/wallet";
 import { trackEvent } from "@/lib/analytics";
 
-/* TODO: wire to get-starknet / starknetkit for the wallet-standard flow */
+// `useStarknetWallet` talks to Argent / Braavos through their injected
+// `window.starket` (ArgentX) / `window.starknet_braavos` providers
+// directly. `get-starknet` / `@starknetkit-io/starknetkit` would add a
+// multi-wallet modal — out of scope per the project's "targeted, not all
+// 12" wallet-adapter directive.
 
 interface StarknetAccount {
   address: string;

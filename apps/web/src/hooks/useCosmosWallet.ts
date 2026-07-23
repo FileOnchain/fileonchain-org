@@ -4,7 +4,10 @@ import { useCallback } from "react";
 import { useWalletStates } from "@/states/wallet";
 import { trackEvent } from "@/lib/analytics";
 
-/* TODO: wire to cosmos-kit for the full Keplr / Leap wallet-standard flow */
+// `useCosmosWallet` calls Keplr / Leap through their injected
+// `window.keplr ?? window.leap` provider directly. `cosmos-kit` would add
+// a multi-wallet discovery modal — out of scope per the project's
+// "targeted, not all 12" wallet-adapter directive.
 
 interface CosmosProvider {
   enable: (chainId: string) => Promise<void>;

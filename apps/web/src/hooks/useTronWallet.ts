@@ -4,7 +4,10 @@ import { useCallback } from "react";
 import { useWalletStates } from "@/states/wallet";
 import { trackEvent } from "@/lib/analytics";
 
-/* TODO: wire to @tronweb3/tronwallet-adapters for multi-wallet support */
+// `useTronWallet` talks to TronLink through its injected `window.tronWeb`
+// provider directly. `@tronweb3/tronwallet-adapters` would add a
+// multi-wallet modal — out of scope per the project's "targeted, not all
+// 12" wallet-adapter directive.
 
 /** Narrow view of the TronWeb instance TronLink injects — no npm dependency. */
 interface TronWebLike {

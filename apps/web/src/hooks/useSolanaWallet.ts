@@ -5,7 +5,10 @@ import { useWalletStates } from "@/states/wallet";
 import { getRpcOverrides } from "@/states/rpc-endpoints";
 import { trackEvent } from "@/lib/analytics";
 
-/* TODO: wire to wallet-adapter for Phantom / Solflare standard flow */
+// `useSolanaWallet` talks to Phantom / Solflare through their injected
+// `window.solana` provider directly. The `@solana/wallet-adapter` modal
+// would add multi-wallet discovery — out of scope per the project's
+// "targeted, not all 12" wallet-adapter directive.
 
 interface SolanaProvider {
   isPhantom?: boolean;

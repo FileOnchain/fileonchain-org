@@ -4,7 +4,10 @@ import { useCallback } from "react";
 import { useWalletStates } from "@/states/wallet";
 import { trackEvent } from "@/lib/analytics";
 
-/* TODO: wire to a wallet-standard adapter once one settles for Cardano */
+// `useCardanoWallet` uses CIP-30 directly via `cardano.{name}.enable()`,
+// which is the de-facto Cardano wallet standard today. A unified
+// wallet-standard adapter would be a follow-up if multi-wallet discovery
+// becomes a UX requirement.
 
 /** The API a CIP-30 wallet hands back from `enable()`. */
 interface Cip30Api {
