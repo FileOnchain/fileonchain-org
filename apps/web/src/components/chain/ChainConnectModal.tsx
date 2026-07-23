@@ -78,8 +78,8 @@ const INJECTED_WALLET_COPY: Partial<
   },
   hedera: {
     blurb:
-      "Hedera wallets pair via HashConnect, which is coming soon — anchor on Hedera with credits or the API meanwhile.",
-    cta: "Connect HashPack (soon)",
+      "Pair HashPack via WalletConnect in the AppKit modal. Browser-side anchoring is a follow-up — anchor on Hedera with credits or the API in the meantime.",
+    cta: "Connect HashPack",
   },
 };
 

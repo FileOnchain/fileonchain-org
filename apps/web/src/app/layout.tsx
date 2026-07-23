@@ -4,6 +4,7 @@ import { Instrument_Serif } from "next/font/google";
 import AnalyticsGate from "@/components/AnalyticsGate";
 import ThemeProvider from "@/components/ThemeProvider";
 import AuthSessionProvider from "@/components/providers/AuthSessionProvider";
+import WalletPairingProviders from "@/components/providers/WalletPairingProviders";
 import VersionWatcher from "@/components/VersionWatcher";
 import { ToastProvider } from "@/components/ui/Toast";
 import Nav from "@/components/layout/Nav";
@@ -181,15 +182,17 @@ export default function RootLayout({
       <body className="bg-background text-foreground font-sans min-h-screen flex flex-col antialiased">
         <ThemeProvider>
           <AuthSessionProvider>
-            <ToastProvider>
-              <VersionWatcher />
-              <ScrollProgress />
-              <Nav />
-              <RouteFade>
-                <div className="flex-1">{children}</div>
-              </RouteFade>
-              <Footer />
-            </ToastProvider>
+            <WalletPairingProviders>
+              <ToastProvider>
+                <VersionWatcher />
+                <ScrollProgress />
+                <Nav />
+                <RouteFade>
+                  <div className="flex-1">{children}</div>
+                </RouteFade>
+                <Footer />
+              </ToastProvider>
+            </WalletPairingProviders>
           </AuthSessionProvider>
         </ThemeProvider>
       </body>

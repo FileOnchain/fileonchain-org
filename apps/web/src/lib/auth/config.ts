@@ -62,10 +62,20 @@ providers.push(
       nonce: {},
       publicKey: {},
       fullMessage: {},
+      timestamp: {},
+      domain: {},
     },
     authorize: async (credentials) => {
-      const { family, address, signature, nonce, publicKey, fullMessage } =
-        (credentials ?? {}) as Record<string, unknown>;
+      const {
+        family,
+        address,
+        signature,
+        nonce,
+        publicKey,
+        fullMessage,
+        timestamp,
+        domain,
+      } = (credentials ?? {}) as Record<string, unknown>;
       if (
         !isWalletFamily(family) ||
         typeof address !== "string" ||
@@ -82,6 +92,8 @@ providers.push(
         nonce,
         publicKey: typeof publicKey === "string" ? publicKey : undefined,
         fullMessage: typeof fullMessage === "string" ? fullMessage : undefined,
+        timestamp: typeof timestamp === "string" ? Number(timestamp) : undefined,
+        domain: typeof domain === "string" ? domain : undefined,
       });
       if (!result.ok) return null;
 

@@ -7,7 +7,12 @@ import { useWalletStates } from "@/states/wallet";
 import { getChain } from "@fileonchain/sdk";
 import { trackEvent } from "@/lib/analytics";
 
-/* TODO: wire to viem WalletClient — currently only stubs the connection */
+/**
+ * `useEVMWallet` covers the injected-EVM-wallet path today (MetaMask, Rabby,
+ * Coinbase Wallet, Brave). Multi-wallet pairing via WalletConnect for EVM is
+ * explicitly out of scope — TON/Hedera are the WalletConnect reference
+ * implementations in this codebase.
+ */
 
 interface EthereumProvider {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;

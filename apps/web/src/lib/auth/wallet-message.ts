@@ -17,10 +17,19 @@ export interface WalletChallenge {
 
 /**
  * Families whose wallets can sign in / link today — a browser proof flow
- * exists client-side AND the server can verify it soundly. TON (needs a
- * TON Connect manifest + proof of wallet stateInit) and Hedera (needs a
- * HashConnect pairing flow) anchor fine but stay out of auth until that
- * infrastructure lands.
+ * exists client-side AND the server can verify it soundly.
+ *
+ * - TON: `@tonconnect/ui-react` ships a `signData({ type: "text", … })` flow
+ *   that returns the signature plus the wallet's ed25519 publicKey. The
+ *   verifier (`verifiers/ton.ts`) reconstructs the canonical envelope digest
+ *   and checks `ed.verify(sig, digest, publicKey)`.
+ * - Hedera: `@reown/appkit` + `HederaAdapter` ship a `signMessage({ message,
+ *   address })` flow that returns a base64 `SignatureMap` protobuf. The
+ *   verifier (`verifiers/hedera.ts`) reconstructs the
+ *   `"\x19Hedera Signed Message:\n" ‖ len ‖ msg` envelope, decodes the
+ *   protobuf, and calls `PublicKey.verify(envelope, sigPair)`. The Hedera
+ *   public key is fetched from the mirror node at connect time and carried
+ *   through the proof (no server-side lookup).
  */
 export const WALLET_FAMILIES: readonly ChainFamily[] = [
   "evm",
@@ -33,6 +42,8 @@ export const WALLET_FAMILIES: readonly ChainFamily[] = [
   "near",
   "tron",
   "cardano",
+  "ton",
+  "hedera",
 ];
 
 export const isWalletFamily = (value: unknown): value is ChainFamily =>
