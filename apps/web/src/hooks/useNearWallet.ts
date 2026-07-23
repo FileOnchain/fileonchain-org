@@ -4,7 +4,10 @@ import { useCallback } from "react";
 import { useWalletStates } from "@/states/wallet";
 import { trackEvent } from "@/lib/analytics";
 
-/* TODO: wire to @near-wallet-selector for the full modal / wallet list flow */
+// `useNearWallet` talks to Sender / Meteor via their injected `window.near`
+// provider directly. `@near-wallet-selector` would add a multi-wallet
+// discovery modal — out of scope per the project's "targeted, not all 12"
+// wallet-adapter directive.
 
 interface NearSignMessageResponse {
   accountId: string;

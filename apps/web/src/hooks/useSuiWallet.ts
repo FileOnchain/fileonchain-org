@@ -4,7 +4,12 @@ import { useCallback } from "react";
 import { useWalletStates } from "@/states/wallet";
 import { trackEvent } from "@/lib/analytics";
 
-/* TODO: wire to @mysten/dapp-kit for the full wallet-standard flow */
+// `useSuiWallet` subscribes to the wallet-standard registry directly
+// (`wallet-standard:register-wallet` / `app-ready` window events) and calls
+// `standard:connect` / `standard:disconnect` / `sui:signPersonalMessage`
+// features on the discovered wallet. `@mysten/dapp-kit` would add React
+// context helpers + a discovery modal — out of scope per the project's
+// "targeted, not all 12" wallet-adapter directive.
 
 interface WalletStandardAccount {
   address: string;

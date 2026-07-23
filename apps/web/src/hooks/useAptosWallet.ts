@@ -5,7 +5,10 @@ import { useWalletStates } from "@/states/wallet";
 import { getChain } from "@fileonchain/sdk";
 import { trackEvent } from "@/lib/analytics";
 
-/* TODO: wire to Petra / Martian wallet standard via aptos-wallet-adapter */
+// `useAptosWallet` talks to Petra / Martian through their injected
+// `window.aptos` provider directly. `aptos-wallet-adapter` would add a
+// multi-wallet discovery modal — out of scope per the project's "targeted,
+// not all 12" wallet-adapter directive.
 
 interface AptosSignMessageResponse {
   fullMessage: string;
