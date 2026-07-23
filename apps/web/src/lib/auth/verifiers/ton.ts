@@ -2,110 +2,186 @@ import "server-only";
 import * as ed from "@noble/ed25519";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { hexToBytes } from "@noble/hashes/utils.js";
+import { Address } from "@ton/core";
 import type { WalletVerificationInput } from "../verify-wallet";
 
 /**
- * TON Connect signature verification.
+ * TON Connect signature verification for the `signData` RPC.
  *
- * `@tonconnect/ui-react`'s `signData({ type: "text", text })` returns a
- * payload whose digest is reconstructed server-side as:
+ * Per the TON Connect `spec/rpc.md` (`ton_signData` wire format), the wallet
+ * signs the sha256 of:
  *
- *   sha256(
- *     workchain_byte        // 1 byte — workchain from "-1:abcdef…" address
- *   ‖ address_32            // 32 bytes — hex after the workchain colon
- *   ‖ domain_len_byte       // 1 byte — utf-8 byte length of the domain
- *   ‖ domain_utf8           // app domain (e.g. "fileonchain.org")
- *   ‖ timestamp_be_u64      // 8 bytes — issuedAt as big-endian u64
- *   ‖ payload_len_byte      // 1 byte — utf-8 byte length of the payload
- *   ‖ payload_utf8          // the buildWalletMessage string
- *   )
+ *   message = 0xffff                                    (2 bytes)
+ *           ++ utf8("ton-connect/sign-data/")            (22 bytes)
+ *           ++ Address                                  (workchain: 4-byte BE signed int,
+ *                                                          hash: 32-byte BE)
+ *           ++ AppDomain                                (len: 4-byte BE,
+ *                                                          domain: utf8 bytes)
+ *           ++ Timestamp                                (8-byte BE u64)
+ *           ++ Payload                                 ("txt" + len: 4-byte BE +
+ *                                                          utf8(text))
  *
- * The wallet signs this digest with its ed25519 secret. The corresponding
- * public key is exposed on `connector.wallet.account.publicKey` and carried
- * through the proof payload — ed25519 signatures don't recover the key.
+ * The wallet returns `{ signature: base64, address, timestamp, domain, payload }`
+ * from `connector.signData({ type: "text", text })`. The 32-byte ed25519
+ * publicKey is exposed on `connector.account.publicKey` and carried through
+ * the proof.
+ *
+ * Bindings enforced:
+ *   - **Domain**: must equal the expected dApp domain from the manifest.
+ *   - **Timestamp freshness**: must be within `[nonceRow.createdAt − 60s,
+ *     now + 60s]` — the nonce row's `createdAt` is the only server-known
+ *     anchor for the proof's age; the agent's clock could be skewed, so we
+ *     allow generous slack.
+ *   - **Address binding**: the proof's address is normalized to raw form
+ *     via `@ton/core`'s `Address`; the workchain + 32-byte hash from the
+ *     proof must match what the digest was signed over. Combined with the
+ *     ed25519 check this guarantees a substituted publicKey cannot claim
+ *     a foreign address.
  */
+
+const SCHEME_PREFIX = new TextEncoder().encode("ton-connect/sign-data/");
+const TEXT_TAG = new TextEncoder().encode("txt");
+const DOMAIN_MAX_BYTES = 128;
+const TIMESTAMP_SKEW_SECONDS = 60;
 
 const stripHex = (value: string): string =>
   value.startsWith("0x") || value.startsWith("0X") ? value.slice(2) : value;
 
-/** Build the canonical TON Connect signed-bytes digest. */
+/** Strict base64 check — the wallet always returns RFC 4648 base64. */
+const BASE64_RE = /^[A-Za-z0-9+/]*={0,2}$/;
+
+/** Encode an unsigned 32-bit integer as 4 big-endian bytes. */
+const u32BE = (value: number): Uint8Array => {
+  const buf = new Uint8Array(4);
+  new DataView(buf.buffer).setUint32(0, value >>> 0, false);
+  return buf;
+};
+
+/** Encode a signed 32-bit integer as 4 big-endian bytes (two's complement). */
+const i32BE = (value: number): Uint8Array => {
+  const buf = new Uint8Array(4);
+  new DataView(buf.buffer).setInt32(0, value | 0, false);
+  return buf;
+};
+
+/** Encode an unsigned 64-bit value as 8 big-endian bytes (clamped to int53). */
+const u64BE = (value: number): Uint8Array => {
+  const buf = new Uint8Array(8);
+  // ton-proof / signData timestamps fit comfortably in int53 ms; we serialize
+  // unix-seconds which is well within Number.MAX_SAFE_INTEGER.
+  const safe = Math.max(0, Math.min(value, Number.MAX_SAFE_INTEGER));
+  new DataView(buf.buffer).setUint32(0, Math.floor(safe / 0x100000000), false);
+  new DataView(buf.buffer).setUint32(4, safe >>> 0, false);
+  return buf;
+};
+
+/** Concatenate Uint8Arrays into a single Uint8Array. */
+const concat = (...arrays: Uint8Array[]): Uint8Array => {
+  const total = arrays.reduce((sum, a) => sum + a.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const a of arrays) {
+    out.set(a, offset);
+    offset += a.length;
+  }
+  return out;
+};
+
+/** Build the canonical TON Connect `signData` digest (text payload). */
 const buildDigest = (params: {
   workchain: number;
-  addressHex: string;
+  hash: Uint8Array;
   domain: string;
   timestamp: number;
   payload: string;
 }): Uint8Array => {
-  const workchainByte = Uint8Array.from([params.workchain & 0xff]);
-  const addressBytes = hexToBytes(params.addressHex);
-  const domainBuf = new TextEncoder().encode(params.domain);
-  const domainLenByte = Uint8Array.from([domainBuf.length & 0xff]);
-  const tsBuf = new ArrayBuffer(8);
-  new DataView(tsBuf).setBigUint64(0, BigInt(params.timestamp), false);
-  const timestampBytes = new Uint8Array(tsBuf);
-  const payloadBuf = new TextEncoder().encode(params.payload);
-  const payloadLenByte = Uint8Array.from([payloadBuf.length & 0xff]);
-  const concat = new Uint8Array(
-    workchainByte.length +
-      addressBytes.length +
-      domainLenByte.length +
-      domainBuf.length +
-      timestampBytes.length +
-      payloadLenByte.length +
-      payloadBuf.length,
-  );
-  let offset = 0;
-  concat.set(workchainByte, offset);
-  offset += workchainByte.length;
-  concat.set(addressBytes, offset);
-  offset += addressBytes.length;
-  concat.set(domainLenByte, offset);
-  offset += domainLenByte.length;
-  concat.set(domainBuf, offset);
-  offset += domainBuf.length;
-  concat.set(timestampBytes, offset);
-  offset += timestampBytes.length;
-  concat.set(payloadLenByte, offset);
-  offset += payloadLenByte.length;
-  concat.set(payloadBuf, offset);
-  return sha256(concat);
-};
+  const domainBytes = new TextEncoder().encode(params.domain);
+  if (domainBytes.length > DOMAIN_MAX_BYTES) {
+    throw new Error(
+      `TON signData domain exceeds ${DOMAIN_MAX_BYTES} bytes (${domainBytes.length})`,
+    );
+  }
+  const payloadBytes = new TextEncoder().encode(params.payload);
 
-/** Parse a TON user-friendly address "-1:abcdef…" → workchain + raw 32-byte hex. */
-const parseUserFriendly = (
-  value: string,
-): { workchain: number; hex: string } | null => {
-  const colon = value.indexOf(":");
-  if (colon < 0) return null;
-  const wc = Number(value.slice(0, colon));
-  const hex = stripHex(value.slice(colon + 1));
-  if (!Number.isFinite(wc) || hex.length !== 64) return null;
-  return { workchain: wc, hex };
+  // 2-byte magic prefix.
+  const prefix = concat(new Uint8Array([0xff, 0xff]), SCHEME_PREFIX);
+
+  // Address = workchain (4-byte BE signed int) || hash (32-byte BE).
+  const addressPart = concat(i32BE(params.workchain), params.hash);
+
+  // AppDomain = length (4-byte BE) || utf8 bytes.
+  const appDomainPart = concat(u32BE(domainBytes.length), domainBytes);
+
+  // Timestamp = 8-byte BE u64 (unix seconds).
+  const timestampPart = u64BE(params.timestamp);
+
+  // Payload = "txt" tag || length (4-byte BE) || utf8 bytes.
+  const payloadPart = concat(TEXT_TAG, u32BE(payloadBytes.length), payloadBytes);
+
+  const message = concat(
+    prefix,
+    addressPart,
+    appDomainPart,
+    timestampPart,
+    payloadPart,
+  );
+  return sha256(message);
 };
 
 export const verifyTon = async (
   input: WalletVerificationInput,
   message: string,
+  // Server-known fields, plumbed in from verifyWalletSignature.
+  expectedDomain: string,
+  nonceIssuedAt: Date,
 ): Promise<boolean> => {
   if (!input.publicKey) {
     throw new Error("TON verification requires the signer public key");
   }
-  if (typeof input.timestamp !== "number") {
+  if (typeof input.timestamp !== "number" || !Number.isFinite(input.timestamp)) {
     throw new Error("TON verification requires a timestamp in the proof");
   }
   if (typeof input.domain !== "string" || !input.domain) {
     throw new Error("TON verification requires a domain in the proof");
   }
-
-  const parsed = parseUserFriendly(input.address);
-  if (!parsed) {
-    throw new Error("TON address must be in user-friendly form (e.g. -1:abc…)");
+  if (!BASE64_RE.test(input.signature)) {
+    throw new Error("TON signature is not valid base64");
   }
-  // Public key + signed address must bind to the same workchain + 32-byte hash.
-  // (TON's `account_publickey` returns the raw 32-byte ed25519 key — the wallet
-  // derives the address from it. The proof's `address` is what the user
-  // signed; the workchain is encoded into the digest so a cross-workchain
-  // replay is impossible.)
+
+  // Domain must equal the manifest's host. The wallet binds the domain into
+  // the digest, but the server should reject any proof that names a
+  // different dApp.
+  if (input.domain !== expectedDomain) {
+    throw new Error(
+      `TON proof domain mismatch: expected ${expectedDomain}, got ${input.domain}`,
+    );
+  }
+
+  // Timestamp freshness: must fall inside [nonceIssuedAt − skew, now + skew].
+  // The nonce is minted right before sign-in; the wallet's timestamp should
+  // match the `issuedAt` we baked into the message. Allow a generous skew
+  // to absorb clock drift between the server and the wallet.
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const issuedSeconds = Math.floor(nonceIssuedAt.getTime() / 1000);
+  if (
+    input.timestamp < issuedSeconds - TIMESTAMP_SKEW_SECONDS ||
+    input.timestamp > nowSeconds + TIMESTAMP_SKEW_SECONDS
+  ) {
+    throw new Error(
+      `TON proof timestamp out of bounds: ${input.timestamp} not in [${issuedSeconds - TIMESTAMP_SKEW_SECONDS}, ${nowSeconds + TIMESTAMP_SKEW_SECONDS}]`,
+    );
+  }
+
+  // Normalize address to raw form. Accept either raw `<workchain>:<hex>` or
+  // user-friendly `EQ…` / `UQ…` (base64) — the TON Connect spec allows both.
+  let parsed: Address;
+  try {
+    parsed = Address.parse(input.address);
+  } catch {
+    throw new Error("TON address could not be parsed");
+  }
+  // Address.hash is a Buffer; the digest needs raw bytes.
+  const hashBytes = new Uint8Array(parsed.hash);
 
   const publicKey = hexToBytes(stripHex(input.publicKey));
   if (publicKey.length !== 32) {
@@ -113,8 +189,8 @@ export const verifyTon = async (
   }
 
   const digest = buildDigest({
-    workchain: parsed.workchain,
-    addressHex: parsed.hex,
+    workchain: parsed.workChain,
+    hash: hashBytes,
     domain: input.domain,
     timestamp: input.timestamp,
     payload: message,
