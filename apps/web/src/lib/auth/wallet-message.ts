@@ -97,8 +97,9 @@ export const buildStarknetTypedData = (message: string) => ({
 
 /** Families whose addresses are case-insensitive hex (or bech32, which is
  * lowercase by construction) — canonicalized to lowercase for storage and
- * lookups. Base58 families (solana, substrate, tron, ton) and Hedera's
- * numeric ids are case-sensitive or already canonical → kept as-is. */
+ * lookups. Hedera's `hedera:<network>:0.0.xxxxx` form has a case-insensitive
+ * namespace + network segment, so it joins this list. Base58 families
+ * (solana, substrate, tron, ton) are case-sensitive → kept as-is. */
 const LOWERCASE_FAMILIES: readonly ChainFamily[] = [
   "evm",
   "aptos",
@@ -107,6 +108,7 @@ const LOWERCASE_FAMILIES: readonly ChainFamily[] = [
   "near",
   "cosmos",
   "cardano",
+  "hedera",
 ];
 
 /** Canonical address form used for storage and lookups. */

@@ -36,19 +36,29 @@ const MIRROR_NODE_BY_NETWORK: Record<string, string> = {
   previewnet: "https://previewnet.mirrornode.hedera.com",
 };
 
-/** `hedera:testnet:0.0.12345` → network=testnet, accountId=`0.0.12345`. */
+/** `hedera:testnet:0.0.12345` → network=testnet, accountId=`0.0.12345`.
+ *  Falls back to wrapping bare `0.0.12345` in the first known network if
+ *  the adapter happens to return the unprefixed form. */
 const splitHederaId = (
   raw: string,
+  fallbackNetwork: string,
 ): { network: string; accountId: string } | null => {
   const match = raw.match(/^(hedera:(mainnet|testnet|previewnet)):(.+)$/i);
-  if (!match) return null;
-  return { network: match[2].toLowerCase(), accountId: match[3] };
+  if (match) {
+    return { network: match[2].toLowerCase(), accountId: match[3] };
+  }
+  const bare = raw.match(/^(\d+)\.(\d+)\.(\d+)$/);
+  if (bare) {
+    return { network: fallbackNetwork, accountId: raw };
+  }
+  return null;
 };
 
 const fetchPublicKey = async (
   rawAddress: string,
+  fallbackNetwork: string,
 ): Promise<string | null> => {
-  const split = splitHederaId(rawAddress);
+  const split = splitHederaId(rawAddress, fallbackNetwork);
   if (!split) return null;
   const base = MIRROR_NODE_BY_NETWORK[split.network];
   if (!base) return null;
@@ -108,18 +118,19 @@ export const useHederaWallet = () => {
     if (!address) {
       throw new Error("Hedera WalletConnect handshake did not return an account");
     }
-    setHederaAddress(address);
-    setChainFamily("hedera");
-    setPublicKey(null);
-    // Fetch the signer's publicKey from the mirror node and cache it for the
-    // session — the adapter doesn't return it from signMessage.
-    const pk = await fetchPublicKey(address);
+    // Fetch the signer's publicKey from the mirror node BEFORE mutating
+    // wallet state — a failed lookup leaves the hook fully disconnected,
+    // instead of a half-connected state where the user looks signed in but
+    // can't sign messages.
+    const pk = await fetchPublicKey(address, "testnet");
     if (!pk) {
       throw new Error(
         `Could not fetch the Hedera public key for ${address} from the mirror node.`,
       );
     }
     setPublicKey(pk);
+    setHederaAddress(address);
+    setChainFamily("hedera");
     trackEvent("wallet_connect", { family: "hedera" });
     return address;
   }, [hederaAddress, ensureReady, setHederaAddress, setChainFamily]);
@@ -127,8 +138,10 @@ export const useHederaWallet = () => {
   const disconnect = useCallback(async () => {
     try {
       if (adapter) await adapter.disconnect();
-    } catch {
-      // Already disconnected — clear local state anyway.
+    } catch (err) {
+      // Surface the upstream error in dev — disconnect() failure on a live
+      // WC session can leak the upstream pairing.
+      console.warn("Hedera adapter disconnect failed", err);
     }
     setHederaAddress(null);
     setChainFamily(null);
@@ -143,19 +156,19 @@ export const useHederaWallet = () => {
         throw new Error("Connect a Hedera wallet before signing");
       }
       const result = await ad.signMessage({ message, address });
-      if (!publicKey) {
+      let pk = publicKey;
+      if (!pk) {
         // Should have been populated by connect(), but fall back to a fresh
         // mirror-node lookup if the page reloaded mid-session.
-        const pk = await fetchPublicKey(address);
+        pk = await fetchPublicKey(address, "testnet");
         if (!pk) {
           throw new Error(
             "Hedera public key unavailable — connect the wallet again.",
           );
         }
         setPublicKey(pk);
-        return { signature: result.signature, address, publicKey: pk };
       }
-      return { signature: result.signature, address, publicKey };
+      return { signature: result.signature, address, publicKey: pk };
     },
     [ensureReady, hederaAddress, publicKey],
   );

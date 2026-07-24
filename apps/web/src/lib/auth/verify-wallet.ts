@@ -7,6 +7,7 @@ import { sha3_256 } from "@noble/hashes/sha3.js";
 import { hexToBytes } from "@noble/hashes/utils.js";
 import type { ChainFamily } from "@fileonchain/sdk";
 import { db, authNonces } from "@/lib/db";
+import { siteConfig } from "@/lib/site";
 import { buildWalletMessage, normalizeAddress } from "./wallet-message";
 
 // @noble/ed25519 v3 needs an explicit SHA-512 implementation.
@@ -88,7 +89,7 @@ export const verifyWalletSignature = async (
   });
 
   try {
-    const valid = await verifyForFamily(input, message);
+    const valid = await verifyForFamily(input, message, nonceRow.createdAt);
     if (!valid) return { ok: false, error: "Signature verification failed" };
   } catch (error) {
     return {
@@ -103,6 +104,9 @@ export const verifyWalletSignature = async (
 const verifyForFamily = async (
   input: WalletVerificationInput,
   message: string,
+  // Server-known context plumbed from verifyWalletSignature — used by the
+  // TON verifier to bound the timestamp and reject foreign domains.
+  nonceIssuedAt: Date,
 ): Promise<boolean> => {
   switch (input.family) {
     case "evm":
@@ -190,12 +194,23 @@ const verifyForFamily = async (
 
     case "ton": {
       const { verifyTon } = await import("./verifiers/ton");
-      return verifyTon(input, message);
+      // The TON Connect signData digest binds a `domain` field — the wallet
+      // returns whatever host it's paired with (typically the manifest URL's
+      // host). Server-side, we expect the host of our canonical site URL.
+      const expectedDomain = new URL(siteConfig.url).host;
+      return verifyTon(input, message, expectedDomain, nonceIssuedAt);
     }
 
     case "hedera": {
       const { verifyHedera } = await import("./verifiers/hedera");
       return verifyHedera(input, message);
+    }
+
+    default: {
+      // Exhaustiveness — adding a new ChainFamily without extending the
+      // dispatcher would silently fall through to `undefined` and surface
+      // as a generic "Signature verification failed".
+      throw new Error(`Unsupported family: ${input.family}`);
     }
   }
 };

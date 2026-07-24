@@ -47,45 +47,52 @@ type AppKitInstance = {
   adapter: HederaAdapterLike | null;
 };
 
-let cached: AppKitInstance | null = null;
+// Memoize the in-flight Promise, not just the resolved value. `createAppKit`
+// is a singleton and throws if called twice; under React StrictMode (and
+// HMR) `useEffect` can fire twice before the first `createAppKit` resolves,
+// both invocations would pass the synchronous `if (cached)` check, and the
+// second would throw. Caching the Promise ensures only one init runs.
+let cachedInit: Promise<AppKitInstance> | null = null;
 
-const initialize = async (projectId: string): Promise<AppKitInstance> => {
-  if (cached) return cached;
-  const { createAppKit } = await import("@reown/appkit");
-  const { HederaAdapter, HederaChainDefinition } = await import(
-    "@hashgraph/hedera-wallet-connect"
-  );
+const initialize = (projectId: string): Promise<AppKitInstance> => {
+  if (cachedInit) return cachedInit;
+  cachedInit = (async (): Promise<AppKitInstance> => {
+    const { createAppKit } = await import("@reown/appkit");
+    const { HederaAdapter, HederaChainDefinition } = await import(
+      "@hashgraph/hedera-wallet-connect"
+    );
 
-  // `createAppKit` requires the tuple shape `[AppKitNetwork, ...AppKitNetwork[]]`
-  // — AppKitNetwork is a stricter subtype of CaipNetwork. A shared mutable
-  // tuple satisfies both the adapter and AppKit call sites.
-  const adapterNetworks: [
-    (typeof HederaChainDefinition.Native.Testnet),
-    (typeof HederaChainDefinition.Native.Mainnet),
-  ] = [
-    HederaChainDefinition.Native.Testnet,
-    HederaChainDefinition.Native.Mainnet,
-  ];
+    // `createAppKit` requires the tuple shape `[AppKitNetwork, ...AppKitNetwork[]]`
+    // — AppKitNetwork is a stricter subtype of CaipNetwork. A shared mutable
+    // tuple satisfies both the adapter and AppKit call sites.
+    const adapterNetworks: [
+      (typeof HederaChainDefinition.Native.Testnet),
+      (typeof HederaChainDefinition.Native.Mainnet),
+    ] = [
+      HederaChainDefinition.Native.Testnet,
+      HederaChainDefinition.Native.Mainnet,
+    ];
 
-  const adapter = new HederaAdapter({
-    namespace: HederaChainDefinition.Native.Testnet.chainNamespace,
-    networks: adapterNetworks,
-  });
+    const adapter = new HederaAdapter({
+      namespace: HederaChainDefinition.Native.Testnet.chainNamespace,
+      networks: adapterNetworks,
+    });
 
-  createAppKit({
-    adapters: [adapter],
-    networks: adapterNetworks,
-    projectId,
-    metadata: {
-      name: siteConfig.name,
-      description: siteConfig.description,
-      url: siteConfig.url,
-      icons: [`${siteConfig.url}/logo/svg/fileonchain-logo-clear-blue.svg`],
-    },
-  });
+    createAppKit({
+      adapters: [adapter],
+      networks: adapterNetworks,
+      projectId,
+      metadata: {
+        name: siteConfig.name,
+        description: siteConfig.description,
+        url: siteConfig.url,
+        icons: [`${siteConfig.url}/logo/svg/fileonchain-logo-clear-blue.svg`],
+      },
+    });
 
-  cached = { adapter: adapter as unknown as HederaAdapterLike };
-  return cached;
+    return { adapter: adapter as unknown as HederaAdapterLike };
+  })();
+  return cachedInit;
 };
 
 const HederaAppKitContext = React.createContext<{

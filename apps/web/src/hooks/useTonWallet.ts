@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   useTonAddress,
   useTonConnectUI,
@@ -47,6 +47,12 @@ export interface TonSignResult {
   publicKey: string;
 }
 
+type ConnectOutcome = { ok: true; address: string } | { ok: false; error: Error };
+interface InflightConnect {
+  resolve: (outcome: ConnectOutcome) => void;
+  timeout: ReturnType<typeof setTimeout>;
+}
+
 /**
  * useTonWallet — TON Connect primary path (`signData` over the wallet-standard
  * envelope), `window.ton` only as the anchor fallback. Sign-in for TON goes
@@ -59,15 +65,18 @@ export interface TonSignResult {
  */
 export const useTonWallet = () => {
   const [tcui] = useTonConnectUI();
-  const userFriendlyAddress = useTonAddress();
+  // Raw `<workchain>:<hex>` form is what the verifier signs against.
+  // We deliberately do NOT use the user-friendly `useTonAddress()` (Base64)
+  // anywhere — it'd mismatch the verifier's digest binding.
+  const rawAddress = useTonAddress(false);
   const tonAddress = useWalletStates((s) => s.tonAddress);
   const setTonAddress = useWalletStates((s) => s.setTonAddress);
   const setChainFamily = useWalletStates((s) => s.setChainFamily);
 
-  // Raw `<workchain>:<hex>` form is what the verifier signs against.
-  // `useTonAddress(false)` returns the raw form; the user-friendly form is
-  // for display only.
-  const rawAddress = useTonAddress(false);
+  // Hold the in-flight connect() so onStatusChange can resolve it directly.
+  // Bumped on every new connect() / unmount so stale callbacks no-op.
+  const inflightRef = useRef<InflightConnect | null>(null);
+  const generationRef = useRef(0);
 
   const getInjectedProvider = (): TonProvider | null => {
     if (typeof window === "undefined") return null;
@@ -75,14 +84,24 @@ export const useTonWallet = () => {
   };
 
   const connect = useCallback(async (): Promise<string> => {
-    if (rawAddress) return rawAddress;
+    if (rawAddress) {
+      // Restored session — re-affirm the family selection so a prior
+      // disconnect that cleared chainFamily but kept tonAddress doesn't
+      // leave the wallet store stale.
+      setChainFamily("ton");
+      return rawAddress;
+    }
     // Open the TON Connect modal — the user picks a wallet (mobile QR,
     // browser extension, or in-wallet browser). The `restoreConnection`
     // option on TonConnectUIProvider auto-restores prior sessions on mount,
     // so a refresh of a connected session flows straight to the address path.
     try {
       tcui.openModal();
-    } catch {
+    } catch (err) {
+      console.warn(
+        "TON Connect openModal failed, falling back to injected provider",
+        err,
+      );
       const injected = getInjectedProvider();
       if (!injected) {
         throw new Error(
@@ -95,23 +114,79 @@ export const useTonWallet = () => {
       trackEvent("wallet_connect", { family: "ton" });
       return address;
     }
-    // `tcui.openModal()` is synchronous; the actual handshake resolves via
-    // the TonConnectUIProvider's `onStatusChange` listener. Poll for the
-    // connected account with a short timeout — most wallets approve in
-    // under a few seconds, but users can also cancel.
-    const deadline = Date.now() + 60_000;
-    while (Date.now() < deadline) {
-      if (tcui.connector.account?.address) {
-        const addr = tcui.connector.account.address;
-        setTonAddress(addr);
-        setChainFamily("ton");
-        trackEvent("wallet_connect", { family: "ton" });
-        return addr;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 200));
+
+    // Wait for the handshake to resolve via onStatusChange.
+    const myGeneration = ++generationRef.current;
+    const outcome = await new Promise<ConnectOutcome>((resolve) => {
+      const timeout = setTimeout(() => {
+        if (generationRef.current === myGeneration) {
+          resolve({ ok: false, error: new Error("TON Connect handshake timed out") });
+        }
+      }, 60_000);
+      inflightRef.current = { resolve, timeout };
+    });
+    inflightRef.current = null;
+    if (myGeneration !== generationRef.current) {
+      // Stale promise from a prior connect() — discard.
+      throw new Error("TON Connect connection was cancelled");
     }
-    throw new Error("TON Connect handshake timed out");
+    if (!outcome.ok) throw outcome.error;
+    const addr = outcome.address;
+    setTonAddress(addr);
+    setChainFamily("ton");
+    trackEvent("wallet_connect", { family: "ton" });
+    return addr;
   }, [tcui, rawAddress, setTonAddress, setChainFamily]);
+
+  // Subscribe to TON Connect status changes; resolve any in-flight connect().
+  useEffect(() => {
+    // Capture the generation at effect mount so the cleanup can compare
+    // against the current generation when it runs — ESLint's exhaustive-deps
+    // rule wants us to never read the ref inside cleanup, since React may
+    // have already torn down other effects between then.
+    const myGeneration = generationRef.current;
+    const unsubscribe = tcui.onStatusChange(
+      (wallet) => {
+        if (generationRef.current !== myGeneration) return;
+        const inflight = inflightRef.current;
+        if (!inflight) return;
+        const addr = wallet?.account?.address;
+        if (addr) {
+          clearTimeout(inflight.timeout);
+          inflight.resolve({ ok: true, address: addr });
+        } else if (wallet === null) {
+          clearTimeout(inflight.timeout);
+          inflight.resolve({
+            ok: false,
+            error: new Error("TON Connect connection was cancelled"),
+          });
+        }
+      },
+      (err: unknown) => {
+        if (generationRef.current !== myGeneration) return;
+        const inflight = inflightRef.current;
+        if (!inflight) return;
+        clearTimeout(inflight.timeout);
+        const message =
+          err instanceof Error ? err.message : "TON Connect handshake failed";
+        inflight.resolve({ ok: false, error: new Error(message) });
+      },
+    );
+    return () => {
+      unsubscribe();
+      // On unmount, cancel any in-flight connect from this generation.
+      const inflight = inflightRef.current;
+      if (inflight) {
+        clearTimeout(inflight.timeout);
+        inflight.resolve({
+          ok: false,
+          error: new Error("TON Connect connection was cancelled"),
+        });
+        inflightRef.current = null;
+      }
+      generationRef.current++;
+    };
+  }, [tcui]);
 
   const disconnect = useCallback(async () => {
     try {
@@ -135,19 +210,28 @@ export const useTonWallet = () => {
           "Connected TON wallet did not advertise an ed25519 publicKey — sign-in requires it",
         );
       }
-      const { signature, address, timestamp, domain, payload } =
-        await tcui.connector.signData({
+      try {
+        const response = await tcui.connector.signData({
           type: "text",
           text: message,
         });
-      return { signature, address, timestamp, domain, payload, publicKey };
+        const { signature, address, timestamp, domain, payload } = response;
+        return { signature, address, timestamp, domain, payload, publicKey };
+      } catch (err) {
+        // Surface a clearer message when the wallet disconnects mid-sign.
+        const reason =
+          err instanceof Error ? err.message : "TON signData failed";
+        throw new Error(
+          `TON wallet rejected the sign request: ${reason}. Reconnect the wallet and try again.`,
+        );
+      }
     },
     [tcui],
   );
 
   const address = useMemo(
-    () => tonAddress ?? rawAddress ?? userFriendlyAddress ?? null,
-    [tonAddress, rawAddress, userFriendlyAddress],
+    () => tonAddress ?? rawAddress ?? null,
+    [tonAddress, rawAddress],
   );
 
   return {
