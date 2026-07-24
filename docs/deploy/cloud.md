@@ -185,6 +185,148 @@ GA mounts only when the user has opted in.
 
 ---
 
+## Real users rollout
+
+The "Going live" section below is the high-level summary. This section
+is the step-by-step ops run for opening the Cloud surface to real users,
+one flag per deploy. Each flip is reversible by unsetting the env
+(`unset FILEONCHAIN_CLOUD_*_ENABLED`) — routes return `503
+not_implemented` on the next call, no code change required.
+
+### Step 0 — provision a canary org
+
+The deep smoke posts a real envelope to the live ingest path. To keep
+that off the production tables, point it at a dedicated canary org:
+
+- One org-scoped `fok_` API key (`scope = "org"`, `orgId != null`).
+  Personal-scope or project-scope keys are rejected by `/api/v1/evidence`.
+- `retentionPolicy.windowDays = 1` on the canary org. The smoke posts
+  one envelope per run; the daily retention sweep (`retention-sweep`
+  cron) purges it within 24h.
+- A logged-in owner account so the canary org shows up in the
+  dashboard for visual confirmation.
+
+Set the smoke env in your shell:
+
+```bash
+export FILEONCHAIN_SMOKE_BASE_URL="https://fileonchain.org"
+export FILEONCHAIN_SMOKE_API_KEY="fok_canary_…"
+```
+
+### Step 1 — pilot (FILEONCHAIN_CLOUD_EVIDENCE_ENABLED)
+
+1. `pnpm build` is green. **Do not proceed otherwise.**
+2. Run the gate-only smoke against staging:
+
+   ```bash
+   pnpm --filter @fileonchain/web exec tsx scripts/cloud-smoke.ts
+   ```
+
+   Expect the per-flag `[FILEONCHAIN_CLOUD_EVIDENCE_ENABLED]` group to
+   show `OFF` lines (the staging env has all flags off), every other
+   group likewise. Zero FAILs.
+3. Run the **deep smoke** against staging — this is the round-trip
+   that proves the ingest path works end-to-end. It is opt-in behind
+   `FILEONCHAIN_SMOKE_DEEP=1`:
+
+   ```bash
+   FILEONCHAIN_SMOKE_DEEP=1 \
+     pnpm --filter @fileonchain/web exec tsx scripts/cloud-smoke.ts
+   ```
+
+   Expect a `[deep]` banner with five `PASS` lines and one `INFO
+   canary retention windowDays=1 source=policy` line. **If any deep
+   line is FAIL, the ingest path is broken — do not flip the flag.**
+4. Flip `FILEONCHAIN_CLOUD_EVIDENCE_ENABLED=1` in the Vercel project
+   (Settings → Environment Variables → Production). Deploy. Wait for
+   the deploy to settle.
+5. Re-run the deep smoke against prod. Expect the same five `PASS`
+   lines plus the canary retention line. Spot-check the
+   `/cloud/verify`, `/cloud/signer`, `/cloud/retention`, and
+   `/cloud/search` pages from the canary owner's account.
+
+### Step 2 — tenancy (FILEONCHAIN_CLOUD_TENANCY_ENABLED)
+
+**Requires Step 1's flag on.** Tenancy alone without evidence would
+silently no-op; the gate's `isCloudTenancyEnabled` already enforces
+this (`apps/web/src/lib/server/cloud-feature.ts:31-32`).
+
+1. `pnpm build` green.
+2. Deep smoke against staging still passes. No new check in the deep
+   section — tenancy is opt-in at the API key level (project-scope
+   keys), so the canary's org-scope key still works.
+3. Flip `FILEONCHAIN_CLOUD_TENANCY_ENABLED=1` in Vercel prod. Deploy.
+4. Re-run the gate smoke against prod — expect the
+   `FILEONCHAIN_CLOUD_TENANCY_ENABLED` group's check (GET
+   `/api/organizations/smoke-nonexistent/projects`) to show `PASS`
+   rather than `OFF`.
+5. From the canary owner's account, exercise one project-scoped API
+   key: create a project, add a member, generate the project's
+   service signer, submit an envelope with
+   `?server_sign_project=1`. Confirm the envelope row carries the
+   project's id.
+
+### Step 3 — webhooks (FILEONCHAIN_CLOUD_WEBHOOKS_ENABLED)
+
+1. `pnpm build` green.
+2. Flip `FILEONCHAIN_CLOUD_WEBHOOKS_ENABLED=1` in Vercel prod.
+3. From the canary owner's account, create a webhook endpoint pointing
+   at a request bin (e.g. webhook.site). Re-run the deep smoke — the
+   `evidence.sealed` event for the just-submitted envelope should land
+   at the bin within a minute (the `webhooks-drain` cron runs every
+   minute).
+4. Verify the delivery audit at `GET /api/v1/webhooks/:id/deliveries`
+   shows the row with `delivered_at` set. Inspect the
+   `X-FileOnChain-Signature` header on the receiver — it is
+   HMAC-SHA-256 over `${unix}.${rawBody}` (`t=<ts>,v1=<hex>`).
+
+### Step 4 — exports (FILEONCHAIN_CLOUD_EXPORTS_ENABLED)
+
+1. `pnpm build` green.
+2. Flip `FILEONCHAIN_CLOUD_EXPORTS_ENABLED=1` in Vercel prod.
+3. From the canary owner's account, `POST /api/v1/exports` (empty
+   body is fine; defaults to all envelopes for the org, no project
+   filter). Poll `GET /api/v1/exports/:id` until `status = completed`.
+4. `GET /api/v1/exports/:id/download?token=…` returns a TAR with one
+   `<envelopeId>.evidence.json` per envelope. Confirm the smoke
+   envelope is in the archive.
+
+### Step 5 — compliance (FILEONCHAIN_CLOUD_COMPLIANCE_ENABLED)
+
+1. `pnpm build` green.
+2. Flip `FILEONCHAIN_CLOUD_COMPLIANCE_ENABLED=1` in Vercel prod.
+3. `GET /api/v1/sla` returns the canary org's tier (default
+   `free`). `PATCH /api/v1/sla` is admin-only.
+4. `POST /api/v1/compliance-reports` (empty body) generates an
+   on-demand report for the current period. Confirm the response
+   carries an `EvidenceEnvelope` whose `envelope.envelope.signatures`
+   contains the canary org's service signer (verify with
+   `@fileonchain/verify`).
+5. The monthly `compliance-reports-build` cron runs on the 1st at
+   04:00 UTC for the **previous** calendar month. The first run
+   after the flip covers the in-progress period up to `now` only
+   when the cron includes a catch-up flag — confirm with this
+   runbook before opening the surface to paying tenants.
+
+### Post-rollout — manual cron trigger
+
+Verify the four crons land by triggering each once manually (same
+code path the Vercel scheduler hits):
+
+```bash
+pnpm --filter @fileonchain/web exec tsx scripts/retention-sweep.ts
+pnpm --filter @fileonchain/web exec tsx scripts/webhooks-drain.ts
+pnpm --filter @fileonchain/web exec tsx scripts/exports-sweep.ts
+pnpm --filter @fileonchain/web exec tsx scripts/compliance-reports-build.ts
+```
+
+Each prints a single structured line and exits 0 on success / 1 on
+error. Compare the output against the matching `/api/cron/*` route's
+JSON body — both call the same `run*` function in
+`lib/server/{retention,webhooks,exports,compliance}.ts`.
+
+---
+
 ## Going live
 
 1. **Pilot** — flip `FILEONCHAIN_CLOUD_EVIDENCE_ENABLED=1` first. The

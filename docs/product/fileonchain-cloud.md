@@ -53,7 +53,7 @@ Shipped and usable now:
 Planned capabilities — listed here so they are not mistaken for
 current ones:
 
-### Wired behind `FILEONCHAIN_CLOUD_EVIDENCE_ENABLED`
+### Ready, gated behind `FILEONCHAIN_CLOUD_EVIDENCE_ENABLED`
 
 The backend, schema, and pages ship in this build. The routes and UI
 are not reachable for users until the env var is set to `1`. Org-scoped
@@ -110,7 +110,7 @@ endpoint in this group.
   `CRON_SECRET`) deletes expired rows. `apps/web/scripts/retention-sweep.ts`
   remains the equivalent manual invocation for ops.
 
-### Wired behind the next four flags
+### Ready, gated behind the next four flags
 
 Each of the following ships with its own lazy env var (read on each
 call, so flipping it at runtime does not need a server restart).
@@ -282,10 +282,9 @@ Using Cloud changes *who does the work*, not *what the evidence is*:
   search, and server-side verify surfaces ship behind
   `FILEONCHAIN_CLOUD_EVIDENCE_ENABLED` and are not reachable for users
   until the flag is set. The Cloud schema, routes, services, and webapp
-  pages are wired and tested in this build; what is missing is the
-  decision to open the surface.
-- Webhooks, exports, compliance reports, and SLAs are still future (see
-  roadmap above).
+  pages are wired and tested in this build; **what is missing is the
+  decision to open the surface** — see the "Real users rollout"
+  checklist in `docs/deploy/cloud.md` for the per-flag procedure.
 - Projects, per-project signature scopes, and per-project quotas are
   still future. Organizations are wired through evidence flows in this
   build (org-scoped API keys, org-scoped evidence rows).
