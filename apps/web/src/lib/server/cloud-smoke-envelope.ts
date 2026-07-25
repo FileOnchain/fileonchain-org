@@ -1,5 +1,3 @@
-import "server-only";
-
 /**
  * Deterministic envelope constructor for the Cloud smoke test. Produces
  * a byte-stable protocol envelope — same inputs, same bytes — so ops
@@ -13,22 +11,30 @@ import "server-only";
  * the same way the conformance suite does.
  *
  * No DB. No fetch. No env. Pure — runs in `pnpm --filter
- * @fileonchain/web test` without a server.
+ * @fileonchain/web test` without a server, and is also importable
+ * from `apps/web/scripts/cloud-smoke.ts` under `tsx` (the script
+ * invokes the helper server-side, never from a client bundle).
  */
 
 import { ed25519 } from "@noble/curves/ed25519.js";
 import {
   bytesToHex,
+  type EvidenceEnvelope,
   type SignerIdentity,
 } from "@fileonchain/protocol";
 import {
   sealAgentRun,
   signEnvelope,
   storageReceipt,
-  type EvidenceEnvelope,
   type EvidenceSigner,
-  type AgentClaims,
 } from "@fileonchain/sdk/evidence";
+
+/** The minimum shape `sealAgentRun` needs in its `run` field. The
+ *  webapp doesn't depend on `@fileonchain/agent-profile`, so we type
+ *  just the structurally-required fields (`runId` + `agentId` per
+ *  `validateAgentClaims`). Any extra keys the caller passes flow
+ *  through to the profile validator. */
+type SmokeAgentRun = { runId: string; agentId: string };
 
 /** The 32-byte seed the smoke signer is derived from. Pinned so the
  *  helper's output is byte-stable across machines and Node versions. */
@@ -65,8 +71,9 @@ const SMOKE_SUBJECT_BYTES: Uint8Array = new TextEncoder().encode(
 );
 
 /** Default Agent Evidence Profile claims. `runId` and `agentId` are the
- *  only unconditionally required fields after validation. */
-const SMOKE_DEFAULT_RUN: AgentClaims = {
+ *  only unconditionally required fields after validation; `status` is
+ *  a useful default for the verifier's view. */
+const SMOKE_DEFAULT_RUN: { runId: string; agentId: string; status: "completed" } = {
   runId: "smoke-run-0",
   agentId: "fileonchain-smoke",
   status: "completed",
@@ -101,7 +108,7 @@ const smokeSigner: EvidenceSigner = {
  */
 export const buildCloudSmokeEnvelope = async (
   subjectBytes: Uint8Array = SMOKE_SUBJECT_BYTES,
-  opts: { run?: AgentClaims } = {},
+  opts: { run?: SmokeAgentRun } = {},
 ): Promise<EvidenceEnvelope> => {
   const run = opts.run ?? SMOKE_DEFAULT_RUN;
   const envelope = await sealAgentRun({
