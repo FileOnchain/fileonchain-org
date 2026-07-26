@@ -13,7 +13,10 @@ import {
   InsufficientCreditsError,
 } from "@/lib/server/credits";
 import { logActivity, logActivities } from "@/lib/server/activity";
-import { runAnchorWorker } from "@/lib/server/anchor-worker";
+import {
+  runAnchorWorker,
+  AnchorWorkerUnavailableError,
+} from "@/lib/server/anchor-worker";
 import { getUserRpcOverrides } from "@/lib/server/rpc-endpoints";
 import { enforceAnchorQuota } from "@/lib/server/quotas";
 import { enqueueWebhookDeliveries } from "@/lib/server/webhooks";
@@ -144,7 +147,7 @@ interface AnchorContext {
 /**
  * The credits/BYOK anchor flow shared by POST /api/uploads (session) and
  * POST /api/v1/anchor (API key): price the job server-side, debit credits
- * (or resolve the BYOK key), then run the mock anchor worker and finalize
+ * (or resolve the BYOK key), then run the hosted anchor worker and finalize
  * the job row with per-chain results.
  */
 export const anchorWithAccount = async (
@@ -248,15 +251,15 @@ export const anchorWithAccount = async (
   try {
     const rpcOverrides = await getUserRpcOverrides(ctx.userId);
     workerResult = await runAnchorWorker(
-      job.id,
       payload.cid,
       payload.chainIds,
       rpcOverrides,
       payload.platformId,
     );
   } catch (error) {
-    // A configured on-chain send failed — fail the job and give the
-    // credits back rather than leaving a debit with nothing anchored.
+    // A configured on-chain send failed — or the hosted worker is not ready
+    // for this chain. Fail the job and give credits back rather than leaving
+    // a debit with nothing anchored.
     await db
       .update(uploadJobs)
       .set({ status: "failed" })
@@ -267,8 +270,14 @@ export const anchorWithAccount = async (
         id: job.id,
       });
     }
+    const workerUnavailable = error instanceof AnchorWorkerUnavailableError;
     console.error(`Anchor worker failed for job ${job.id}:`, error);
-    throw new AnchorRequestError("On-chain anchoring failed — try again", 502);
+    throw new AnchorRequestError(
+      workerUnavailable
+        ? error.message
+        : "On-chain anchoring failed — try again",
+      workerUnavailable ? 503 : 502,
+    );
   }
   const [finished] = await db
     .update(uploadJobs)

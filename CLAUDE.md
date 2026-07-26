@@ -357,10 +357,10 @@ chain-side operations behind it stay mock:
   `anchor-worker.ts` (server-side anchoring shared by `/api/uploads` and
   `/api/v1/anchor` — anchors the file CID for real through the SDK clients
   when the chain is provisioned AND its `ANCHOR_*` signer env vars are set;
-  otherwise falls back to the deterministic mock; on a real send failure the
-  job is marked failed and credits are refunded), `byok.ts` +
-  `lib/byok/providers.ts`, `activity.ts` (`logActivity`), `queries.ts`,
-  `preferences.ts` (shared vocabulary in the client-safe
+  otherwise the hosted job fails with a readiness error and refunds credits;
+  on a real send failure the job is marked failed and credits are refunded),
+  `byok.ts` + `lib/byok/providers.ts`, `activity.ts` (`logActivity`),
+  `queries.ts`, `preferences.ts` (shared vocabulary in the client-safe
   `src/lib/preferences.ts`), `organizations.ts` (throws
   `OrgError(status, message)`).
 - **Mock seams to make real later**: deposit confirmation

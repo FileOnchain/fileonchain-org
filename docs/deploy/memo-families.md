@@ -15,6 +15,11 @@ Every family's **testnet entry already has `memoAnchoring: true`** in
    readable on the explorer and the dashboard links resolve.
 3. Flip the switch on mainnet (see "Record the result" below).
 
+The hosted `/api/v1/anchor` path is fail-closed for these provisioned testnets:
+without the listed signer env vars it returns `503` and automatically refunds
+credits; it never records the deterministic browser/demo mock as a hosted
+transaction. Fund the signer before running the credits upload in step 2.
+
 ## Cosmos
 
 - **Carrier:** the transaction **memo** on a 1-unit self-send

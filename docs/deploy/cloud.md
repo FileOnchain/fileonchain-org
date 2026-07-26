@@ -71,11 +71,14 @@ RATE_LIMIT_V1_IP_PER_MIN=60
 ```
 
 Signers (`ANCHOR_*`) and chain registries are **separate** from the Cloud
-flags — they decide which chains the hosted anchor worker can settle on.
+flags — they decide whether the hosted anchor worker can settle on a chain.
 See `docs/deploy/memo-families.md` and `docs/deploy/evm.md` for per-family
-provisioning. Without an `ANCHOR_EVM_PRIVATE_KEY` (etc.) the Cloud still
-accepts `/api/v1/anchor` jobs but the worker falls back to the deterministic
-mock anchor — the credit ledger still debits, no real tx is sent.
+provisioning and funding. A provisioned chain with no configured signer is not
+accepted as a simulated job: `/api/v1/anchor` returns `503 Anchor signer not
+configured` and the credits debit is automatically refunded. A configured
+signer that cannot submit a transaction returns `502` and is refunded as well.
+Hosted anchoring is therefore always a real transaction or an explicit error;
+the browser's separate simulated fallback does not apply to this API.
 
 ---
 

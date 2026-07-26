@@ -242,8 +242,9 @@ export class FileOnChainClient {
   /**
    * Anchor a CID on one or more chains. Anchoring runs within the request,
    * so a 200 means the returned job is already "complete"; failures surface
-   * as FileOnChainApiError (402 insufficient credits, 502 send failed with
-   * credits refunded, …).
+   * as FileOnChainApiError (402 insufficient credits, 503 hosted signer not
+   * configured, 502 on-chain send failed; both anchoring failures refund
+   * credits, …).
    */
   async anchor(request: AnchorRequest, options?: { signal?: AbortSignal }): Promise<AnchorJob> {
     const { job } = await this.request<{ job: AnchorJob }>("/api/v1/anchor", {

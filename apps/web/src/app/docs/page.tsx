@@ -599,7 +599,8 @@ const DocsPage = () => (
           Errors surface as{" "}
           <code className="font-mono text-xs">FileOnChainApiError</code> with a{" "}
           <code className="font-mono text-xs">.status</code>: 401 bad key, 402
-          insufficient credits, 502 on-chain send failed (credits are refunded).
+          insufficient credits, 503 hosted signer not configured, 502 on-chain
+          send failed (anchoring failures refund credits).
         </p>
       </section>
 
