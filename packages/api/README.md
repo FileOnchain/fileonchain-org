@@ -29,6 +29,6 @@ await client.getCredits();          // { balanceMicroUsdc, balanceUsdc }
 ```
 
 Errors surface as `FileOnChainApiError` with `.status` (401 bad key, 402
-insufficient credits, 502 on-chain send failed — credits refunded) and the
-server's `{ error }` body. For self-signed anchoring use the
-`@fileonchain/sdk-<family>` clients instead.
+insufficient credits, 503 hosted signer not configured, 502 on-chain send
+failed — anchoring failures refund credits) and the server's `{ error }` body.
+For self-signed anchoring use the `@fileonchain/sdk-<family>` clients instead.

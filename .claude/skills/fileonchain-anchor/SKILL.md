@@ -34,8 +34,10 @@ const job = await client.anchor({
 
 Errors are `FileOnChainApiError` with `.status`: 401 bad key, 402
 insufficient credits (top up at /dashboard/credits), 404/409 BYOK key
-problems, 502 send failed (credits auto-refunded). If jobs ever become
-async, `client.waitForJob(job.id)` polls until complete/failed.
+problems, 503 hosted signer not configured, 502 on-chain send failed. Both
+anchoring failures auto-refund credits; hosted jobs never return simulated
+transaction hashes. If jobs ever become async, `client.waitForJob(job.id)`
+polls until complete/failed.
 
 Via MCP instead: the `fileonchain` server's `anchor_cid`, `get_anchor_job`,
 `get_credits` tools (needs `FILEONCHAIN_API_KEY` in the server env — see

@@ -1,5 +1,5 @@
 import "server-only";
-import { keccak256, stringToBytes } from "viem";
+
 import {
   getChain,
   isChainProvisioned,
@@ -22,19 +22,45 @@ import type { UploadJobTx } from "@/lib/db/schema";
  * `@fileonchain/sdk` clients the browser uses. (Chunk bytes never reach the
  * backend — only the client-side pay-as-you-go flow anchors per chunk.)
  *
- * A chain anchors for real only when it is provisioned (deployed registry /
- * pallet / module / memo mode) AND its signer env vars are set; otherwise
- * the worker falls back to the deterministic mock so environments without
- * secrets keep working. EVM/Substrate/Solana/Aptos signers live inline
- * below; every Tier 2 family has its own module under ./anchor-signers/.
- * The env vars per family are documented in apps/web/.env.example.
+ * Hosted anchoring is fail-closed: a requested chain must be provisioned and
+ * its signer env vars must be configured. The browser upload flow has its own
+ * simulated fallback for unprovisioned chains, but a hosted request never
+ * receives a fabricated transaction hash.
  */
 
-const mockTx = (jobId: string, cid: string, chainId: ChainId): UploadJobTx => {
-  const seed = keccak256(stringToBytes(`fileonchain-job:${jobId}:${cid}:${chainId}`));
-  const blockNumber = 1_000_000 + (parseInt(seed.slice(2, 10), 16) % 20_000_000);
-  return { chainId, txHash: seed, blockNumber };
-};
+export class AnchorWorkerUnavailableError extends Error {
+  constructor(
+    readonly chainId: ChainId,
+    message: string,
+  ) {
+    super(message);
+    this.name = "AnchorWorkerUnavailableError";
+  }
+}
+
+export class AnchorSignerUnavailableError extends AnchorWorkerUnavailableError {
+  constructor(
+    chainId: ChainId,
+    readonly requiredEnv: readonly string[],
+  ) {
+    super(
+      chainId,
+      `Anchor signer not configured for ${chainId} — set ${requiredEnv.join(" and ")}`,
+    );
+    this.name = "AnchorSignerUnavailableError";
+  }
+}
+
+export class AnchorChainUnavailableError extends AnchorWorkerUnavailableError {
+  constructor(chainId: ChainId, reason: string) {
+    super(chainId, `Chain ${chainId} ${reason}`);
+    this.name = "AnchorChainUnavailableError";
+  }
+}
+
+const missingSignerEnv = (
+  ...entries: ReadonlyArray<readonly [name: string, value: string | undefined]>
+): string[] => entries.flatMap(([name, value]) => (value ? [] : [name]));
 
 const anchorOnEvm = async (
   chain: ChainConfig,
@@ -184,132 +210,195 @@ const anchorOnAptos = async (
   return { chainId: chain.id, txHash: hash, blockNumber: Number(committed.version) };
 };
 
-/** Dispatch to the configured signer for the family; null when no signer env is set. */
-const sendWithSigner = async (
+type AnchorSend = () => Promise<UploadJobTx>;
+
+/** Resolve signer material before any requested chain starts broadcasting. */
+const createAnchorSend = (
   chain: ChainConfig,
   cid: string,
   platformId: string,
-): Promise<UploadJobTx | null> => {
-  if (chain.family === "evm" && env.anchorEvmPrivateKey) {
-    return await anchorOnEvm(chain, cid, env.anchorEvmPrivateKey, platformId);
+): AnchorSend => {
+  switch (chain.family) {
+    case "evm": {
+      const privateKey = env.anchorEvmPrivateKey;
+      if (!privateKey) {
+        throw new AnchorSignerUnavailableError(chain.id, ["ANCHOR_EVM_PRIVATE_KEY"]);
+      }
+      return () => anchorOnEvm(chain, cid, privateKey, platformId);
+    }
+    case "substrate": {
+      const seed = env.anchorSubstrateSeed;
+      if (!seed) {
+        throw new AnchorSignerUnavailableError(chain.id, ["ANCHOR_SUBSTRATE_SEED"]);
+      }
+      return () => anchorOnSubstrate(chain, cid, seed);
+    }
+    case "solana": {
+      const secretKey = env.anchorSolanaSecretKey;
+      if (!secretKey) {
+        throw new AnchorSignerUnavailableError(chain.id, ["ANCHOR_SOLANA_SECRET_KEY"]);
+      }
+      return () => anchorOnSolana(chain, cid, secretKey);
+    }
+    case "aptos": {
+      const privateKey = env.anchorAptosPrivateKey;
+      if (!privateKey) {
+        throw new AnchorSignerUnavailableError(chain.id, ["ANCHOR_APTOS_PRIVATE_KEY"]);
+      }
+      return () => anchorOnAptos(chain, cid, privateKey, platformId);
+    }
+    case "cosmos": {
+      const mnemonic = env.anchorCosmosMnemonic;
+      if (!mnemonic) {
+        throw new AnchorSignerUnavailableError(chain.id, ["ANCHOR_COSMOS_MNEMONIC"]);
+      }
+      return async () => {
+        const { anchorOnCosmos } = await import("./anchor-signers/cosmos");
+        return await anchorOnCosmos(chain, cid, mnemonic);
+      };
+    }
+    case "sui": {
+      const privateKey = env.anchorSuiPrivateKey;
+      if (!privateKey) {
+        throw new AnchorSignerUnavailableError(chain.id, ["ANCHOR_SUI_PRIVATE_KEY"]);
+      }
+      return async () => {
+        const { anchorOnSui } = await import("./anchor-signers/sui");
+        return await anchorOnSui(chain, cid, privateKey);
+      };
+    }
+    case "starknet": {
+      const account = env.anchorStarknetAccount;
+      const privateKey = env.anchorStarknetPrivateKey;
+      const missing = missingSignerEnv(
+        ["ANCHOR_STARKNET_ACCOUNT", account],
+        ["ANCHOR_STARKNET_PRIVATE_KEY", privateKey],
+      );
+      if (missing.length > 0) {
+        throw new AnchorSignerUnavailableError(chain.id, missing);
+      }
+      return async () => {
+        const { anchorOnStarknet } = await import("./anchor-signers/starknet");
+        return await anchorOnStarknet(chain, cid, account!, privateKey!);
+      };
+    }
+    case "near": {
+      const accountId = env.anchorNearAccountId;
+      const privateKey = env.anchorNearPrivateKey;
+      const missing = missingSignerEnv(
+        ["ANCHOR_NEAR_ACCOUNT_ID", accountId],
+        ["ANCHOR_NEAR_PRIVATE_KEY", privateKey],
+      );
+      if (missing.length > 0) {
+        throw new AnchorSignerUnavailableError(chain.id, missing);
+      }
+      return async () => {
+        const { anchorOnNear } = await import("./anchor-signers/near");
+        return await anchorOnNear(chain, cid, accountId!, privateKey!);
+      };
+    }
+    case "tron": {
+      const privateKey = env.anchorTronPrivateKey;
+      if (!privateKey) {
+        throw new AnchorSignerUnavailableError(chain.id, ["ANCHOR_TRON_PRIVATE_KEY"]);
+      }
+      return async () => {
+        const { anchorOnTron } = await import("./anchor-signers/tron");
+        return await anchorOnTron(chain, cid, privateKey);
+      };
+    }
+    case "cardano": {
+      const signingKey = env.anchorCardanoSigningKey;
+      const blockfrostKey = env.anchorCardanoBlockfrostKey;
+      const missing = missingSignerEnv(
+        ["ANCHOR_CARDANO_SIGNING_KEY", signingKey],
+        ["ANCHOR_CARDANO_BLOCKFROST_KEY", blockfrostKey],
+      );
+      if (missing.length > 0) {
+        throw new AnchorSignerUnavailableError(chain.id, missing);
+      }
+      // Cardano talks to Blockfrost via its project key, not chain.rpcUrl.
+      return async () => {
+        const { anchorOnCardano } = await import("./anchor-signers/cardano");
+        return await anchorOnCardano(chain, cid, signingKey!, blockfrostKey!);
+      };
+    }
+    case "ton": {
+      const mnemonic = env.anchorTonMnemonic;
+      const apiKey = env.anchorTonApiKey;
+      if (!mnemonic) {
+        throw new AnchorSignerUnavailableError(chain.id, ["ANCHOR_TON_MNEMONIC"]);
+      }
+      return async () => {
+        const { anchorOnTon } = await import("./anchor-signers/ton");
+        return await anchorOnTon(chain, cid, mnemonic!, apiKey);
+      };
+    }
+    case "hedera": {
+      const operatorId = env.anchorHederaOperatorId;
+      const privateKey = env.anchorHederaPrivateKey;
+      const missing = missingSignerEnv(
+        ["ANCHOR_HEDERA_OPERATOR_ID", operatorId],
+        ["ANCHOR_HEDERA_PRIVATE_KEY", privateKey],
+      );
+      if (missing.length > 0) {
+        throw new AnchorSignerUnavailableError(chain.id, missing);
+      }
+      // Hedera uses the SDK network map, not chain.rpcUrl.
+      return async () => {
+        const { anchorOnHedera } = await import("./anchor-signers/hedera");
+        return await anchorOnHedera(chain, cid, operatorId!, privateKey!);
+      };
+    }
   }
-  if (chain.family === "substrate" && env.anchorSubstrateSeed) {
-    return await anchorOnSubstrate(chain, cid, env.anchorSubstrateSeed);
-  }
-  if (chain.family === "solana" && env.anchorSolanaSecretKey) {
-    return await anchorOnSolana(chain, cid, env.anchorSolanaSecretKey);
-  }
-  if (chain.family === "aptos" && env.anchorAptosPrivateKey) {
-    return await anchorOnAptos(chain, cid, env.anchorAptosPrivateKey, platformId);
-  }
-  if (chain.family === "cosmos" && env.anchorCosmosMnemonic) {
-    const { anchorOnCosmos } = await import("./anchor-signers/cosmos");
-    return await anchorOnCosmos(chain, cid, env.anchorCosmosMnemonic);
-  }
-  if (chain.family === "sui" && env.anchorSuiPrivateKey) {
-    const { anchorOnSui } = await import("./anchor-signers/sui");
-    return await anchorOnSui(chain, cid, env.anchorSuiPrivateKey);
-  }
-  if (
-    chain.family === "starknet" &&
-    env.anchorStarknetAccount &&
-    env.anchorStarknetPrivateKey
-  ) {
-    const { anchorOnStarknet } = await import("./anchor-signers/starknet");
-    return await anchorOnStarknet(
-      chain,
-      cid,
-      env.anchorStarknetAccount,
-      env.anchorStarknetPrivateKey,
-    );
-  }
-  if (chain.family === "near" && env.anchorNearAccountId && env.anchorNearPrivateKey) {
-    const { anchorOnNear } = await import("./anchor-signers/near");
-    return await anchorOnNear(chain, cid, env.anchorNearAccountId, env.anchorNearPrivateKey);
-  }
-  if (chain.family === "tron" && env.anchorTronPrivateKey) {
-    const { anchorOnTron } = await import("./anchor-signers/tron");
-    return await anchorOnTron(chain, cid, env.anchorTronPrivateKey);
-  }
-  // Cardano's signer talks to Blockfrost via its project key, not
-  // chain.rpcUrl — custom RPC overrides don't apply here.
-  if (
-    chain.family === "cardano" &&
-    env.anchorCardanoSigningKey &&
-    env.anchorCardanoBlockfrostKey
-  ) {
-    const { anchorOnCardano } = await import("./anchor-signers/cardano");
-    return await anchorOnCardano(
-      chain,
-      cid,
-      env.anchorCardanoSigningKey,
-      env.anchorCardanoBlockfrostKey,
-    );
-  }
-  if (chain.family === "ton" && env.anchorTonMnemonic) {
-    const { anchorOnTon } = await import("./anchor-signers/ton");
-    return await anchorOnTon(chain, cid, env.anchorTonMnemonic, env.anchorTonApiKey);
-  }
-  // Hedera's signer uses the SDK's built-in network map
-  // (Client.forMainnet/forTestnet), not chain.rpcUrl — overrides don't apply.
-  if (
-    chain.family === "hedera" &&
-    env.anchorHederaOperatorId &&
-    env.anchorHederaPrivateKey
-  ) {
-    const { anchorOnHedera } = await import("./anchor-signers/hedera");
-    return await anchorOnHedera(
-      chain,
-      cid,
-      env.anchorHederaOperatorId,
-      env.anchorHederaPrivateKey,
-    );
-  }
-  return null;
 };
 
-interface AnchorSendResult {
-  tx: UploadJobTx;
-  /** True when the send was the deterministic mock, not a real transaction. */
-  simulated: boolean;
-}
-
-const anchorOnChain = async (
-  jobId: string,
-  cid: string,
+const resolveHostedChain = (
   chainId: ChainId,
-  platformId: string,
-  rpcOverrides: CustomRpcMap = {},
-): Promise<AnchorSendResult> => {
-  const simulated = (): AnchorSendResult => ({
-    tx: mockTx(jobId, cid, chainId),
-    simulated: true,
-  });
-
+  rpcOverrides: CustomRpcMap,
+): ChainConfig => {
   const registryChain = getChain(chainId);
-  if (!registryChain || !isChainProvisioned(registryChain)) {
-    return simulated();
+  if (!registryChain) {
+    throw new AnchorChainUnavailableError(
+      chainId,
+      "is not registered for hosted anchoring",
+    );
+  }
+  if (!isChainProvisioned(registryChain)) {
+    throw new AnchorChainUnavailableError(
+      chainId,
+      "is not provisioned for hosted anchoring",
+    );
   }
 
   // Provisioning is judged on the registry entry; only the endpoint we dial
   // changes. Re-check the stored URL (defense in depth — rows are validated
   // at write time) and ignore it rather than fail the job if it went bad.
-  let chain = withRpcOverride(registryChain, rpcOverrides);
-  if (chain !== registryChain && validateRpcUrl(chain.family, chain.rpcUrl)) {
-    chain = registryChain;
+  const overridden = withRpcOverride(registryChain, rpcOverrides);
+  if (
+    overridden !== registryChain &&
+    validateRpcUrl(overridden.family, overridden.rpcUrl) !== null
+  ) {
+    return registryChain;
   }
+  return overridden;
+};
 
+const runConfiguredSend = async (
+  chainId: ChainId,
+  send: AnchorSend,
+): Promise<UploadJobTx> => {
   try {
-    const sent = await sendWithSigner(chain, cid, platformId);
-    if (sent) {
-      return { tx: sent, simulated: false };
-    }
+    return await send();
   } catch (error) {
-    if (error instanceof ChainNotProvisionedError) return simulated();
+    if (error instanceof ChainNotProvisionedError) {
+      throw new AnchorChainUnavailableError(
+        chainId,
+        "is not provisioned for hosted anchoring",
+      );
+    }
     throw error; // a configured signer failing is a real failure — surface it
   }
-
-  return simulated();
 };
 
 export interface AnchorWorkerResult {
@@ -317,29 +406,32 @@ export interface AnchorWorkerResult {
 }
 
 export const runAnchorWorker = async (
-  jobId: string,
   cid: string,
   chainIds: ChainId[],
   rpcOverrides: CustomRpcMap = {},
   platformId: string = env.anchorPlatformId,
 ): Promise<AnchorWorkerResult> => {
   if (chainIds.length === 0) return { txs: [] };
-  // Each `anchorOnChain` is independent — own RPC, own signer, own
-  // nonce space — so fan the sends out and let the slowest chain
-  // dictate the wall clock rather than the sum. Results are
-  // re-ordered to match the input so `upload_job.tx_hashes` keeps
-  // its position-per-chain shape (the worker swallows the partial
-  // work on a sibling's failure — the caller's existing refund +
-  // fail-the-job semantics stay intact regardless of ordering).
+
+  // Resolve requested chain and signer configuration synchronously before
+  // broadcasting any of them. This keeps a missing sibling signer from
+  // creating an avoidable partial settlement. Configured sends are
+  // independent — own RPC, signer, and nonce space — so fan them out and let
+  // the slowest chain dictate the wall clock.
+  const configured = chainIds.map((chainId) => {
+    const chain = resolveHostedChain(chainId, rpcOverrides);
+    return {
+      chainId,
+      send: createAnchorSend(chain, cid, platformId),
+    };
+  });
   const settled = await Promise.allSettled(
-    chainIds.map((chainId) =>
-      anchorOnChain(jobId, cid, chainId, platformId, rpcOverrides),
-    ),
+    configured.map(({ chainId, send }) => runConfiguredSend(chainId, send)),
   );
   const txs: UploadJobTx[] = chainIds.map((_, idx) => {
-    const s = settled[idx]!;
-    if (s.status === "rejected") throw s.reason;
-    return s.value.tx;
+    const result = settled[idx]!;
+    if (result.status === "rejected") throw result.reason;
+    return result.value;
   });
   return { txs };
 };

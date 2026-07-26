@@ -39,8 +39,8 @@ export const env = {
   get anchorPlatformId(): string {
     return process.env.ANCHOR_PLATFORM_ID ?? "1";
   },
-  /** Funded server signers for the credits/BYOK anchor worker — optional;
-   * absent keys keep the worker on the deterministic mock. */
+  /** Funded server signers for the credits/BYOK anchor worker. Optional at
+   * build time; hosted requests fail with 503 when signer config is absent. */
   get anchorEvmPrivateKey(): string | undefined {
     return process.env.ANCHOR_EVM_PRIVATE_KEY;
   },
