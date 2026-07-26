@@ -114,6 +114,29 @@ export interface ChainConfig {
 export const ZERO_ADDRESS =
   "0x0000000000000000000000000000000000000000" as const;
 
+type MemoMainnetRollout = Pick<
+  ChainConfig,
+  "memoAnchoring" | "status" | "integrationStatus"
+>;
+
+/**
+ * Memo-family mainnets move through these fields together. A family stays
+ * closed until live testnet QA passes, then its registry entry changes from
+ * `pendingQa` to `live` in one line.
+ */
+const MEMO_MAINNET_ROLLOUT = {
+  pendingQa: {
+    memoAnchoring: false,
+    status: "planned",
+    integrationStatus: "implemented",
+  },
+  live: {
+    memoAnchoring: true,
+    status: "active",
+    integrationStatus: "webapp-integrated",
+  },
+} as const satisfies Record<"pendingQa" | "live", MemoMainnetRollout>;
+
 /* TODO: deploy address — replace after Foundry Deploy.s.sol runs on each chain */
 export const CHAINS: readonly ChainConfig[] = [
   // EVM mainnets
@@ -923,7 +946,7 @@ export const CHAINS: readonly ChainConfig[] = [
     moduleAddress: null,
     palletContract: null,
     bech32Prefix: "cosmos",
-    status: "planned",
+    ...MEMO_MAINNET_ROLLOUT.pendingQa,
     testnet: false,
   },
   {
@@ -948,9 +971,10 @@ export const CHAINS: readonly ChainConfig[] = [
     // v1 memo-family QA on the testnet is wired end-to-end:
     // `lib/anchor/cosmos` builds the memo payload, the SDK signs via
     // `ANCHOR_COSMOS_MNEMONIC`, and the explorer renders the carrier.
-    // Mainnet flip (`memoAnchoring: true` on `cosmos:cosmoshub-4`) is
-    // gated on testnet signers being funded + a credits upload observed
-    // on the live explorer — see `docs/deploy/memo-families.md`.
+    // Mainnet promotion (`MEMO_MAINNET_ROLLOUT.live` on
+    // `cosmos:cosmoshub-4`) is gated on a funded testnet signer and a
+    // credits upload observed on the live explorer — see
+    // `docs/deploy/memo-families.md`.
     status: "active",
     integrationStatus: "webapp-integrated",
     testnet: true,
@@ -1099,7 +1123,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
-    status: "planned",
+    ...MEMO_MAINNET_ROLLOUT.pendingQa,
     testnet: false,
   },
   {
@@ -1148,7 +1172,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
-    status: "planned",
+    ...MEMO_MAINNET_ROLLOUT.pendingQa,
     testnet: false,
   },
   {
@@ -1198,7 +1222,7 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
-    status: "planned",
+    ...MEMO_MAINNET_ROLLOUT.pendingQa,
     testnet: false,
   },
   {

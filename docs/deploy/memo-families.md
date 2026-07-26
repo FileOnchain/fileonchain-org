@@ -6,14 +6,17 @@ is a registry flip: `isChainProvisioned` returns true for them when
 `memoAnchoring: true` is set on the chain entry (see
 `packages/utils/src/anchor.ts`).
 
-Every family's **testnet entry already has `memoAnchoring: true`** in
+Every family's **testnet entry is live** in
 `packages/utils/src/chains.ts` (`cosmos:theta-testnet-001`, `tron:nile`,
-`cardano:preprod`, `ton:testnet`). The runbook per family is:
+`cardano:preprod`, `ton:testnet`): `memoAnchoring: true`,
+`status: "active"`, and `integrationStatus: "webapp-integrated"`. The
+runbook per family is:
 
 1. Set the family's signer env vars (below) and fund the account on testnet.
 2. QA on the testnet: run a credits upload, confirm the anchor payload is
    readable on the explorer and the dashboard links resolve.
-3. Flip the switch on mainnet (see "Record the result" below).
+3. Promote only that family's mainnet entry using the atomic registry flip
+   described in "Record the result" below.
 
 ## Cosmos
 
@@ -57,10 +60,24 @@ Every family's **testnet entry already has `memoAnchoring: true`** in
   (send it a first incoming transfer). Testnet TON from the
   @testgiver_ton_bot faucet; mainnet needs real TON.
 
-Record the result in `packages/utils/src/chains.ts`: after testnet QA
-passes, set `memoAnchoring: true` on the family's **mainnet** entry
-(`cosmos:cosmoshub-4`, `tron:mainnet`, `cardano:mainnet`, `ton:mainnet`).
-That flag is the provisioning switch — no address to record.
+## Record the result
+
+The registry groups the three mainnet rollout fields in
+`MEMO_MAINNET_ROLLOUT` so a family cannot be provisioned without also being
+opened for uploads and reported at the matching integration rung:
+
+- `pendingQa` — `memoAnchoring: false`, `status: "planned"`, and
+  `integrationStatus: "implemented"`.
+- `live` — `memoAnchoring: true`, `status: "active"`, and
+  `integrationStatus: "webapp-integrated"`.
+
+Every memo-family mainnet currently spreads
+`...MEMO_MAINNET_ROLLOUT.pendingQa`. After that family's testnet QA passes,
+change its entry to `...MEMO_MAINNET_ROLLOUT.live`. That single-line registry
+diff promotes `cosmos:cosmoshub-4`, `tron:mainnet`, `cardano:mainnet`, or
+`ton:mainnet` without leaving the three fields out of sync. Do not promote a
+family based on local SDK tests alone; record a live credits upload and working
+explorer/dashboard links first.
 
 Fund the server signer: the accounts behind `ANCHOR_COSMOS_MNEMONIC`,
 `ANCHOR_TRON_PRIVATE_KEY`, `ANCHOR_CARDANO_SIGNING_KEY` (+
