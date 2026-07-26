@@ -56,15 +56,17 @@ wired end-to-end.
 | Cardano Preprod (`cardano:preprod`) | Settlement (tx metadata, testnet) | `@fileonchain/sdk-cardano` | `webapp-integrated` | 2026-07-22 |
 | TON Testnet (`ton:testnet`) | Settlement (transfer comment, testnet) | `@fileonchain/sdk-ton` | `webapp-integrated` | 2026-07-22 |
 
-**Memo-family mainnet promotion path** — the four `*:-mainnet` entries
+**Memo-family mainnet promotion path** — the four memo-family mainnet entries
 remain `status: "planned"` / `integrationStatus: "implemented"` /
-`memoAnchoring` unset. To open mainnet for a family, fund the testnet
+`memoAnchoring: false`. To open mainnet for a family, fund the testnet
 signer (runbook at `docs/deploy/memo-families.md`), confirm a credits
-upload renders on the live explorer, then on the corresponding mainnet
-entry set `status: "active"` + `memoAnchoring: true` +
-`integrationStatus: "webapp-integrated"` plus the `ANCHOR_*` env var for
-the family. The flip is a one-line change per entry — the SDKs are
-testnet-integrated already.
+upload renders on the live explorer, and configure the corresponding
+mainnet `ANCHOR_*` env var. Then change that mainnet entry from
+`...MEMO_MAINNET_ROLLOUT.pendingQa` to
+`...MEMO_MAINNET_ROLLOUT.live`. The one-line registry diff atomically sets
+`status: "active"`, `memoAnchoring: true`, and
+`integrationStatus: "webapp-integrated"`; the SDKs are testnet-integrated
+already.
 
 **Sepolia / Chronos promotion path** — the `evm:11155111` and
 `evm:8700` entries are stuck at `testnet-deployed` because the
