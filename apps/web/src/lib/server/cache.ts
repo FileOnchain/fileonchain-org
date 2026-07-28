@@ -39,7 +39,7 @@ type CachePaymentChain = ChainConfig & {
   usdcContract: `0x${string}`;
 };
 
-const isCachePaymentProvisioned = (
+export const isCachePaymentProvisioned = (
   chain: ChainConfig | undefined,
 ): chain is CachePaymentChain =>
   !!chain &&
@@ -151,4 +151,85 @@ export const getUserCacheEntries = async (
     chains.map((chain) => readEntriesForChain(chain, userAddress)),
   );
   return results.flat();
+};
+
+/** Per-chain live pricing row from the deployed `CachePayments` contract.
+ *  USDC amounts are 6-decimal (`priceSingle/priceFolder/pricePermanent`).
+ *  Returned as decimal strings because JSON cannot serialize `bigint`;
+ *  the client formats with `formatUnits(value, 6)`. */
+export interface CachePricingRow {
+  /** USDC 6-decimal wei — `formatUnits(single, 6)` for the marketing string. */
+  single: string;
+  folder: string;
+  permanent: string;
+  /** Treasury address the deployed contract forwards to — surfaced on the
+   *  donations page; equals `treasury()` on the same contract. */
+  treasury: `0x${string}`;
+}
+
+/** `Record<ChainId, CachePricingRow>` with chains that failed to read
+ *  absent (no fabricated zero rows). */
+export type CachePricingMap = Partial<Record<string, CachePricingRow>>;
+
+/** Read live `CachePayments` prices + treasury on every provisioned EVM
+ *  chain. Each chain is independent — one RPC failure doesn't hide prices
+ *  from the others. The pricing table on `/cache` hydrates from this and
+ *  falls back to the marketing values (`CACHE_PRICING.priceUsdc`) when
+ *  the active chain is unprovisioned or absent from the result.
+ *
+ *  `treasury` is the canonical forward-to address for the same contract;
+ *  the donations page also reads it here instead of issuing a parallel
+ *  RPC against `DonationEscrow` (which forwards to the same address). */
+export const getCachePricing = async (): Promise<CachePricingMap> => {
+  const chains = CHAINS.filter(isCachePaymentProvisioned);
+  const results = await Promise.all(
+    chains.map(async (chain): Promise<[string, CachePricingRow] | null> => {
+      try {
+        const { createPublicClient, http } = await import("viem");
+        const { toViemChain } = await import("@fileonchain/sdk/evm");
+        const client = createPublicClient({
+          chain: toViemChain(chain),
+          transport: http(chain.rpcUrl, RPC_TRANSPORT_OPTS),
+        });
+        const [single, folder, permanent, treasury] = await Promise.all([
+          client.readContract({
+            address: chain.cacheContract,
+            abi: cachePaymentsAbi,
+            functionName: "priceSingle",
+          }),
+          client.readContract({
+            address: chain.cacheContract,
+            abi: cachePaymentsAbi,
+            functionName: "priceFolder",
+          }),
+          client.readContract({
+            address: chain.cacheContract,
+            abi: cachePaymentsAbi,
+            functionName: "pricePermanent",
+          }),
+          client.readContract({
+            address: chain.cacheContract,
+            abi: cachePaymentsAbi,
+            functionName: "treasury",
+          }),
+        ]);
+        return [
+          chain.id,
+          {
+            single: (single as bigint).toString(),
+            folder: (folder as bigint).toString(),
+            permanent: (permanent as bigint).toString(),
+            treasury: treasury as `0x${string}`,
+          },
+        ];
+      } catch {
+        return null;
+      }
+    }),
+  );
+  const map: CachePricingMap = {};
+  for (const entry of results) {
+    if (entry) map[entry[0]] = entry[1];
+  }
+  return map;
 };
