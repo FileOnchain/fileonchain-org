@@ -32,7 +32,7 @@ import { RPC_TRANSPORT_OPTS } from "@/lib/scan-window";
 
 type DonationChain = ChainConfig & { donationContract: `0x${string}` };
 
-const isDonationProvisioned = (
+export const isDonationProvisioned = (
   chain: ChainConfig | undefined,
 ): chain is DonationChain =>
   !!chain &&

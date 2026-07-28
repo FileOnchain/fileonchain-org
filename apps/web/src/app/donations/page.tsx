@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
+import { CHAINS } from "@fileonchain/sdk";
 import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import DonationsFeed from "@/components/donations/DonationsFeed";
 import DonateButton from "@/components/donations/DonateButton";
 import DonationImpactStrip from "@/components/donations/DonationImpactStrip";
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
-import { CopyButton } from "@/components/ui/CopyButton";
+import TreasuryAddressCard from "@/components/donations/TreasuryAddressCard";
+import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import {
+  isDonationProvisioned,
+  getTreasuryAddress,
+} from "@/lib/server/donations";
 
-const TREASURY_ADDRESS = "0x0001Treasury0000000000000000000000";
+// Direct RPC reads — must not be baked into a static render. Next.js
+// would otherwise capture the first call's response and freeze it.
+export const dynamic = "force-dynamic";
 
 const HOW_IT_WORKS_STEPS = [
   "Pick a recipient tier — platform, a CID, or a chain.",
@@ -23,8 +30,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/donations" },
   openGraph: {
     title: "Donations · FileOnChain",
-    description:
-      "Fund the public cache that keeps onchain files retrievable for everyone.",
+    description: "Fund the public cache that keeps onchain files retrievable for everyone.",
     url: "/donations",
     type: "website",
   },
@@ -33,12 +39,26 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Donations · FileOnChain",
-    description:
-      "Fund the public cache that keeps onchain files retrievable for everyone.",
+    description: "Fund the public cache that keeps onchain files retrievable for everyone.",
   },
 };
 
-export default function DonationsPage() {
+/**
+ * DonationsPage — server component. The treasury card list resolves
+ * one card per provisioned EVM chain from `DonationEscrow.treasury()`;
+ * each chain can forward to a different treasury, so we render all of
+ * them rather than picking an arbitrary first chain. Read failures
+ * surface as "Address unavailable" — never fabricate a hex.
+ */
+export default async function DonationsPage() {
+  const provisionedChains = CHAINS.filter(isDonationProvisioned);
+  const treasuryByChain = await Promise.all(
+    provisionedChains.map(async (chain) => ({
+      chain: { id: chain.id, name: chain.name, shortName: chain.shortName },
+      address: await getTreasuryAddress(chain.id),
+    })),
+  );
+
   return (
     <PageShell size="wide" padding="lg" atmosphere>
       <PageHeader
@@ -58,7 +78,6 @@ export default function DonationsPage() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Recent donations</CardTitle>
-            <CardDescription>Most recent first.</CardDescription>
           </CardHeader>
           <DonationsFeed />
         </Card>
@@ -79,16 +98,13 @@ export default function DonationsPage() {
               ))}
             </ol>
           </Card>
-          <Card variant="outlined">
-            <CardHeader>
-              <CardTitle>Treasury</CardTitle>
-              <CardDescription>DonationEscrow forwards here.</CardDescription>
-            </CardHeader>
-            <div className="flex items-center gap-1.5">
-              <p className="font-mono text-xs text-muted break-all">{TREASURY_ADDRESS}</p>
-              <CopyButton value={TREASURY_ADDRESS} ariaLabel="Copy treasury address" />
-            </div>
-          </Card>
+          {treasuryByChain.map(({ chain, address }) => (
+            <TreasuryAddressCard
+              key={chain.id}
+              chain={chain}
+              address={address}
+            />
+          ))}
         </div>
       </div>
     </PageShell>
