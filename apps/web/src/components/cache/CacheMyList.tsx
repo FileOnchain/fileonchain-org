@@ -28,14 +28,16 @@ const formatSize = (bytes: number): string => {
  *
  * On mount we hydrate the Zustand store from `/api/cache/entries`, which
  * reads the user's real `CachePayments` entries via the contract event
- * scan in `lib/server/cache.ts`. When the request fails (no session, no
- * wallet row, or RPC error) we keep the seeded entries so the page stays
- * explorable in dev.
+ * scan in `lib/server/cache.ts`. A successful response **replaces** the
+ * seeded entries (rather than merging) so an authenticated user on a
+ * provisioned chain never sees marketing rows layered on top of their
+ * own. When the request fails (no session, no wallet row, or RPC error)
+ * we keep the seeded entries so the page stays explorable in dev.
  */
 export const CacheMyList = ({ onManageAccess }: CacheMyListProps) => {
   const entries = useCacheStates((s) => s.entries);
   const removeEntry = useCacheStates((s) => s.removeEntry);
-  const addEntry = useCacheStates((s) => s.addEntry);
+  const setEntries = useCacheStates((s) => s.setEntries);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -45,12 +47,11 @@ export const CacheMyList = ({ onManageAccess }: CacheMyListProps) => {
         if (!res.ok) return;
         const data = (await res.json()) as { entries?: MockCacheEntry[] };
         if (cancelled || !data.entries) return;
-        // Merge: each real entry replaces any seeded entry with the same
-        // id (so we don't show the same row twice), and we surface
-        // contract-only entries first.
-        for (const entry of data.entries) {
-          addEntry(entry);
-        }
+        // If the user has already taken a real action (e.g. just paid),
+        // don't clobber the local list — RPC lag could lose their entry.
+        const currentSource = useCacheStates.getState().source;
+        if (currentSource === "real") return;
+        setEntries(data.entries);
       } catch {
         // Network failure: keep the seeded state.
       }
@@ -59,7 +60,7 @@ export const CacheMyList = ({ onManageAccess }: CacheMyListProps) => {
     return () => {
       cancelled = true;
     };
-  }, [addEntry]);
+  }, [setEntries]);
 
   if (entries.length === 0) {
     return (

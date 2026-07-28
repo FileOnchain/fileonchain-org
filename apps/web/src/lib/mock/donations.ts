@@ -14,9 +14,21 @@ export interface MockDonation {
   txHash: `0x${string}`;
 }
 
-/* Unprovisioned chains fall back to this seed data — see
- * `lib/server/donations.ts` for the `Donated` event scan that powers
- * real chains. */
+/* This module is the Zustand-seed seam for the donations feed.
+ * Real read paths:
+ *   - `lib/server/donations.ts:getRecentDonations`      — `Donated` event scan
+ *   - `lib/server/donations.ts:getTreasuryAddress`      — per-chain treasury
+ *   - `lib/server/donations.ts:getChainDonationTotals`  — per-chain PerChain totals
+ *
+ * `MOCK_DONATIONS` survives as the initial Zustand state only.
+ * `DonationsFeed` hydration calls `setFeed` on success and the store
+ * flips `source: "real"`, clearing the seed.
+ *
+ * The contract stores the donation `target` as a bytes32 keccak, so
+ * the original CID / chainId can't be recovered without an off-chain
+ * `donation_targets` preimage index (DB schema follow-up). Until that
+ * ships, the `target` slot on `MockDonation` surfaces the bytes32 hex.
+ * See `lib/server/donations.ts:19-29`. */
 
 const seed = (
   idSeed: string,

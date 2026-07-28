@@ -32,7 +32,7 @@ import { RPC_TRANSPORT_OPTS } from "@/lib/scan-window";
 
 type DonationChain = ChainConfig & { donationContract: `0x${string}` };
 
-const isDonationProvisioned = (
+export const isDonationProvisioned = (
   chain: ChainConfig | undefined,
 ): chain is DonationChain =>
   !!chain &&
@@ -138,6 +138,74 @@ export const getTreasuryAddress = async (
   const chain = CHAINS.find((c) => c.id === chainId);
   if (!isDonationProvisioned(chain)) return null;
   return readTreasuryForChain(chain);
+};
+
+/** Per-chain PerChain donation totals — the cumulative native-token
+ *  amount donated against each chain's hashed `chainId` target.
+ *  Decimal string because JSON cannot serialize `bigint`; the client
+ *  formats with `formatUnits(total, nativeDecimals)`.
+ *
+ *  Note: `DonationEscrow` only writes `chainDonations` for `PerChain`
+ *  donations (see `contracts/evm/src/DonationEscrow.sol`). Platform
+ *  donations don't update a totals mapping, so a "platform monetary
+ *  total" would need a separate bounded event-sum or an off-chain
+ *  `donation_targets` preimage index — both intentionally deferred
+ *  from this PR. */
+export interface ChainDonationTotalRow {
+  /** Native-token wei as a decimal string (JSON-safe). */
+  total: string;
+  nativeSymbol: string;
+  nativeDecimals: number;
+  chainId: string;
+  chainName: string;
+  chainShortName: string;
+}
+
+export type ChainDonationTotalsMap = Partial<Record<string, ChainDonationTotalRow>>;
+
+/** Read cumulative PerChain donation totals on every provisioned EVM
+ *  chain. Each chain's read is independent — one RPC failure omits
+ *  that chain from the result rather than fabricating a zero. */
+export const getChainDonationTotals = async (): Promise<ChainDonationTotalsMap> => {
+  const chains = CHAINS.filter(isDonationProvisioned);
+  const results = await Promise.all(
+    chains.map(async (chain): Promise<[string, ChainDonationTotalRow] | null> => {
+      try {
+        const { createPublicClient, http, keccak256, stringToBytes } = await import("viem");
+        const { toViemChain } = await import("@fileonchain/sdk/evm");
+        const client = createPublicClient({
+          chain: toViemChain(chain),
+          transport: http(chain.rpcUrl, RPC_TRANSPORT_OPTS),
+        });
+        // Match the hashing `useDonation.targetToBytes32` uses for PerChain:
+        // `keccak256(toBytes(chainId))`.
+        const total = (await client.readContract({
+          address: chain.donationContract,
+          abi: donationEscrowAbi,
+          functionName: "chainDonationTotal",
+          args: [keccak256(stringToBytes(chain.id))],
+        })) as bigint;
+        return [
+          chain.id,
+          {
+            total: total.toString(),
+            nativeSymbol: chain.nativeCurrency.symbol,
+            nativeDecimals: chain.nativeCurrency.decimals,
+            chainId: chain.id,
+            chainName: chain.name,
+            chainShortName: chain.shortName,
+          },
+        ];
+      } catch {
+        return null;
+      }
+    }),
+  );
+  const map: ChainDonationTotalsMap = {};
+  for (const entry of results) {
+    if (entry) map[entry[0]] = entry[1];
+  }
+  return map;
 };
 
 /**
