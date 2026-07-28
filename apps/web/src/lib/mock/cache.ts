@@ -6,6 +6,11 @@ export interface CacheTierPricing {
   tier: CacheTier;
   label: string;
   description: string;
+  /** Marketing price in USDC. Provisioned chains (Sepolia + Auto EVM
+   *  Chronos) overwrite this with the live contract value at render
+   *  time — see `lib/server/cache.ts:getCachePricing` and the
+   *  `CachePricingTable` hydrate-on-mount flow. Kept here for the
+   *  unprovisioned-chain fallback so the page stays explorable. */
   priceUsdc: number;
   durationDays: number | null;
   features: string[];
@@ -48,9 +53,21 @@ export interface MockCacheEntry {
   allowList: `0x${string}`[];
 }
 
-/* Unprovisioned chains fall back to this seed data — see
- * `lib/server/cache.ts` for the contract event scan that powers real
- * chains. */
+/* This module is the marketing-fallback / Zustand-seed seam for the
+ * cache surfaces. Real read paths:
+ *   - `lib/server/cache.ts:getCachePricing`      — live USDC prices + treasury
+ *   - `lib/server/cache.ts:getUserCacheEntries`  — user's real entries via
+ *                                                  `CachePaid` event scan + `getEntry`
+ *
+ * `MOCK_CACHE_ENTRIES` survives as the initial Zustand state only.
+ * `CacheMyList` hydration calls `setEntries` on success and the store
+ * flips `source: "real"`, clearing the seed.
+ *
+ * The contract doesn't store `cid` / `filename` / `sizeBytes` for an
+ * entry — those need an off-chain `cache_entries` table (DB schema
+ * follow-up). Until that ships, the `cid` slot on `MockCacheEntry`
+ * carries the entryId bytes32 hex; the `filename` slot is a synthetic
+ * label derived from the entryId. See `lib/server/cache.ts:25-31`. */
 
 const seedEntry = (
   idSeed: string,

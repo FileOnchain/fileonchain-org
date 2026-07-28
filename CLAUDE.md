@@ -87,8 +87,14 @@ costs each chain's gas.
 The pay-as-you-go upload flow sends real transactions through
 `apps/web/src/lib/anchor/*` (per-family `@fileonchain/sdk` clients) and falls
 back to `apps/web/src/lib/mock/*` only when a chain has nothing deployed
-(`ChainNotProvisionedError`). Registry reads, cache, donations, and the
-indexer still resolve through the mock layer — see "Mock layer" below.
+(`ChainNotProvisionedError`). Registry reads go through the real
+`FileRegistry` contract on provisioned EVM chains (`lib/registry/reads.ts`)
+plus a substrate mirror where configured. Cache and donation reads go
+through real RPC in `lib/server/{cache,donations}.ts`. The explorer
+indexer is DB-backed (`lib/indexer/queries.ts`). The `lib/mock/`
+fallback only remains for unprovisioned chains, the per-tier marketing
+pricing table, and the initial Zustand seed (now gated by the
+`source: "seed" | "real"` slice — see "Mock layer" below).
 
 **Storage is opt-in, not the default.** Uploads default to evidence-only
 (hash + signatures + settlement receipts; bytes never leave the client).
@@ -319,19 +325,38 @@ semver ranges. Repo-level Claude Code skills live in `.claude/skills/`
 
 ### Mock layer
 
-`apps/web/src/lib/mock/*` returns deterministic fake data and is the seam for
-real integration. Each file carries a `/* TODO: wire to … */` marker naming
-the real call to make (`registry.ts` → contract reads; `cache.ts`,
-`donations.ts` → their contracts). `upload.ts` survives only as the fallback
-`useFileUploader` uses when `lib/anchor` throws `ChainNotProvisionedError`.
+`apps/web/src/lib/mock/*` returns deterministic fake data and is the
+fallback for the few surfaces where the contract doesn't (yet) hold the
+answer. The current real read paths:
 
-`cid-indexer.ts` is the exception: the underlying data is real now (the
-DB-backed indexer at `lib/indexer/queries.ts`, fed by the
-`/api/cron/indexer-scan` cron on Sepolia + Auto EVM Chronos). The mock
-path stays as a thin re-export file so consumers don't need to change
-their import paths. When implementing real behavior for any other mock,
-replace the mock body and keep the exported signature stable so callers
-don't change.
+- `registry.ts` — fallback only. Provisioned EVM chains read the real
+  `FileRegistry` via `@fileonchain/sdk/evm.getCIDRecord`; substrate
+  chains with a `mirrorApiUrl` read through the substrate mirror. Mock
+  stays so unprovisioned chains and substrate-without-mirror still
+  render a deterministic record. The mock has no `TODO` marker — the
+  real path is the default.
+- `cache.ts` — seeds the marketing pricing table (`CACHE_PRICING`) and
+  `MOCK_CACHE_ENTRIES` for the initial Zustand state. The real read
+  paths live in `lib/server/cache.ts` (user entries via `CachePaid`
+  event scan + `getEntry`) and `lib/server/cache-prices.ts` (live
+  `priceSingle/priceFolder/pricePermanent/treasury`). Hydration
+  replaces the seed (`source: "real"`).
+- `donations.ts` — seeds `MOCK_DONATIONS` for the initial Zustand
+  state. The real read paths live in `lib/server/donations.ts`
+  (`Donated` event scan, `treasury()`, per-chain
+  `chainDonationTotal`). Hydration replaces the seed (`source: "real"`).
+- `cid-indexer.ts` — back-compat re-export of the DB-backed indexer at
+  `lib/indexer/queries.ts` (fed by `/api/cron/indexer-scan` on Sepolia
+  + Auto EVM Chronos).
+- `upload.ts` — survives only as the fallback `useFileUploader` uses
+  when `lib/anchor` throws `ChainNotProvisionedError`.
+
+The contract stores everything it can for cache/donation entries
+(owner, fileId, expiresAt, active, allowList, treasury, totals), but
+the original `cid` / `filename` / `sizeBytes` (cache) and the
+`donation_targets` preimage mapping (donations) are intentionally not
+on chain — those are off-chain table follow-ups and the source for
+each is documented in `lib/server/{cache,donations}.ts`.
 
 ### Account backend (auth, DB, credits, API keys, BYOK)
 
