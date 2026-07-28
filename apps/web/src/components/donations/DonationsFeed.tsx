@@ -34,10 +34,14 @@ const formatAgo = (ts: number): string => {
  * chain via `lib/server/donations.ts`. Real events are native-token
  * amounts in wei — the contract is `payable` — so we prepend the native
  * symbol from the chain's metadata on render.
+ *
+ * A successful hydration **replaces** the seeded feed (rather than
+ * merging) so authenticated users never see marketing rows layered on
+ * top of the real feed.
  */
 export const DonationsFeed = () => {
   const feed = useDonationsStates((s) => s.feed);
-  const addDonation = useDonationsStates((s) => s.addDonation);
+  const setFeed = useDonationsStates((s) => s.setFeed);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -47,9 +51,11 @@ export const DonationsFeed = () => {
         if (!res.ok) return;
         const data = (await res.json()) as { donations?: MockDonation[] };
         if (cancelled || !data.donations) return;
-        for (const donation of data.donations) {
-          addDonation(donation);
-        }
+        // If the user has already taken a real action (e.g. just
+        // donated), don't clobber — RPC lag could lose their donation.
+        const currentSource = useDonationsStates.getState().source;
+        if (currentSource === "real") return;
+        setFeed(data.donations);
       } catch {
         // Network failure: keep the seeded state.
       }
@@ -58,7 +64,7 @@ export const DonationsFeed = () => {
     return () => {
       cancelled = true;
     };
-  }, [addDonation]);
+  }, [setFeed]);
 
   if (feed.length === 0) {
     return (

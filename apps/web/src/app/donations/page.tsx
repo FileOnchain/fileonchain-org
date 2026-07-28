@@ -5,11 +5,13 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import DonationsFeed from "@/components/donations/DonationsFeed";
 import DonateButton from "@/components/donations/DonateButton";
 import DonationImpactStrip from "@/components/donations/DonationImpactStrip";
+import DonationChainTotalsStrip from "@/components/donations/DonationChainTotalsStrip";
 import TreasuryAddressCard from "@/components/donations/TreasuryAddressCard";
-import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import {
   isDonationProvisioned,
   getTreasuryAddress,
+  getChainDonationTotals,
 } from "@/lib/server/donations";
 
 // Direct RPC reads — must not be baked into a static render. Next.js
@@ -49,15 +51,23 @@ export const metadata: Metadata = {
  * each chain can forward to a different treasury, so we render all of
  * them rather than picking an arbitrary first chain. Read failures
  * surface as "Address unavailable" — never fabricate a hex.
+ *
+ * Per-chain PerChain donation totals hydrate from
+ * `DonationEscrow.chainDonationTotal(keccak(chainId))` so the user sees
+ * real on-chain monetary totals per chain (not a cross-chain rollup —
+ * ETH and tAI3 don't sum).
  */
 export default async function DonationsPage() {
   const provisionedChains = CHAINS.filter(isDonationProvisioned);
-  const treasuryByChain = await Promise.all(
-    provisionedChains.map(async (chain) => ({
-      chain: { id: chain.id, name: chain.name, shortName: chain.shortName },
-      address: await getTreasuryAddress(chain.id),
-    })),
-  );
+  const [treasuryByChain, chainTotals] = await Promise.all([
+    Promise.all(
+      provisionedChains.map(async (chain) => ({
+        chain: { id: chain.id, name: chain.name, shortName: chain.shortName },
+        address: await getTreasuryAddress(chain.id),
+      })),
+    ),
+    getChainDonationTotals(),
+  ]);
 
   return (
     <PageShell size="wide" padding="lg" atmosphere>
@@ -74,10 +84,21 @@ export default async function DonationsPage() {
         <DonationImpactStrip />
       </div>
 
+      <Card className="mb-8" variant="outlined">
+        <CardHeader>
+          <CardTitle>Donations by chain</CardTitle>
+          <CardDescription>
+            Cumulative PerChain donations across every provisioned EVM chain.
+          </CardDescription>
+        </CardHeader>
+        <DonationChainTotalsStrip totals={chainTotals} />
+      </Card>
+
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Recent donations</CardTitle>
+            <CardDescription>Most recent first.</CardDescription>
           </CardHeader>
           <DonationsFeed />
         </Card>
