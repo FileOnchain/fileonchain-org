@@ -43,7 +43,7 @@
     }
   },
   "devDependencies": {
-    "@polkadot/api": "^15.10.2",
+    "@polkadot/api": "^16.0.0",
     "@types/node": "^20",
     "tsup": "^8.5.0",
     "typescript": "^5"
