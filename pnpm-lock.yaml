@@ -73,7 +73,7 @@ importers:
         version: 3.1.0
       '@noble/hashes':
         specifier: ^2.2.0
-        version: 2.2.0
+        version: 2.3.0
       '@openrouter/sdk':
         specifier: ^0.13.24
         version: 0.13.67
@@ -8934,7 +8934,7 @@ snapshots:
       '@cosmjs/utils': 0.39.0
       '@noble/ciphers': 2.2.0
       '@noble/curves': 2.2.0
-      '@noble/hashes': 2.2.0
+      '@noble/hashes': 2.3.0
       '@scure/bip39': 2.2.0
 
   '@cosmjs/encoding@0.39.0':
@@ -10253,7 +10253,7 @@ snapshots:
       '@mysten/bcs': 2.1.0
       '@mysten/utils': 0.4.0
       '@noble/curves': 2.2.0
-      '@noble/hashes': 2.2.0
+      '@noble/hashes': 2.3.0
       '@protobuf-ts/grpcweb-transport': 2.11.1
       '@protobuf-ts/runtime': 2.11.1
       '@protobuf-ts/runtime-rpc': 2.11.1
