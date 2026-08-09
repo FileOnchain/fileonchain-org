@@ -162,7 +162,7 @@
     }
   },
   "devDependencies": {
-    "@polkadot/api": "^15.10.2",
+    "@polkadot/api": "^16.0.0",
     "@solana/web3.js": "^1.98.4",
     "@types/node": "^20",
     "tsup": "^8.5.0",
