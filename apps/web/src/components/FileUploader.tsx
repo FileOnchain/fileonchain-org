@@ -3,7 +3,7 @@
 import * as React from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { FiChevronDown } from "react-icons/fi";
 import { useFileUploader } from "@/hooks/useFileUploader";
 import { getFamilyAddress, useWalletStates } from "@/states/wallet";

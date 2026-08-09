@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { FiArrowRight } from "react-icons/fi";
 import ChunkFlowVisual from "@/components/ChunkFlowVisual";
 import ChainBadge from "@/components/ui/ChainBadge";

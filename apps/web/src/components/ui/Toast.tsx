@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { FiAlertCircle, FiCheck, FiInfo, FiX } from "react-icons/fi";
 import { cn } from "@/lib/cn";
 

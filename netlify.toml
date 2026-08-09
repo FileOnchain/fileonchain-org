@@ -1,0 +1,25 @@
+# Netlify build configuration.
+#
+# Lives in the repo (not just the Netlify UI) so the settings are
+# reviewable, diffable, and consistent across environments.
+#
+# Anything left out here falls back to the Netlify UI — if you change
+# a setting in the UI, mirror it here.
+#
+# The default Node heap (≈2 GB) is too small for `next build` of this
+# webapp: it transpiles 19+ workspace packages via Next's webpack and
+# reliably runs into "JavaScript heap out of memory" near the end of
+# compilation. 4 GB is enough to finish without changing the build
+# itself; bump further if a heavier package gets added.
+
+[build]
+  base    = "."
+  command = "pnpm --filter @fileonchain/web... run build"
+  publish = "apps/web/.next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NODE_OPTIONS = "--max-old-space-size=4096"
