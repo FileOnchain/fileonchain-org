@@ -9,7 +9,13 @@
     "directory": "packages/verify"
   },
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "./src/index.ts",
+    "./src/adapters-builtin.ts",
+    "./dist/index.js",
+    "./dist/index.cjs",
+    "./dist/adapters-builtin.js"
+  ],
   "files": [
     "dist"
   ],

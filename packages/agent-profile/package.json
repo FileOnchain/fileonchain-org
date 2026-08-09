@@ -9,7 +9,11 @@
     "directory": "packages/agent-profile"
   },
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "./src/index.ts",
+    "./dist/index.js",
+    "./dist/index.cjs"
+  ],
   "files": [
     "dist"
   ],
