@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { FiX } from "react-icons/fi";
 import { cn } from "@/lib/cn";
 

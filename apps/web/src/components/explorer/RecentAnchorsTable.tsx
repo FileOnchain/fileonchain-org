@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { FiArrowRight } from "react-icons/fi";
 import StatusPill from "@/components/explorer/StatusPill";
 import type { RecentAnchorRow } from "@/lib/mock/cid-indexer";

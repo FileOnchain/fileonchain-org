@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { motion, useScroll, useSpring } from "framer-motion";
+import { motion, useScroll, useSpring } from "motion/react";
 
 /**
  * ScrollProgress — a 2px-tall scroll-progress bar fixed to the top of the

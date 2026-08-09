@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { FiChevronDown } from "react-icons/fi";
 import ScrollReveal from "@/components/ScrollReveal";
 import { FAQ } from "@/lib/faq";

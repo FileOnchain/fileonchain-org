@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import Image from "next/image";
 import { isChainActive } from "@fileonchain/sdk";
 import { useVisibleChains } from "@/hooks/useVisibleChains";

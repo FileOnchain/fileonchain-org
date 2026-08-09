@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { DragEvent, ChangeEvent } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { FiUploadCloud, FiFileText, FiImage, FiMusic, FiVideo } from "react-icons/fi";
 import { cn } from "@/lib/cn";
 

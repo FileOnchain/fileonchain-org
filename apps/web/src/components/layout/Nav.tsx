@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { FiMenu, FiX } from "react-icons/fi";
-import { motion, LayoutGroup } from "framer-motion";
+import { motion, LayoutGroup } from "motion/react";
 import { cn } from "@/lib/cn";
 import ThemeSwitch from "@/components/ThemeSwitch";
 import ChainSwitcher from "@/components/chain/ChainSwitcher";
