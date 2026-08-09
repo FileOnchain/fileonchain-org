@@ -46,7 +46,7 @@
     "@fileonchain/agent-profile": "workspace:^",
     "@fileonchain/protocol": "workspace:^",
     "@fileonchain/utils": "workspace:^",
-    "@noble/curves": "^1.6.0",
+    "@noble/curves": "^2.2.0",
     "viem": "^2.53.1"
   },
   "devDependencies": {
