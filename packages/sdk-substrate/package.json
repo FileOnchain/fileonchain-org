@@ -44,7 +44,7 @@
   },
   "devDependencies": {
     "@polkadot/api": "^16.0.0",
-    "@types/node": "^20",
+    "@types/node": "^24.0.0",
     "tsup": "^8.5.0",
     "typescript": "^5"
   }

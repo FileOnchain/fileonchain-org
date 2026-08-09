@@ -50,7 +50,7 @@
   },
   "devDependencies": {
     "viem": "^2.53.1",
-    "@types/node": "^20",
+    "@types/node": "^24.0.0",
     "tsup": "^8.5.0",
     "typescript": "^5"
   }
