@@ -184,9 +184,9 @@ export const SearchSelect = ({
             inputRef.current?.focus();
           }}
           className={cn(
-            "z-[60] flex max-h-[min(70vh,26rem)] flex-col overflow-hidden rounded-lg border border-border",
+            "z-60 flex max-h-[min(70vh,26rem)] flex-col overflow-hidden rounded-lg border border-border",
             "bg-surface-elevated shadow-elev-3 animate-fade-in",
-            contentClassName ?? "w-[var(--radix-popover-trigger-width)] min-w-[16rem]",
+            contentClassName ?? "w-(--radix-popover-trigger-width) min-w-[16rem]",
           )}
         >
           <div className="flex items-center gap-2 border-b border-border px-3">

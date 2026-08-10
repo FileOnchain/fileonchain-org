@@ -217,7 +217,7 @@ importers:
         specifier: ^8
         version: 8.5.26
       tailwindcss:
-        specifier: ^4.0.0
+        specifier: ^4.3.3
         version: 4.3.3
       typescript:
         specifier: ^5

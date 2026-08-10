@@ -82,7 +82,7 @@ const FeatureTrio = () => (
               {eyebrow}
             </span>
             <span
-              className={`flex h-10 w-10 items-center justify-center rounded-xl transition-transform duration-base ease-out-soft group-hover:scale-110 group-hover:rotate-[6deg] ${iconBg}`}
+              className={`flex h-10 w-10 items-center justify-center rounded-xl transition-transform duration-base ease-out-soft group-hover:scale-110 group-hover:rotate-6 ${iconBg}`}
             >
               <Icon size={18} />
             </span>

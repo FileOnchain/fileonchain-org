@@ -1,6 +1,9 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Tailwind v4 reads the theme from CSS by default; this keeps the existing
+ * JS theme (design-token colors, radii, elevations, motion, keyframes) as the
+ * single source of truth instead of duplicating it here. */
+@config "../../tailwind.config.ts";
 
 /* -----------------------------------------------------------------------------
  * FileOnChain design tokens.
@@ -96,16 +99,21 @@
   --grid-line: rgba(255, 255, 255, 0.04);
 }
 
-body {
-  color: var(--foreground);
-  background-color: var(--background);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+/* Both rules must live in the `base` layer: Tailwind v4 uses native cascade
+ * layers, and unlayered CSS wins over every layer regardless of specificity —
+ * so an unlayered `*` rule here would beat `border-*`/`text-*` utilities. */
+@layer base {
+  body {
+    color: var(--foreground);
+    background-color: var(--background);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-* {
-  border-color: var(--border);
+  * {
+    border-color: var(--border);
+  }
 }
 
 @layer utilities {
