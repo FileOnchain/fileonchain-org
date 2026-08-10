@@ -34,7 +34,7 @@
     "clean": "rm -rf dist"
   },
   "devDependencies": {
-    "@types/node": "^20",
+    "@types/node": "^24.0.0",
     "tsup": "^8.5.0",
     "typescript": "^5",
     "vitest": "^2"
