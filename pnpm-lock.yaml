@@ -75,8 +75,8 @@ importers:
         specifier: ^2.2.0
         version: 2.3.0
       '@openrouter/sdk':
-        specifier: ^0.13.24
-        version: 0.13.67
+        specifier: ^1.0.0
+        version: 1.2.19
       '@polkadot/api':
         specifier: 16.5.6
         version: 16.5.6(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -2462,8 +2462,8 @@ packages:
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
 
-  '@openrouter/sdk@0.13.67':
-    resolution: {integrity: sha512-kUVaFYA9Xehq67ndTk98i+tRLfYH/F6xSf/WuC8dsukBzcgBvYQydoeKw4Xe+peXG/wOVtDxukWt5SqzhbloKw==}
+  '@openrouter/sdk@1.2.19':
+    resolution: {integrity: sha512-BYraWvsSrGdWysTwXBoGL8Mx6PDeNzG2la6G3HMXjAqR/YoCkblQy+IaBB6uE/6HPmYqb9VHgjhdrlhwxqVd8g==}
 
   '@panva/hkdf@1.2.1':
     resolution: {integrity: sha512-6oclG6Y3PiDFcoyk8srjLfVKyMfVCKJ27JwNPViuXziFpmdz+MZnZN/aKY0JGXgYuO/VghU0jcOAZgWXZ1Dmrw==}
@@ -10420,9 +10420,9 @@ snapshots:
 
   '@nolyfill/is-core-module@1.0.39': {}
 
-  '@openrouter/sdk@0.13.67':
+  '@openrouter/sdk@1.2.19':
     dependencies:
-      zod: 4.4.3
+      zod: 3.25.76
 
   '@panva/hkdf@1.2.1': {}
 
@@ -18192,7 +18192,8 @@ snapshots:
 
   zod@3.25.76: {}
 
-  zod@4.4.3: {}
+  zod@4.4.3:
+    optional: true
 
   zustand@5.0.14(@types/react@18.3.31)(react@19.2.8)(use-sync-external-store@1.2.0(react@19.2.8)):
     optionalDependencies:
