@@ -56,7 +56,7 @@
     "@tonconnect/ui-react": "^3.0.0",
     "@walletconnect/modal": "^2.7.0",
     "bech32": "^2.0.0",
-    "blockstore-core": "^5.0.2",
+    "blockstore-core": "^7.0.0",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
     "motion": "^12.42.0",
