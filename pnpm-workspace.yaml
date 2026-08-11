@@ -1,3 +1,34 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# pnpm 11 no longer reads the `pnpm` field of package.json. All install
+# settings live here. See https://pnpm.io/settings.
+
+# pnpm 11 defaults minimumReleaseAge to 1440 minutes (24h). We pin to 0 to
+# match the pre-v11 behavior — Renovate bumps flow through immediately.
+minimumReleaseAge: 0
+
+overrides:
+  "@polkadot/util": "14.0.3"
+  "@polkadot/util-crypto": "13.5.9"
+  # Pinned to keep the @scure/sr25519 SWC minify happy (see CLAUDE.md gotchas).
+  "@polkadot/keyring": "14.0.3"
+  "@polkadot/api": "16.5.6"
+  "@polkadot/types": "16.5.6"
+  typescript: "^6.0.0"
+  vite: "^7.0.0"
+
+# Replaces the old onlyBuiltDependencies array. Listed deps still run their
+# install scripts; anything else fails with ERR_PNPM_IGNORED_BUILDS unless
+# `strictDepBuilds=false` is set.
+allowBuilds:
+  '@openrouter/sdk': true
+  '@reown/appkit': true
+  bufferutil: true
+  chacha-native: true
+  esbuild: true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true
+  utf-8-validate: true
