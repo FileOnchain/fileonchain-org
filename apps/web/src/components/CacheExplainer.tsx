@@ -78,7 +78,7 @@ const CacheExplainer = () => (
               transition={{ duration: 0.16, ease: EASE_OUT }}
               className="group flex flex-col gap-2 rounded-xl border border-border bg-surface-elevated p-4 transition-colors hover:border-primary/40"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface text-primary transition-all group-hover:scale-110 group-hover:rotate-[6deg]">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface text-primary transition-all group-hover:scale-110 group-hover:rotate-6">
                 <Icon size={16} />
               </span>
               <h3 className="text-base font-semibold text-foreground">{title}</h3>

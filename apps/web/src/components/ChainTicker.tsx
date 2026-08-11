@@ -44,8 +44,8 @@ const ChainTicker = ({ className }: ChainTickerProps) => {
       }
     >
       {/* Edge masks */}
-      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-background to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-background to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-linear-to-r from-background to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-linear-to-l from-background to-transparent" />
 
       <div className="flex w-max animate-marquee-slow items-center gap-3 py-3 will-change-transform group-hover:[animation-play-state:paused]">
         {tiles.map((chain, i) => {

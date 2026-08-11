@@ -132,8 +132,8 @@ const LiveLedgerTicker = () => {
   const loop = [...LEDGER_FEED, ...LEDGER_FEED];
   return (
     <div className="group relative w-full overflow-hidden rounded-md border border-border bg-surface/60">
-      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-surface to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-surface to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-linear-to-r from-surface to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-linear-to-l from-surface to-transparent" />
       <div className="flex w-max animate-marquee items-center gap-6 py-2 will-change-transform group-hover:[animation-play-state:paused]">
         {loop.map((e, i) => (
           <div

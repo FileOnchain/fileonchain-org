@@ -166,9 +166,9 @@ const Hero = ({
         initial={{ opacity: 0, y: 16, rotateX: 6 }}
         animate={{ opacity: 1, y: 0, rotateX: 0 }}
         transition={{ duration: 0.75, delay: 0.25, ease: EASE_OUT }}
-        className="relative [perspective:1400px]"
+        className="relative perspective-[1400px]"
       >
-        <div className="transition-transform duration-slow ease-out-soft will-change-transform hover:[transform:rotateX(2deg)_rotateY(-2deg)]">
+        <div className="transition-transform duration-slow ease-out-soft will-change-transform hover:transform-[rotateX(2deg)_rotateY(-2deg)]">
           <ChunkFlowVisual />
         </div>
         {/* Backing plate behind the visual */}

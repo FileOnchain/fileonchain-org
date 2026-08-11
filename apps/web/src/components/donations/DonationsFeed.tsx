@@ -106,7 +106,7 @@ export const DonationsFeed = () => {
               </div>
 
               {d.memo && (
-                <p className="text-sm text-foreground mb-2 break-words">&ldquo;{d.memo}&rdquo;</p>
+                <p className="text-sm text-foreground mb-2 wrap-break-word">&ldquo;{d.memo}&rdquo;</p>
               )}
 
               <div className="flex items-center gap-1 text-xs text-muted">

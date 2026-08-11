@@ -134,7 +134,7 @@ const VerifyPanel = () => {
             type="checkbox"
             checked={online}
             onChange={(e) => setOnline(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-border accent-[var(--color-primary,#5e8bff)]"
+            className="mt-0.5 h-4 w-4 rounded border-border accent-(--color-primary,#5e8bff)"
           />
           <span>
             Confirm receipts online (public RPCs) — otherwise settlement receipts are checked
