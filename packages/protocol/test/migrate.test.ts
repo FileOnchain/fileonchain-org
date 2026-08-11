@@ -61,7 +61,7 @@ describe("legacy migration", () => {
 
   it("carries legacy metadata as namespaced claims, not subject fields", () => {
     const envelope = migrateLegacyEvidence(legacy, { migratedAt: "2026-07-11T13:00:00Z" });
-    expect((envelope.subject as Record<string, unknown>).metadata).toBeUndefined();
+    expect((envelope.subject as unknown as Record<string, unknown>).metadata).toBeUndefined();
     const claims = envelope.claims?.["org.fileonchain.legacy"] as Record<string, unknown>;
     expect(claims.metadata).toEqual({ model: "claude-fable-5" });
     expect(claims.sessionId).toBe("s-1");

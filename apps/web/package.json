@@ -82,11 +82,11 @@
     "@types/react-dom": "^19.0.0",
     "@types/ws": "^8.18.1",
     "drizzle-kit": "^0.31.10",
-    "eslint": "^10.0.0",
+    "eslint": "^9.0.0",
     "eslint-config-next": "15.5.23",
     "postcss": "^8",
     "tailwindcss": "^4.3.3",
-    "typescript": "^5",
+    "typescript": "^7.0.0",
     "vitest": "^4.0.0",
     "webpack": "^5.108.2"
   }
