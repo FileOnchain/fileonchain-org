@@ -24,7 +24,7 @@
     "@fileonchain/api": "workspace:^",
     "@fileonchain/utils": "workspace:^",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "zod": "^3.25.76",
+    "zod": "^4.0.0",
     "@fileonchain/verify": "workspace:^"
   },
   "devDependencies": {
