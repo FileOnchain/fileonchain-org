@@ -2,29 +2,10 @@
   "name": "fileonchain",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@10.34.5",
+  "packageManager": "pnpm@11.21.0",
   "engines": {
-    "node": ">=20.0.0",
+    "node": ">=22.0.0",
     "pnpm": ">=10.0.0"
-  },
-  "pnpm": {
-    "overrides": {
-      "@polkadot/util": "14.0.3",
-      "@polkadot/util-crypto": "13.5.9",
-      "@polkadot/keyring": "14.0.3",
-      "@polkadot/api": "16.5.6",
-      "@polkadot/types": "16.5.6",
-      "typescript": "^6.0.0",
-      "vite": "^7.0.0"
-    },
-    "onlyBuiltDependencies": [
-      "bufferutil",
-      "esbuild",
-      "protobufjs",
-      "sharp",
-      "unrs-resolver",
-      "utf-8-validate"
-    ]
   },
   "scripts": {
     "dev": "pnpm --filter @fileonchain/web dev",
