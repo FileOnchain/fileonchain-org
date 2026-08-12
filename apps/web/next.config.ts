@@ -39,6 +39,20 @@ const nextConfig: NextConfig = {
     "@fileonchain/sdk-ton",
     "@fileonchain/sdk-hedera",
   ],
+  // Next.js 16 enables Turbopack by default; the existing webpack config
+  // below is kept for `--webpack` builds but Turbopack needs its own alias
+  // for the auto-dag-data encryption subpath (see the turbopack block).
+  turbopack: {
+    resolveAlias: {
+      // Stub the encryption subpath with the empty module for the browser
+      // bundle. The real module pulls in @peculiar/webcrypto -> node:crypto
+      // at module-evaluation time, which Turbopack cannot ship to the
+      // client. The uploader never exercises encryption.
+      "@autonomys/auto-dag-data/dist/encryption/index.js": {
+        browser: path.resolve(__dirname, "src/utils/empty-module.ts"),
+      },
+    },
+  },
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // The client bundle is fed by packages that reach for Node built-ins
