@@ -160,7 +160,7 @@ importers:
         version: 14.0.5
       near-api-js:
         specifier: ^7.2.0
-        version: 7.3.0
+        version: 7.3.1
       next:
         specifier: 16.3.0
         version: 16.3.0(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -6835,8 +6835,8 @@ packages:
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
 
-  near-api-js@7.3.0:
-    resolution: {integrity: sha512-od0tpgfDu4Hmvh0DhSuxGyIKk3hbufBT3N+yL21khaVKbQ9kLIvVC/7fdzq1R4y53lc123nId6Y1P/KalUn9nw==}
+  near-api-js@7.3.1:
+    resolution: {integrity: sha512-5+xluPM6zMaIz5qIVGxnv90ZgtNSjCUu7T4aGhsgaOQZn3jfZ59pzO5y4qikKfLrnkgYTEyHdMdD0vFeMo7RrA==}
     engines: {node: '>=22.22.2', pnpm: '>=10.4.1'}
 
   near-hd-key@1.2.1:
@@ -16374,7 +16374,7 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  near-api-js@7.3.0:
+  near-api-js@7.3.1:
     dependencies:
       '@noble/curves': 2.2.0
       '@noble/hashes': 2.2.0
