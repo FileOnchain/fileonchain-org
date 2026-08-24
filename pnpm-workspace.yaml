@@ -7,7 +7,7 @@ packages:
 
 # pnpm 11 defaults minimumReleaseAge to 1440 minutes (24h). We pin to 0 to
 # match the pre-v11 behavior — Renovate bumps flow through immediately.
-minimumReleaseAge: 0
+minimumReleaseAge: 1440
 
 overrides:
   "@polkadot/util": "14.0.3"
