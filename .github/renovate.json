@@ -5,11 +5,12 @@
   ],
   "packageRules": [
     {
-      "description": "@walletconnect/modal is deprecated upstream with no published replacement. It is a runtime peer dependency of @hashgraph/hedera-wallet-connect (see apps/web/src/components/auth/HederaAppKitProvider.tsx — DAppConnector imports WalletConnectModal at runtime). Suppress Renovate deprecation/version PRs until the Hedera adapter drops the peer dep.",
+      "description": "@walletconnect/modal is deprecated upstream with no published replacement. It is a runtime peer dependency of @hashgraph/hedera-wallet-connect (see apps/web/src/components/auth/HederaAppKitProvider.tsx \u2014 DAppConnector imports WalletConnectModal at runtime). Suppress Renovate deprecation/version PRs until the Hedera adapter drops the peer dep.",
       "matchPackageNames": [
         "@walletconnect/modal"
       ],
       "enabled": false
     }
-  ]
+  ],
+  "minimumReleaseAge": "1 day"
 }
