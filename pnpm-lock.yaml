@@ -88,7 +88,7 @@ importers:
         version: 2.3.0
       '@openrouter/sdk':
         specifier: ^1.0.0
-        version: 1.2.62
+        version: 1.2.65
       '@polkadot/api':
         specifier: 16.5.6
         version: 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)(utf-8-validate@6.0.6)
@@ -2345,8 +2345,8 @@ packages:
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
 
-  '@openrouter/sdk@1.2.62':
-    resolution: {integrity: sha512-Tmvicb75ByxyU0UGwI427MT2KOwX8UDyEDkMB6iIeoQNWcZG3k5gcVzYm243w7j7uJ+HPgEab7wz+il1qb/gVg==}
+  '@openrouter/sdk@1.2.65':
+    resolution: {integrity: sha512-I2GxlDy1dqpIFlUOcEKztI1ndtuI7qNFa8b3eUlGYKmvDEHtxauc4214mPC8zI+uoGa3zi2+LXEKrK7M6s8Bbw==}
 
   '@oxc-project/types@0.146.0':
     resolution: {integrity: sha512-XC0QsnnhVe7sLIWmYmdPw7x5P0h4W8vUU3Nv1ySgWXtvCz8NizoAEpGXA0sOYoJQV2Rl13LgURAHQ5cI5ILCSA==}
@@ -10646,7 +10646,7 @@ snapshots:
 
   '@nolyfill/is-core-module@1.0.39': {}
 
-  '@openrouter/sdk@1.2.62':
+  '@openrouter/sdk@1.2.65':
     dependencies:
       zod: 4.4.3
 
