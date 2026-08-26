@@ -48,7 +48,7 @@ wired end-to-end.
 | Autonomys Taurus (`substrate:autonomys-taurus`) | Storage + settlement (testnet) | `@fileonchain/sdk-substrate` | `webapp-integrated` | 2026-07-11 |
 | Solana (`solana:mainnet`) | Settlement (native SPL Memo, no deployment) | `@fileonchain/sdk-solana` | `webapp-integrated` | 2026-07-11 |
 | Solana Devnet (`solana:devnet`) | Settlement (testnet) | `@fileonchain/sdk-solana` | `webapp-integrated` | 2026-07-11 |
-| Ethereum Sepolia (`evm:11155111`) | Settlement (anchor-only FileRegistry contract) | `@fileonchain/sdk-evm` | `testnet-deployed` (PAYG + server-worker QA pending) | 2026-07-22 |
+| Ethereum Sepolia (`evm:11155111`) | Settlement (anchor-only FileRegistry contract) | `@fileonchain/sdk-evm` | `testnet-deployed` (PAYG + server-worker QA pending) | 2026-08-26 |
 | Auto EVM Chronos (`evm:8700`) | Settlement (anchor-only FileRegistry contract, testnet) | `@fileonchain/sdk-evm` | `testnet-deployed` (PAYG + server-worker QA pending) | 2026-07-22 |
 | Auto EVM mainnet (`evm:870`) | Settlement target — flips when the Chronos-tested registry lands on the mainnet domain | `@fileonchain/sdk-evm` | `testnet-deployed` (mainnet pending) | 2026-07-22 |
 | Cosmos Hub Testnet (`cosmos:theta-testnet-001`) | Settlement (tx memo, testnet) | `@fileonchain/sdk-cosmos` | `webapp-integrated` | 2026-07-22 |
@@ -69,9 +69,11 @@ mainnet `ANCHOR_*` env var. Then change that mainnet entry from
 already.
 
 **Sepolia / Chronos promotion path** — the `evm:11155111` and
-`evm:8700` entries are stuck at `testnet-deployed` because the
-end-to-end PAYG-and-server-worker QA has not yet been recorded. The
-boxes to tick (per `docs/chains/checklist.md`):
+`evm:8700` entries stay at `testnet-deployed` until end-to-end
+PAYG-and-server-worker QA is recorded. Sepolia was redeployed
+2026-08-26 (new proxies; see `docs/deploy/evm.md`); Chronos still
+points at the 2026-07-22 addresses. The boxes to tick (per
+`docs/chains/checklist.md`):
 
 1. PAYG browser-wallet upload on each chain successfully sends a
    transaction through `apps/web/src/lib/anchor/evm` and the
@@ -81,10 +83,11 @@ boxes to tick (per `docs/chains/checklist.md`):
    produces a real tx (not the deterministic mock) on each chain.
 3. Explorer links resolve visibly (`buildTxUrl` / `buildAddressUrl`).
 
-When all three are observed, bump both entries to
-`integrationStatus: "webapp-integrated"` and stamp the date. The
-indexer cron (`/api/cron/indexer-scan`) is already pulling events
-from both chains, so the server-discovery leg is wired.
+When all three are observed **on a given chain**, bump that entry to
+`integrationStatus: "webapp-integrated"` and stamp the date. Do not
+promote Sepolia and Chronos as a pair — they no longer share a
+deploy. The indexer cron (`/api/cron/indexer-scan`) already walks
+every active EVM chain with a non-zero `registryContract`.
 
 ## Roadmap adapters
 
