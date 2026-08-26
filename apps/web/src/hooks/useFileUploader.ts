@@ -17,6 +17,7 @@ import {
 } from "react";
 import {
   ChainNotProvisionedError,
+  PartialAnchorError,
   ZERO_ADDRESS,
   buildStorageUri,
   getChain,
@@ -29,6 +30,13 @@ import {
 import { ChunkData, generateCIDs } from "@/utils/generateCIDs";
 import { readFileContent } from "@/utils/readFileContent";
 import { anchorFileOnChain, type AnchorOutcome } from "@/lib/anchor";
+import {
+  anchorFingerprint,
+  clearPartialAnchor,
+  loadPartialAnchor,
+  savePartialAnchor,
+  type PartialAnchorState,
+} from "@/lib/anchor/resume";
 import { withRpcOverride } from "@/lib/rpc-endpoints";
 import { getRpcOverrides } from "@/states/rpc-endpoints";
 import { mockAnchorCID } from "@/lib/mock/upload";
@@ -103,6 +111,31 @@ export type StorageMode = "onchain" | "external" | "none";
 const fallbackStorageChainId = (anchorChain: ChainConfig): ChainId =>
   anchorChain.testnet ? "substrate:autonomys-taurus" : "substrate:autonomys-mainnet";
 
+/** Cap the raw chain error so the resume guidance stays readable. */
+const CAUSE_PREVIEW_CHARS = 240;
+
+/**
+ * A partial anchor failure is recoverable, not fatal — say so. The landed
+ * transactions stay valid on-chain; anchoring again resumes at the failed
+ * send instead of starting over.
+ */
+const partialAnchorMessage = (
+  landedCount: number,
+  chain: ChainConfig,
+  error: PartialAnchorError,
+): string => {
+  const cause =
+    error.cause instanceof Error ? error.cause.message : String(error.cause ?? "");
+  const preview =
+    cause.length > CAUSE_PREVIEW_CHARS ? `${cause.slice(0, CAUSE_PREVIEW_CHARS)}…` : cause;
+  return (
+    `Anchoring stopped partway — ${landedCount} transaction(s) already landed on ` +
+    `${chain.name} and stay valid, so nothing is lost. Fix the cause (often topping ` +
+    `up ${chain.nativeCurrency.symbol} for gas), then anchor again to resume from ` +
+    `where it stopped.${preview ? ` Underlying error: ${preview}` : ""}`
+  );
+};
+
 export const useFileUploader = () => {
   const { activeChain } = useChain();
   const evm = useEVMWallet();
@@ -157,6 +190,61 @@ export const useFileUploader = () => {
     if (!storageChain) return CHUNK_BUFFER_SIZE;
     return Math.min(CHUNK_BUFFER_SIZE, getChunkDataBudget(storageChain) ?? CHUNK_BUFFER_SIZE);
   }, [storageChain]);
+
+  // Partially-landed anchor progress: when a multi-transaction anchor fails
+  // partway, the sends that already landed are remembered (and persisted)
+  // so the next attempt of the identical upload resumes instead of
+  // re-paying for them. See lib/anchor/resume.ts.
+  const [partialAnchor, setPartialAnchor] = useState<PartialAnchorState | null>(null);
+
+  const resumeFingerprint = useMemo(
+    () =>
+      fileCid && cids.length > 0
+        ? anchorFingerprint({
+            fileCid,
+            chainId: activeChain.id,
+            storageChainId: storageChain?.id ?? null,
+            storageMode,
+            externalUri: externalUri.trim(),
+            chunkCount: cids.length,
+            chunkSize,
+          })
+        : null,
+    [fileCid, cids.length, activeChain.id, storageChain, storageMode, externalUri, chunkSize],
+  );
+
+  // Restore saved progress whenever the prepared upload matches it — also
+  // after a reload, since re-processing the same file yields the same CIDs.
+  useEffect(() => {
+    if (!resumeFingerprint) {
+      setPartialAnchor(null);
+      return;
+    }
+    setPartialAnchor((prev) =>
+      prev?.fingerprint === resumeFingerprint ? prev : loadPartialAnchor(resumeFingerprint),
+    );
+  }, [resumeFingerprint]);
+
+  const recordPartialAnchor = useCallback((state: PartialAnchorState) => {
+    setPartialAnchor(state);
+    savePartialAnchor(state);
+  }, []);
+
+  const resetPartialAnchor = useCallback(() => {
+    setPartialAnchor(null);
+    clearPartialAnchor();
+  }, []);
+
+  /** Landed-transaction summary when a previous attempt stopped partway —
+   * null unless the currently prepared upload matches the saved progress. */
+  const pendingResume = useMemo(() => {
+    if (!partialAnchor || partialAnchor.fingerprint !== resumeFingerprint) return null;
+    return {
+      phase: partialAnchor.phase,
+      landedTxCount:
+        partialAnchor.txHashes.length + (partialAnchor.storageTxHashes?.length ?? 0),
+    };
+  }, [partialAnchor, resumeFingerprint]);
 
   const handleSearch = useCallback(async (chunks: ChunkData[]) => {
     if (chunks.length === 0) return;
@@ -351,6 +439,10 @@ export const useFileUploader = () => {
    * When the settlement chain has nothing deployed yet, fall back to the
    * previous simulated flow — one authorization signature, ticking
    * progress, then the mock anchor.
+   *
+   * A pass that fails partway (PartialAnchorError) records how far it got;
+   * calling this again with the identical upload resumes from the failed
+   * send instead of re-paying for the transactions that already landed.
    */
   const anchorPayg = useCallback(async (): Promise<AnchorOutcome> => {
     if (!file || !fileCid) throw new Error("No file prepared");
@@ -363,41 +455,73 @@ export const useFileUploader = () => {
     // Senders that dial an RPC themselves honor the account's custom
     // endpoint; wallet-broadcast families ignore rpcUrl anyway.
     const rpcOverrides = getRpcOverrides();
+    // Saved progress for this exact request when the last attempt stopped
+    // partway — landed sends are skipped, their hashes merged back into
+    // the outcome.
+    const resume =
+      partialAnchor && partialAnchor.fingerprint === resumeFingerprint ? partialAnchor : null;
+    const fingerprint = resumeFingerprint;
 
     try {
       // Storage pass — bytes embedded in chunk anchors on the storage
       // chain. Its provisioning failure is the user's to resolve (pick
       // another storage system), never silently mocked.
       let uri: string | undefined;
+      let storageTxHashes: string[] = [];
+      let storedTxHash: string | null = null;
       const storesOnAnchorChain = storageChain?.id === activeChain.id;
       if (storageChain && !storesOnAnchorChain) {
-        setAnchorStatus("storing");
-        try {
-          const stored = await anchorFileOnChain({
-            chain: withRpcOverride(storageChain, rpcOverrides),
-            fileCid,
-            chunks,
-            includeData: true,
-            onProgress: (progress) => {
-              setAnchorStatus(progress.stage === "signing" ? "signing" : "storing");
-              setAnchorProgress(progress.chunksAnchored);
-            },
-          });
-          setStorageTxHash(stored.txHash);
-          uri = buildStorageUri(storageChain.id, fileCid);
-          trackEvent("chain_anchor_success", {
-            family: storageChain.family,
-            chain_id: storageChain.id,
-            payment_method: "payg",
-            chunk_count: chunks.length,
-          });
-        } catch (error) {
-          if (error instanceof ChainNotProvisionedError) {
-            throw new Error(
-              `${storageChain.name} can't store bytes for real yet. Pick a different storage system, or switch storage off.`,
-            );
+        if (resume?.phase === "anchoring" && resume.uri) {
+          // The bytes landed before the previous attempt's anchor pass
+          // failed — reuse that receipt instead of storing them twice.
+          uri = resume.uri;
+          storageTxHashes = resume.storageTxHashes ?? [];
+          storedTxHash = resume.storageTxHash ?? null;
+          if (storedTxHash) setStorageTxHash(storedTxHash);
+        } else {
+          const priorTxHashes = resume?.phase === "storing" ? resume.txHashes : [];
+          setAnchorStatus("storing");
+          try {
+            const stored = await anchorFileOnChain({
+              chain: withRpcOverride(storageChain, rpcOverrides),
+              fileCid,
+              chunks,
+              includeData: true,
+              resumeFrom: resume?.phase === "storing" ? resume.resumeFrom : undefined,
+              onProgress: (progress) => {
+                setAnchorStatus(progress.stage === "signing" ? "signing" : "storing");
+                setAnchorProgress(progress.chunksAnchored);
+              },
+            });
+            storageTxHashes = [...priorTxHashes, ...stored.txHashes];
+            storedTxHash = stored.txHash;
+            setStorageTxHash(stored.txHash);
+            uri = buildStorageUri(storageChain.id, fileCid);
+            trackEvent("chain_anchor_success", {
+              family: storageChain.family,
+              chain_id: storageChain.id,
+              payment_method: "payg",
+              chunk_count: chunks.length,
+            });
+          } catch (error) {
+            if (error instanceof ChainNotProvisionedError) {
+              throw new Error(
+                `${storageChain.name} can't store bytes for real yet. Pick a different storage system, or switch storage off.`,
+              );
+            }
+            if (error instanceof PartialAnchorError && fingerprint) {
+              const txHashes = [...priorTxHashes, ...error.txHashes];
+              recordPartialAnchor({
+                fingerprint,
+                phase: "storing",
+                resumeFrom: error.failedIndex,
+                txHashes,
+                savedAt: Date.now(),
+              });
+              throw new Error(partialAnchorMessage(txHashes.length, storageChain, error));
+            }
+            throw error;
           }
-          throw error;
         }
       } else if (storageMode === "external" && externalUri.trim()) {
         uri = externalUri.trim();
@@ -408,26 +532,47 @@ export const useFileUploader = () => {
       // storage-first chain's default embed can't sneak them in twice.
       setAnchorStatus("signing");
       setAnchorProgress(0);
-      const outcome = await anchorFileOnChain({
-        chain: withRpcOverride(activeChain, rpcOverrides),
-        fileCid,
-        chunks: storesOnAnchorChain
-          ? chunks
-          : chunks.map(({ cid, index, nextCid }) => ({ cid, index, nextCid })),
-        includeData: Boolean(storesOnAnchorChain),
-        uri,
-        onProgress: (progress) => {
-          setAnchorStatus(progress.stage === "signing" ? "signing" : "anchoring");
-          setAnchorProgress(progress.chunksAnchored);
-        },
-      });
-      trackEvent("chain_anchor_success", {
-        family: activeChain.family,
-        chain_id: activeChain.id,
-        payment_method: "payg",
-        chunk_count: chunks.length,
-      });
-      return outcome;
+      const priorAnchorTxHashes = resume?.phase === "anchoring" ? resume.txHashes : [];
+      try {
+        const outcome = await anchorFileOnChain({
+          chain: withRpcOverride(activeChain, rpcOverrides),
+          fileCid,
+          chunks: storesOnAnchorChain
+            ? chunks
+            : chunks.map(({ cid, index, nextCid }) => ({ cid, index, nextCid })),
+          includeData: Boolean(storesOnAnchorChain),
+          uri,
+          resumeFrom: resume?.phase === "anchoring" ? resume.resumeFrom : undefined,
+          onProgress: (progress) => {
+            setAnchorStatus(progress.stage === "signing" ? "signing" : "anchoring");
+            setAnchorProgress(progress.chunksAnchored);
+          },
+        });
+        trackEvent("chain_anchor_success", {
+          family: activeChain.family,
+          chain_id: activeChain.id,
+          payment_method: "payg",
+          chunk_count: chunks.length,
+        });
+        resetPartialAnchor();
+        return { ...outcome, txHashes: [...priorAnchorTxHashes, ...outcome.txHashes] };
+      } catch (error) {
+        if (error instanceof PartialAnchorError && fingerprint) {
+          const txHashes = [...priorAnchorTxHashes, ...error.txHashes];
+          recordPartialAnchor({
+            fingerprint,
+            phase: "anchoring",
+            resumeFrom: error.failedIndex,
+            txHashes,
+            storageTxHashes: storageTxHashes.length > 0 ? storageTxHashes : undefined,
+            storageTxHash: storedTxHash ?? undefined,
+            uri,
+            savedAt: Date.now(),
+          });
+          throw new Error(partialAnchorMessage(txHashes.length, activeChain, error));
+        }
+        throw error;
+      }
     } catch (error) {
       if (!(error instanceof ChainNotProvisionedError)) throw error;
       trackEvent("chain_anchor_fallback_mock", {
@@ -469,6 +614,10 @@ export const useFileUploader = () => {
     storageMode,
     externalUri,
     signAuthorization,
+    partialAnchor,
+    resumeFingerprint,
+    recordPartialAnchor,
+    resetPartialAnchor,
   ]);
 
   /**
@@ -548,6 +697,9 @@ export const useFileUploader = () => {
           payment_method: paymentMethod === "byok" ? "byok" : "credits",
           chunk_count: cids.length,
         });
+        // The file is anchored server-side — any partial pay-as-you-go
+        // progress for it is superseded.
+        resetPartialAnchor();
       }
 
       setAnchorStatus("done");
@@ -581,6 +733,7 @@ export const useFileUploader = () => {
     activeChain,
     anchorPayg,
     buildPreview,
+    resetPartialAnchor,
   ]);
 
   const handleFileChange = useCallback(
@@ -647,6 +800,7 @@ export const useFileUploader = () => {
     externalUri,
     chunkSize,
     storageTxHash,
+    pendingResume,
     setStorageMode,
     setStorageChainId,
     setExternalUri,
