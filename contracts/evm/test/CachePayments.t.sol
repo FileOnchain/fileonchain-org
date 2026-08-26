@@ -42,20 +42,62 @@ contract CachePaymentsTest is Test, ProxyDeployer {
     deployProxy(implementation, abi.encodeCall(CachePayments.initialize, (usdc, address(0))));
   }
 
-  function test_SetTreasury() public {
+  function test_SetTreasury_TwoStep() public {
     address next = makeAddr("next-treasury");
     vm.expectEmit(true, true, false, true);
-    emit CachePayments.TreasuryUpdated(treasury, next);
+    emit CachePayments.TreasuryTransferStarted(treasury, next);
 
     vm.prank(treasury);
     cache.setTreasury(next);
+    assertEq(cache.treasury(), treasury, "treasury must not change until accepted");
+    assertEq(cache.pendingTreasury(), next);
+
+    vm.prank(alice);
+    vm.expectRevert(bytes("CachePayments: not pending treasury"));
+    cache.acceptTreasury();
+
+    vm.expectEmit(true, true, false, true);
+    emit CachePayments.TreasuryUpdated(treasury, next);
+    vm.prank(next);
+    cache.acceptTreasury();
     assertEq(cache.treasury(), next);
+    assertEq(cache.pendingTreasury(), address(0), "pending must be cleared");
   }
 
   function test_RevertWhen_SetTreasuryByNonTreasury() public {
     vm.prank(alice);
     vm.expectRevert(bytes("CachePayments: not treasury"));
     cache.setTreasury(alice);
+  }
+
+  function test_RevertWhen_SetTreasuryZeroAddress() public {
+    vm.prank(treasury);
+    vm.expectRevert(bytes("CachePayments: zero treasury"));
+    cache.setTreasury(address(0));
+  }
+
+  function test_SetPaused_BlocksPayForCache() public {
+    vm.expectEmit(false, false, false, true);
+    emit CachePayments.PausedSet(true);
+    vm.prank(treasury);
+    cache.setPaused(true);
+    assertTrue(cache.paused());
+
+    vm.prank(alice);
+    vm.expectRevert(bytes("CachePayments: paused"));
+    cache.payForCache(FILE_A, CachePayments.Tier.SingleFile, uint64(30 days));
+
+    vm.prank(treasury);
+    cache.setPaused(false);
+    vm.prank(alice);
+    cache.payForCache(FILE_A, CachePayments.Tier.SingleFile, uint64(30 days));
+    assertTrue(cache.getEntry(FILE_A).active, "unpause must restore payments");
+  }
+
+  function test_RevertWhen_SetPausedByNonTreasury() public {
+    vm.prank(alice);
+    vm.expectRevert(bytes("CachePayments: not treasury"));
+    cache.setPaused(true);
   }
 
   function test_PayForCache_SingleFile() public {
@@ -85,6 +127,80 @@ contract CachePaymentsTest is Test, ProxyDeployer {
     vm.prank(alice);
     cache.payForCache(FILE_A, CachePayments.Tier.Permanent, 0);
     assertEq(cache.getEntry(FILE_A).expiresAt, 0, "Permanent should have expiresAt == 0");
+  }
+
+  function test_RevertWhen_PayOnOwnedEntryByNonOwner() public {
+    vm.prank(alice);
+    cache.payForCache(FILE_A, CachePayments.Tier.SingleFile, uint64(30 days));
+
+    usdc.mint(bob, 100_000_000);
+    vm.startPrank(bob);
+    usdc.approve(address(cache), type(uint256).max);
+    vm.expectRevert(bytes("CachePayments: not entry owner"));
+    cache.payForCache(FILE_A, CachePayments.Tier.Permanent, 0);
+    vm.stopPrank();
+
+    CachePayments.CacheEntry memory entry = cache.getEntry(FILE_A);
+    assertEq(entry.owner, alice, "owner must be unchanged after hijack attempt");
+  }
+
+  function test_RevertWhen_PayOnExpiredOwnedEntryByNonOwner() public {
+    // Ownership of an entryId is first-write-wins even after expiry.
+    vm.prank(alice);
+    cache.payForCache(FILE_A, CachePayments.Tier.SingleFile, uint64(30 days));
+    vm.warp(block.timestamp + 31 days);
+
+    usdc.mint(bob, 100_000_000);
+    vm.startPrank(bob);
+    usdc.approve(address(cache), type(uint256).max);
+    vm.expectRevert(bytes("CachePayments: not entry owner"));
+    cache.payForCache(FILE_A, CachePayments.Tier.SingleFile, uint64(30 days));
+    vm.stopPrank();
+  }
+
+  function test_Renewal_ExtendsFromCurrentExpiry() public {
+    vm.startPrank(alice);
+    cache.payForCache(FILE_A, CachePayments.Tier.SingleFile, uint64(30 days));
+    uint64 firstExpiry = cache.getEntry(FILE_A).expiresAt;
+
+    // Renewing before expiry extends from the current expiry, not from now.
+    vm.warp(block.timestamp + 10 days);
+    cache.payForCache(FILE_A, CachePayments.Tier.SingleFile, uint64(30 days));
+    vm.stopPrank();
+
+    assertEq(cache.getEntry(FILE_A).expiresAt, firstExpiry + 30 days);
+  }
+
+  function test_Renewal_AfterExpiryExtendsFromNow() public {
+    vm.startPrank(alice);
+    cache.payForCache(FILE_A, CachePayments.Tier.SingleFile, uint64(30 days));
+    vm.warp(block.timestamp + 60 days);
+    cache.payForCache(FILE_A, CachePayments.Tier.SingleFile, uint64(30 days));
+    vm.stopPrank();
+
+    assertEq(cache.getEntry(FILE_A).expiresAt, uint64(block.timestamp) + 30 days);
+  }
+
+  function test_Renewal_PermanentStaysPermanent() public {
+    vm.startPrank(alice);
+    cache.payForCache(FILE_A, CachePayments.Tier.Permanent, 0);
+    // A later timed-tier payment on a permanent entry must not demote it.
+    cache.payForCache(FILE_A, CachePayments.Tier.SingleFile, uint64(30 days));
+    vm.stopPrank();
+
+    assertEq(cache.getEntry(FILE_A).expiresAt, 0, "permanent entry must stay permanent");
+  }
+
+  function test_Renewal_PreservesAllowList() public {
+    vm.startPrank(alice);
+    cache.payForCache(FILE_A, CachePayments.Tier.SingleFile, uint64(30 days));
+    cache.grantAccess(FILE_A, bob);
+    vm.warp(block.timestamp + 10 days);
+    cache.payForCache(FILE_A, CachePayments.Tier.SingleFile, uint64(30 days));
+    vm.stopPrank();
+
+    assertEq(cache.allowListLength(FILE_A), 1, "renewal must not clear the allow list");
+    assertTrue(cache.isAllowed(FILE_A, bob));
   }
 
   function test_RevertWhen_USDCTransferFails() public {
@@ -142,6 +258,28 @@ contract CachePaymentsTest is Test, ProxyDeployer {
     vm.prank(bob);
     vm.expectRevert(bytes("CachePayments: not owner"));
     cache.revokeAccess(FILE_A, bob);
+  }
+
+  function test_GrantAccessIsIdempotent() public {
+    vm.startPrank(alice);
+    cache.payForCache(FILE_A, CachePayments.Tier.Permanent, 0);
+    cache.grantAccess(FILE_A, bob);
+    cache.grantAccess(FILE_A, bob); // duplicate grant is a no-op
+    vm.stopPrank();
+
+    assertEq(cache.allowListLength(FILE_A), 1, "duplicate grant must not push again");
+  }
+
+  function test_DuplicateGrantThenSingleRevokeRemovesAccess() public {
+    vm.startPrank(alice);
+    cache.payForCache(FILE_A, CachePayments.Tier.Permanent, 0);
+    cache.grantAccess(FILE_A, bob);
+    cache.grantAccess(FILE_A, bob);
+    cache.revokeAccess(FILE_A, bob);
+    vm.stopPrank();
+
+    assertFalse(cache.isAllowed(FILE_A, bob), "single revoke must fully remove the grantee");
+    assertEq(cache.allowListLength(FILE_A), 0);
   }
 
   function test_RevokeUnknownGranteeIsNoop() public {

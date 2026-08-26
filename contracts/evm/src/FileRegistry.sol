@@ -23,6 +23,14 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 ///   file-level anchor can be read back on-chain without an indexer.
 ///   Subsequent anchors of the same CID still emit events (independent
 ///   attestations by other submitters) but do not overwrite the record.
+///
+/// Notes:
+/// - OwnableUpgradeable is inherited but unused: no function is
+///   owner-gated, and the upgrade authority is the proxy's ProxyAdmin. It
+///   is kept only to preserve the deployed storage layout.
+/// - `CIDRecord.submitter` is the first address to anchor a CID — a
+///   race-winnable, permissionless write. It must never be treated as
+///   proof of authorship or ownership of the content.
 contract FileRegistry is Initializable, OwnableUpgradeable {
   struct CIDRecord {
     bytes32 contentHash; // SHA-256 of the original content

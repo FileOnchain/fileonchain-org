@@ -35,6 +35,8 @@ contract DonationEscrow is Initializable {
   );
 
   event TreasuryUpdated(address indexed previous, address indexed next);
+  event TreasuryTransferStarted(address indexed current, address indexed pending);
+  event PausedSet(bool paused);
 
   // ---------------------------------------------------------------------
   // Storage
@@ -62,10 +64,28 @@ contract DonationEscrow is Initializable {
   // Owner
   // ---------------------------------------------------------------------
 
+  /// @notice Start a two-step treasury transfer. The new treasury takes
+  /// effect only after `acceptTreasury` is called by `newTreasury`.
   function setTreasury(address newTreasury) external {
     require(msg.sender == treasury, "DonationEscrow: not treasury");
-    emit TreasuryUpdated(treasury, newTreasury);
-    treasury = newTreasury;
+    require(newTreasury != address(0), "DonationEscrow: zero treasury");
+    pendingTreasury = newTreasury;
+    emit TreasuryTransferStarted(treasury, newTreasury);
+  }
+
+  /// @notice Complete the treasury transfer started by `setTreasury`.
+  function acceptTreasury() external {
+    require(msg.sender == pendingTreasury, "DonationEscrow: not pending treasury");
+    emit TreasuryUpdated(treasury, msg.sender);
+    treasury = msg.sender;
+    pendingTreasury = address(0);
+  }
+
+  /// @notice Emergency pause for new donations. Reads stay available.
+  function setPaused(bool _paused) external {
+    require(msg.sender == treasury, "DonationEscrow: not treasury");
+    paused = _paused;
+    emit PausedSet(_paused);
   }
 
   // ---------------------------------------------------------------------
@@ -76,10 +96,11 @@ contract DonationEscrow is Initializable {
   /// treasury. The `target` parameter is the bytes32 CID hash (PerCID) or
   /// the bytes32 encoding of the chain id (PerChain).
   function donate(Recipient recipientType, bytes32 target, string calldata memo) external payable {
+    require(!paused, "DonationEscrow: paused");
     require(msg.value > 0, "DonationEscrow: zero amount");
-    (bool ok,) = treasury.call{value: msg.value}("");
-    require(ok, "DonationEscrow: treasury transfer failed");
 
+    // Checks-effects-interactions: update the ledgers and emit before the
+    // external call so a reentering treasury sees consistent totals.
     if (recipientType == Recipient.PerCID) {
       cidDonations[target] += msg.value;
     } else if (recipientType == Recipient.PerChain) {
@@ -87,6 +108,9 @@ contract DonationEscrow is Initializable {
     }
 
     emit Donated(msg.sender, treasury, msg.value, recipientType, target, memo, block.timestamp);
+
+    (bool ok,) = treasury.call{value: msg.value}("");
+    require(ok, "DonationEscrow: treasury transfer failed");
   }
 
   // ---------------------------------------------------------------------
@@ -101,6 +125,16 @@ contract DonationEscrow is Initializable {
     return chainDonations[chainIdHash];
   }
 
+  // ---------------------------------------------------------------------
+  // Storage (appended — never reorder; this contract lives behind a proxy)
+  // ---------------------------------------------------------------------
+
+  /// @notice Pending recipient of a two-step treasury transfer.
+  address public pendingTreasury;
+  /// @notice Emergency pause: blocks `donate` while true.
+  bool public paused;
+
   /// @dev Reserved storage to keep future upgrades layout-safe.
-  uint256[48] private __gap;
+  /// Was uint256[48]; pendingTreasury + paused pack into one slot.
+  uint256[47] private __gap;
 }

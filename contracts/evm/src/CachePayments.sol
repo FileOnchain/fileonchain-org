@@ -42,6 +42,8 @@ contract CachePayments is Initializable {
   event AccessRevoked(bytes32 indexed entryId, address indexed grantee);
   event PricesUpdated(uint256 single, uint256 folder, uint256 permanent);
   event TreasuryUpdated(address indexed previous, address indexed next);
+  event TreasuryTransferStarted(address indexed current, address indexed pending);
+  event PausedSet(bool paused);
 
   // ---------------------------------------------------------------------
   // Storage
@@ -78,10 +80,29 @@ contract CachePayments is Initializable {
   // Owner
   // ---------------------------------------------------------------------
 
+  /// @notice Start a two-step treasury transfer. The new treasury takes
+  /// effect only after `acceptTreasury` is called by `newTreasury`.
   function setTreasury(address newTreasury) external {
     require(msg.sender == treasury, "CachePayments: not treasury");
-    emit TreasuryUpdated(treasury, newTreasury);
-    treasury = newTreasury;
+    require(newTreasury != address(0), "CachePayments: zero treasury");
+    pendingTreasury = newTreasury;
+    emit TreasuryTransferStarted(treasury, newTreasury);
+  }
+
+  /// @notice Complete the treasury transfer started by `setTreasury`.
+  function acceptTreasury() external {
+    require(msg.sender == pendingTreasury, "CachePayments: not pending treasury");
+    emit TreasuryUpdated(treasury, msg.sender);
+    treasury = msg.sender;
+    pendingTreasury = address(0);
+  }
+
+  /// @notice Emergency pause for new payments. Access management and reads
+  /// stay available while paused.
+  function setPaused(bool _paused) external {
+    require(msg.sender == treasury, "CachePayments: not treasury");
+    paused = _paused;
+    emit PausedSet(_paused);
   }
 
   function setPrices(uint256 single, uint256 folder, uint256 permanent) external {
@@ -100,15 +121,31 @@ contract CachePayments is Initializable {
   /// contract to spend `amount` USDC. `durationSeconds` is ignored when the
   /// tier is Permanent.
   function payForCache(bytes32 entryId, Tier tier, uint64 durationSeconds) external {
-    uint256 amount = _priceFor(tier);
-    require(usdc.transferFrom(msg.sender, treasury, amount), "CachePayments: USDC transfer failed");
-
-    uint64 expires = tier == Tier.Permanent ? 0 : uint64(block.timestamp) + durationSeconds;
+    require(!paused, "CachePayments: paused");
     CacheEntry storage e = entries[entryId];
+    // entryId is caller-chosen: only the first payer (or the existing owner
+    // renewing) may write this entry, otherwise anyone could hijack it.
+    bool renewal = e.owner == msg.sender;
+    require(e.owner == address(0) || renewal, "CachePayments: not entry owner");
+
+    uint64 expires;
+    if (tier == Tier.Permanent || (renewal && e.expiresAt == 0)) {
+      // Permanent stays permanent, even when renewed with a timed tier.
+      expires = 0;
+    } else {
+      // Renewals extend from whichever is later: the current expiry or now.
+      uint64 base = uint64(block.timestamp);
+      if (e.expiresAt > base) base = e.expiresAt;
+      expires = base + durationSeconds;
+    }
+
+    uint256 amount = _priceFor(tier);
     e.owner = msg.sender;
     e.fileId = entryId;
     e.expiresAt = expires;
     e.active = true;
+
+    require(usdc.transferFrom(msg.sender, treasury, amount), "CachePayments: USDC transfer failed");
 
     emit CachePaid(entryId, msg.sender, tier, expires);
   }
@@ -121,7 +158,14 @@ contract CachePayments is Initializable {
     CacheEntry storage e = entries[entryId];
     require(e.owner == msg.sender, "CachePayments: not owner");
     require(grantee != address(0), "CachePayments: zero grantee");
-    e.allowList.push(grantee);
+    address[] storage list = e.allowList;
+    uint256 len = list.length;
+    // Idempotent: an address already on the list is not pushed again, so a
+    // single revoke always removes it fully.
+    for (uint256 i = 0; i < len; i++) {
+      if (list[i] == grantee) return;
+    }
+    list.push(grantee);
     emit AccessGranted(entryId, grantee);
   }
 
@@ -129,15 +173,20 @@ contract CachePayments is Initializable {
     CacheEntry storage e = entries[entryId];
     require(e.owner == msg.sender, "CachePayments: not owner");
     address[] storage list = e.allowList;
-    uint256 len = list.length;
-    for (uint256 i = 0; i < len; i++) {
+    bool removed = false;
+    // Remove every occurrence (duplicates may predate the idempotent grant).
+    // After a swap-and-pop the swapped-in element is re-checked at index i.
+    uint256 i = 0;
+    while (i < list.length) {
       if (list[i] == grantee) {
-        list[i] = list[len - 1];
+        list[i] = list[list.length - 1];
         list.pop();
-        emit AccessRevoked(entryId, grantee);
-        return;
+        removed = true;
+      } else {
+        i++;
       }
     }
+    if (removed) emit AccessRevoked(entryId, grantee);
   }
 
   function isAllowed(bytes32 entryId, address user) external view returns (bool) {
@@ -171,6 +220,16 @@ contract CachePayments is Initializable {
     return pricePermanent;
   }
 
+  // ---------------------------------------------------------------------
+  // Storage (appended — never reorder; this contract lives behind a proxy)
+  // ---------------------------------------------------------------------
+
+  /// @notice Pending recipient of a two-step treasury transfer.
+  address public pendingTreasury;
+  /// @notice Emergency pause: blocks `payForCache` while true.
+  bool public paused;
+
   /// @dev Reserved storage to keep future upgrades layout-safe.
-  uint256[48] private __gap;
+  /// Was uint256[48]; pendingTreasury + paused pack into one slot.
+  uint256[47] private __gap;
 }
