@@ -8,6 +8,7 @@ import {
   sha256Hex,
   sha256HexUtf8,
   validateEnvelope,
+  type AdapterCheckResult,
   type EvidenceEnvelope,
   type Receipt,
 } from "@fileonchain/protocol";
@@ -233,33 +234,15 @@ export const verifyEnvelope = async (
     });
   } else {
     const digest = computeEnvelopeDigest(envelope);
-    checks.push(
-      digest === envelope.envelope.digest.sha256
-        ? {
-            name: "envelope-digest",
-            group: "envelope",
-            status: "pass",
-            detail: `digest ${digest} matches — receipts cannot have been added, removed, or reordered`,
-          }
-        : {
-            name: "envelope-digest",
-            group: "envelope",
-            status: "fail",
-            detail: `computed ${digest}, envelope says ${envelope.envelope.digest.sha256} — content changed after finalization`,
-          },
-    );
-    if (envelope.envelope.signatures.length === 0) {
-      checks.push({
-        name: "envelope-signatures",
-        group: "envelope-signatures",
-        status: "unknown",
-        detail: "no envelope signatures — nobody attests to the assembled envelope as a whole",
-      });
-    }
+    // Verify envelope signatures first: whether the digest is *evidence*
+    // of anything depends on someone having signed it. An unsigned digest
+    // is bookkeeping — anyone who can edit the envelope can recompute it.
+    const signatureChecks: CheckResult[] = [];
+    let validEnvelopeSignatures = 0;
     for (const [i, signature] of envelope.envelope.signatures.entries()) {
       const payload = envelopeSigningPayload(envelope.envelope.digest.sha256);
       if (signature.payloadDigest !== envelopeSigningPayloadDigest(envelope.envelope.digest.sha256)) {
-        checks.push({
+        signatureChecks.push({
           name: `envelope-signature[${i}]`,
           group: "envelope-signatures",
           status: "fail",
@@ -273,14 +256,15 @@ export const verifyEnvelope = async (
           payload,
           signature.signature,
         );
-        checks.push({
+        if (valid) validEnvelopeSignatures += 1;
+        signatureChecks.push({
           name: `envelope-signature[${i}]`,
           group: "envelope-signatures",
           status: valid ? "pass" : "fail",
           detail: `assembler: ${detail}`,
         });
       } catch (error) {
-        checks.push({
+        signatureChecks.push({
           name: `envelope-signature[${i}]`,
           group: "envelope-signatures",
           status: "fail",
@@ -288,6 +272,37 @@ export const verifyEnvelope = async (
         });
       }
     }
+    checks.push(
+      digest !== envelope.envelope.digest.sha256
+        ? {
+            name: "envelope-digest",
+            group: "envelope",
+            status: "fail",
+            detail: `computed ${digest}, envelope says ${envelope.envelope.digest.sha256} — content changed after finalization`,
+          }
+        : validEnvelopeSignatures > 0
+          ? {
+              name: "envelope-digest",
+              group: "envelope",
+              status: "pass",
+              detail: `digest ${digest} matches and is covered by ${validEnvelopeSignatures} valid envelope signature${validEnvelopeSignatures === 1 ? "" : "s"} — receipts cannot have been added, removed, or reordered without invalidating them`,
+            }
+          : {
+              name: "envelope-digest",
+              group: "envelope",
+              status: "warning",
+              detail: `digest ${digest} is self-consistent but unsigned — it does not protect against modification by anyone who can recompute it`,
+            },
+    );
+    if (envelope.envelope.signatures.length === 0) {
+      checks.push({
+        name: "envelope-signatures",
+        group: "envelope-signatures",
+        status: "unknown",
+        detail: "no envelope signatures — nobody attests to the assembled envelope as a whole",
+      });
+    }
+    checks.push(...signatureChecks);
   }
 
   // 6. Receipts, through their adapters.
@@ -296,6 +311,8 @@ export const verifyEnvelope = async (
     ...envelope.receipts.settlement,
     ...envelope.receipts.inclusion,
   ];
+  const settlementOutcomes: Array<{ receipt: Receipt; online?: AdapterCheckResult }> = [];
+  const inclusionOutcomes: Array<{ receipt: Receipt; check: CheckResult }> = [];
   for (const [i, receipt] of allReceipts.entries()) {
     const group = RECEIPT_GROUPS[receipt.type];
     const name = `${receipt.type}[${i}]:${receipt.adapter}`;
@@ -311,7 +328,14 @@ export const verifyEnvelope = async (
     }
     if (adapter.checkOffline) {
       const result = adapter.checkOffline(receipt, envelope);
-      checks.push({ name: `${name}:offline`, group, status: result.status, detail: result.detail });
+      const check: CheckResult = {
+        name: `${name}:offline`,
+        group,
+        status: result.status,
+        detail: result.detail,
+      };
+      checks.push(check);
+      if (receipt.type === "inclusion") inclusionOutcomes.push({ receipt, check });
     }
     if (options.checkReceiptsOnline) {
       if (adapter.checkOnline) {
@@ -319,6 +343,7 @@ export const verifyEnvelope = async (
           endpoints: options.endpoints,
         });
         checks.push({ name: `${name}:online`, group, status: result.status, detail: result.detail });
+        if (receipt.type === "settlement") settlementOutcomes.push({ receipt, online: result });
       } else {
         checks.push({
           name: `${name}:online`,
@@ -335,6 +360,31 @@ export const verifyEnvelope = async (
         detail: "offline mode — online confirmation not requested",
       });
     }
+  }
+
+  // 7. Cross-binding: an inclusion proof is meaningful only when its root
+  // is anchored by a settlement receipt of this envelope (spec §16.10). A
+  // self-consistent proof against a root nothing anchors proves nothing —
+  // an attacker can build any tree around any leaf.
+  for (const { receipt, check } of inclusionOutcomes) {
+    if (check.status !== "pass") continue;
+    const root = (receipt.payload as { root?: unknown }).root;
+    if (typeof root !== "string") continue;
+    const anchored = settlementOutcomes.some(
+      (outcome) =>
+        outcome.online?.status === "pass" && (outcome.online.boundValues?.includes(root) ?? false),
+    );
+    if (anchored) {
+      check.detail += " — root anchored by a confirmed settlement receipt";
+      continue;
+    }
+    const referenced = envelope.receipts.settlement.some((settlement) =>
+      JSON.stringify(settlement.payload).includes(root),
+    );
+    check.status = "unknown";
+    check.detail = referenced
+      ? `proof self-consistent; a settlement receipt references root ${root}, but its on-chain binding was not verified${options.checkReceiptsOnline ? "" : " (offline mode)"}`
+      : `proof self-consistent; root ${root} not anchored by any settlement receipt in this envelope`;
   }
 
   return summarize(checks, incomplete);

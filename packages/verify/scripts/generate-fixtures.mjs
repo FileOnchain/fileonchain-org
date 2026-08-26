@@ -12,7 +12,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ed25519 } from "@noble/curves/ed25519";
+import { ed25519 } from "@noble/curves/ed25519.js";
 import { privateKeyToAccount } from "viem/accounts";
 import * as protocol from "../../protocol/dist/index.js";
 
@@ -158,7 +158,7 @@ save(
         {
           type: "inclusion",
           adapter: "fileonchain-merkle/v1",
-          payload: { root: tree.root, leafIndex: 0, proof: tree.proofFor(0) },
+          payload: { root: tree.root, leafIndex: 0, leafCount: tree.leafCount, proof: tree.proofFor(0) },
         },
       ],
     },
@@ -237,6 +237,34 @@ save(
   "valid-with-warnings",
   "Unknown extension namespace preserved",
 );
+
+// Unsafe wire forms — raw text, since JSON.stringify cannot produce them.
+const saveRaw = (name, rawText, expectedStatus, description) => {
+  writeFileSync(resolve(fixturesDir, `${name}.json`), rawText);
+  fixtures.push({ file: `${name}.json`, expectedStatus, description });
+};
+{
+  const benign = JSON.stringify(
+    protocol.buildEnvelope({ subject, createdAt: CREATED_AT }),
+    null,
+    2,
+  );
+  saveRaw(
+    "duplicate-key-wire",
+    benign.replace(
+      '"protocol": "fileonchain-evidence"',
+      '"protocol": "fileonchain-evidence",\n  "protocol": "fileonchain-evidence"',
+    ) + "\n",
+    "invalid",
+    "Duplicate JSON key in the wire form — humans read one value, parsers keep another",
+  );
+  saveRaw(
+    "proto-key-wire",
+    `{\n  "__proto__": { "polluted": true },${benign.slice(1)}\n`,
+    "invalid",
+    'Own "__proto__" key in the wire form — silently dropped by ordinary object construction',
+  );
+}
 
 // 11. Legacy package + 12. its migration.
 {

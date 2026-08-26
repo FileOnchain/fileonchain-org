@@ -147,8 +147,12 @@ describe("merkle", () => {
     const leaves = Array.from({ length: 5 }, (_, i) => sha256HexUtf8(`leaf-${i}`));
     const tree = buildMerkleTree(leaves);
     leaves.forEach((leaf, i) => {
-      expect(verifyMerkleInclusion(leaf, i, tree.proofFor(i), tree.root)).toBe(true);
+      expect(verifyMerkleInclusion(leaf, i, tree.proofFor(i), tree.root, tree.leafCount)).toBe(
+        true,
+      );
     });
-    expect(verifyMerkleInclusion(leaves[0], 1, tree.proofFor(1), tree.root)).toBe(false);
+    expect(verifyMerkleInclusion(leaves[0], 1, tree.proofFor(1), tree.root, tree.leafCount)).toBe(
+      false,
+    );
   });
 });

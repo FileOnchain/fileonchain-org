@@ -1,5 +1,6 @@
 import { canonicalStringify } from "./canonical";
 import { sha256HexUtf8 } from "./sha256";
+import { scanWireJson } from "./wire";
 import {
   PROTOCOL_ID,
   PROTOCOL_VERSION,
@@ -289,9 +290,15 @@ export const validateEnvelope = (value: unknown): string[] => {
   return errors;
 };
 
-/** Parse a serialized envelope; null when it isn't one. */
+/**
+ * Parse a serialized envelope; null when it isn't one. Rejects unsafe
+ * wire forms outright: duplicate keys within an object (a human would
+ * read one value while the verifier checks another) and `"__proto__"`
+ * keys (dropped silently by ordinary object construction).
+ */
 export const parseEnvelope = (raw: string): EvidenceEnvelope | null => {
   try {
+    if (scanWireJson(raw).length > 0) return null;
     const parsed = JSON.parse(raw) as unknown;
     return validateEnvelope(parsed).length === 0 ? (parsed as EvidenceEnvelope) : null;
   } catch {

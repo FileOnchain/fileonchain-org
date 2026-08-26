@@ -4,6 +4,7 @@ import {
   isLegacyEvidencePackage,
   migrateLegacyEvidence,
 } from "@fileonchain/protocol";
+import { validateEvidencePackage } from "@fileonchain/utils";
 import { verifyEvidenceJson } from "./index";
 import type { CheckResult } from "./report";
 
@@ -80,6 +81,11 @@ const runVerify = async (args: string[]): Promise<void> => {
       );
     }
     console.log(`\nresult: ${report.status.toUpperCase()}`);
+    console.log(
+      report.attested
+        ? "attested: yes — at least one artifact or envelope signature verified cryptographically"
+        : "attested: no — no artifact or envelope signature verified cryptographically",
+    );
   }
   if (report.status === "invalid") process.exit(1);
 };
@@ -102,6 +108,15 @@ const runMigrate = (args: string[]): void => {
   const parsed = JSON.parse(readFileSync(inputPath as string, "utf8")) as unknown;
   if (!isLegacyEvidencePackage(parsed)) {
     console.error("input is not a legacy-evidence-v1 package");
+    process.exit(1);
+  }
+  // Full legacy validation before migrating — never turn an invalid
+  // package into a plausible-looking envelope.
+  const legacyErrors = validateEvidencePackage(parsed);
+  if (legacyErrors.length > 0) {
+    console.error(
+      `legacy package is invalid — refusing to migrate:\n  - ${legacyErrors.join("\n  - ")}`,
+    );
     process.exit(1);
   }
   const envelope = migrateLegacyEvidence(parsed, {

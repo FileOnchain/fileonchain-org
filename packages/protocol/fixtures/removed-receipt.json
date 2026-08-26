@@ -44,11 +44,12 @@
         "type": "inclusion",
         "adapter": "fileonchain-merkle/v1",
         "payload": {
-          "root": "d9bfb5296de2d52486650bd770dd37673a477e09b0640bca84f9f129e2b1e8ae",
+          "root": "c65931db4620129dc23859c0e27ca47120d287928649f0f86d37c42965c61302",
           "leafIndex": 0,
+          "leafCount": 3,
           "proof": [
-            "07f57cace999ac69c04a831c3496f73be9cdd7e84e9d9125ab90749eeb4923dd",
-            "c6c57904cd425cc34dc3c4b4ad43e68c8e19f1c52eece5229ef4e2185738c056"
+            "9f82e60322c6546893c3565b33fff82257f14f303a636c7f0ab7c3f29cfe5403",
+            "d3dbd3a84df7a2cd729c49574bd3b86ea0af8435e5624278ab7d454b2c55139c"
           ]
         }
       }
@@ -57,7 +58,7 @@
   "createdAt": "2026-07-11T12:00:00Z",
   "envelope": {
     "digest": {
-      "sha256": "dc62300454b4c17df598140938cc5c616b27f68d7387e49a3d52d2284efcc62d"
+      "sha256": "19d6b2c22232c9815903a9152d48773346d8c49646fda7b7b0d286f35e3a91a8"
     },
     "signatures": [
       {
@@ -67,8 +68,8 @@
           "publicKey": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
           "scheme": "ed25519"
         },
-        "payloadDigest": "9eb0e4fc8f60e653c7ba57719ac25d95f527a3225d168f6fa94c18b3a1ebfc58",
-        "signature": "7edd62da2c1b5a974bed54ab0e43ab7e3f55b6d357c2c0514394ca559a5ae75368dd1efb7c39e5cee07e99363c73c4f5fed25413e02b80a6dd79f71ab15c4d02",
+        "payloadDigest": "f1bf392adc924af471519614266e46b0fbe2205f35d5459c8bcf413072207732",
+        "signature": "6abc197598caacdaa2a85fbb4663b11ed174d827f66fe022061a90431c973e74c19801258e534f7296907868c963e10f36e7daf5e24a6aeb78d38436bb868e08",
         "signedAt": "2026-07-11T12:00:00Z"
       }
     ]

@@ -35,6 +35,7 @@ export {
   type EvidenceEnvelope,
 } from "./types";
 export { canonicalStringify } from "./canonical";
+export { scanWireJson } from "./wire";
 export { sha256, sha256Hex, sha256HexUtf8, bytesToHex, hexToBytes } from "./sha256";
 export { buildMerkleTree, verifyMerkleInclusion, type MerkleTree } from "./merkle";
 export {
@@ -68,10 +69,12 @@ export {
 } from "./adapters";
 export {
   isLegacyEvidencePackage,
+  validateLegacyEvidencePackage,
   migrateLegacyEvidence,
   legacyChainIdToSystem,
   LEGACY_STORAGE_ADAPTER_ID,
   LEGACY_SETTLEMENT_ADAPTER_ID,
+  LEGACY_INCLUSION_ADAPTER_ID,
   type LegacyEvidencePackage,
   type MigrateOptions,
 } from "./migrate";

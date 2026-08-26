@@ -39,8 +39,18 @@ export type VerificationStatus =
 
 export interface VerificationReport {
   status: VerificationStatus;
-  /** Convenience flag: true unless status is "invalid". */
+  /**
+   * Convenience flag: true unless status is "invalid". `ok` means "not
+   * malformed" — nothing checked has failed. It does NOT mean anyone
+   * attested to the content; see {@link attested} for that.
+   */
   ok: boolean;
+  /**
+   * True iff at least one artifact or envelope signature verified
+   * cryptographically. `ok && !attested` describes a well-formed but
+   * unattested document: integrity and timestamps only, no attribution.
+   */
+  attested: boolean;
   checks: CheckResult[];
 }
 
@@ -48,6 +58,8 @@ export interface VerificationReport {
  * Derive the overall status: any failure → invalid; any check marked
  * `incomplete` by the caller (passed via the second argument) →
  * incomplete; any warning/unknown → valid-with-warnings; else valid.
+ * `attested` is derived from the signature groups: only a passing
+ * artifact or envelope signature check counts as attestation.
  */
 export const summarize = (
   checks: CheckResult[],
@@ -60,5 +72,10 @@ export const summarize = (
       : checks.some((c) => c.status === "warning" || c.status === "unknown")
         ? "valid-with-warnings"
         : "valid";
-  return { status, ok: status !== "invalid", checks };
+  const attested = checks.some(
+    (c) =>
+      c.status === "pass" &&
+      (c.group === "artifact-signatures" || c.group === "envelope-signatures"),
+  );
+  return { status, ok: status !== "invalid", attested, checks };
 };

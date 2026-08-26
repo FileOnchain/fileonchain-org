@@ -11,6 +11,13 @@ import { hexToBytes, type SignerIdentity } from "@fileonchain/protocol";
 
 const textEncoder = new TextEncoder();
 
+// The documented encodings are exact: 32-byte lowercase non-prefixed hex
+// public keys and 64-byte lowercase non-prefixed hex signatures. Accepting
+// case or prefix variants would make one signature record verify under
+// several distinct byte forms.
+const ED25519_PUBKEY_RE = /^[0-9a-f]{64}$/;
+const ED25519_SIG_RE = /^[0-9a-f]{128}$/;
+
 export const verifySchemeSignature = async (
   signer: SignerIdentity,
   payload: string,
@@ -32,14 +39,27 @@ export const verifySchemeSignature = async (
     };
   }
   if (signer.scheme === "ed25519") {
-    const publicKey = hexToBytes(signer.publicKey);
-    if (publicKey.length !== 32) {
-      return { valid: false, detail: "ed25519 public key must be 32 bytes of hex" };
+    if (!ED25519_PUBKEY_RE.test(signer.publicKey)) {
+      return {
+        valid: false,
+        detail:
+          "ed25519 public key must be 64 lowercase hex chars (32 bytes, no 0x prefix, no uppercase)",
+      };
     }
+    if (!ED25519_SIG_RE.test(signatureHex)) {
+      return {
+        valid: false,
+        detail:
+          "ed25519 signature must be 128 lowercase hex chars (64 bytes, no 0x prefix, no uppercase)",
+      };
+    }
+    // Strict RFC 8032 verification (zip215: false): rejects non-canonical
+    // encodings a consensus-lenient verifier would accept.
     const valid = ed25519.verify(
       hexToBytes(signatureHex),
       textEncoder.encode(payload),
-      publicKey,
+      hexToBytes(signer.publicKey),
+      { zip215: false },
     );
     return {
       valid,
