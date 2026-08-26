@@ -1,9 +1,14 @@
 import {
+  assertPayloadFits,
+  batchByBytes,
   batchByCount,
   buildChunkAnchorPayload,
   buildFileAnchorPayload,
   ChainNotProvisionedError,
+  FAMILY_PAYLOAD_BUDGET_BYTES,
+  PartialAnchorError,
   resolveFamilyChain,
+  utf8ByteLength,
   ZERO_ADDRESS,
   type AnchorChunk,
   type AnchorProgressHandler,
@@ -72,6 +77,20 @@ export const resolveStarknetChain = (
  */
 export const DEFAULT_MAX_CALLS_PER_TX = 64;
 
+/**
+ * Total payload bytes per multicall transaction — conservative headroom
+ * under the sequencer's calldata limits once ByteArray encoding (one felt
+ * per 31 bytes plus framing) is counted.
+ */
+export const DEFAULT_MAX_BYTES_PER_TX = 30_000;
+
+const assertStarknetPayloadFits = (payload: string): void =>
+  assertPayloadFits(
+    payload,
+    FAMILY_PAYLOAD_BUDGET_BYTES.starknet,
+    `Starknet event data holds up to ${FAMILY_PAYLOAD_BUDGET_BYTES.starknet} bytes (the per-event data cap is ~300 felts, ~9 KB packed)`
+  );
+
 export interface StarknetAnchorParams extends BuildFileAnchorParams {
   /** A `starknet:*` chain id, e.g. "starknet:mainnet". */
   chainId: ChainId;
@@ -87,6 +106,7 @@ export const anchorCID = async (
 ): Promise<{ transactionHash: string; payload: string }> => {
   const chain = resolveStarknetChain(chainId);
   const serialized = buildFileAnchorPayload({ ...payload, platformId });
+  assertStarknetPayloadFits(serialized);
   const { transactionHash } = await signer.executeAnchorCalls(chain.registryContract, [
     { cid: payload.cid, payload: serialized },
   ]);
@@ -112,6 +132,8 @@ export interface StarknetChunkedAnchorParams {
   platformId?: string;
   /** Override the calls-per-multicall budget. */
   maxCallsPerTx?: number;
+  /** Override the total payload bytes allowed per multicall transaction. */
+  maxBytesPerTx?: number;
   onProgress?: AnchorProgressHandler;
 }
 
@@ -132,6 +154,7 @@ export const anchorChunkedFile = async (
     includeData,
     platformId = "1",
     maxCallsPerTx = DEFAULT_MAX_CALLS_PER_TX,
+    maxBytesPerTx = DEFAULT_MAX_BYTES_PER_TX,
     onProgress,
   }: StarknetChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
@@ -149,17 +172,27 @@ export const anchorChunkedFile = async (
     cid: fileCid,
     payload: buildFileAnchorPayload({ cid: fileCid, sha256, uri, platformId }),
   });
+  for (const call of calls) assertStarknetPayloadFits(call.payload);
+
+  // Bound each multicall by total payload bytes first, then by call count.
+  const batches = batchByBytes(calls, maxBytesPerTx, (call) =>
+    utf8ByteLength(call.payload)
+  ).flatMap((batch) => batchByCount(batch, maxCallsPerTx));
 
   const txHashes: string[] = [];
   let lastBlockNumber: number | undefined;
   let chunksAnchored = 0;
 
-  for (const batch of batchByCount(calls, maxCallsPerTx)) {
+  for (const [batchIndex, batch] of batches.entries()) {
     onProgress?.({ stage: "signing", chunksAnchored, chunksTotal: total });
-    const { transactionHash, blockNumber } = await signer.executeAnchorCalls(
-      chain.registryContract,
-      batch
-    );
+    let result: { transactionHash: string; blockNumber?: number };
+    try {
+      result = await signer.executeAnchorCalls(chain.registryContract, batch);
+    } catch (error) {
+      // Don't discard the transactions that already landed.
+      throw new PartialAnchorError(txHashes, batchIndex, batchIndex, error);
+    }
+    const { transactionHash, blockNumber } = result;
     txHashes.push(transactionHash);
     lastBlockNumber = blockNumber ?? lastBlockNumber;
     // The trailing file-level call is not a chunk, so cap the count at the total.

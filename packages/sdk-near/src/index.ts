@@ -1,7 +1,10 @@
 import {
+  assertPayloadFits,
   buildChunkAnchorPayload,
   buildFileAnchorPayload,
   ChainNotProvisionedError,
+  FAMILY_PAYLOAD_BUDGET_BYTES,
+  PartialAnchorError,
   resolveFamilyChain,
   type AnchorChunk,
   type AnchorProgressHandler,
@@ -52,6 +55,13 @@ export const resolveNearChain = (
     },
   }) as ChainConfig & { moduleAddress: string };
 
+const assertNearPayloadFits = (payload: string): void =>
+  assertPayloadFits(
+    payload,
+    FAMILY_PAYLOAD_BUDGET_BYTES.near,
+    `NEAR event logs hold up to ${FAMILY_PAYLOAD_BUDGET_BYTES.near} bytes (max_total_log_length is 16384 incl. the EVENT_JSON envelope)`
+  );
+
 export interface NearAnchorParams extends BuildFileAnchorParams {
   /** A `near:*` chain id, e.g. "near:mainnet". */
   chainId: ChainId;
@@ -67,6 +77,7 @@ export const anchorCID = async (
 ): Promise<{ txHash: string; payload: string }> => {
   const chain = resolveNearChain(chainId);
   const serialized = buildFileAnchorPayload({ ...payload, platformId });
+  assertNearPayloadFits(serialized);
   const { txHash } = await signer.callAnchor(chain.moduleAddress, payload.cid, serialized);
   return { txHash, payload: serialized };
 };
@@ -106,10 +117,18 @@ export const anchorChunkedFile = async (
   const txHashes: string[] = [];
   let lastBlockHeight: number | undefined;
 
-  for (const chunk of chunks) {
+  for (const [index, chunk] of chunks.entries()) {
     onProgress?.({ stage: "signing", chunksAnchored: chunk.index, chunksTotal: total });
     const payload = buildChunkAnchorPayload({ fileCid, chunk, total, includeData: embedData });
-    const { txHash, blockHeight } = await signer.callAnchor(chain.moduleAddress, chunk.cid, payload);
+    assertNearPayloadFits(payload);
+    let result: { txHash: string; blockHeight?: number };
+    try {
+      result = await signer.callAnchor(chain.moduleAddress, chunk.cid, payload);
+    } catch (error) {
+      // Don't discard the chunk transactions that already landed.
+      throw new PartialAnchorError(txHashes, index, index, error);
+    }
+    const { txHash, blockHeight } = result;
     txHashes.push(txHash);
     lastBlockHeight = blockHeight ?? lastBlockHeight;
     onProgress?.({
@@ -122,7 +141,13 @@ export const anchorChunkedFile = async (
 
   onProgress?.({ stage: "signing", chunksAnchored: total, chunksTotal: total });
   const filePayload = buildFileAnchorPayload({ cid: fileCid, sha256, uri, platformId });
-  const fileResult = await signer.callAnchor(chain.moduleAddress, fileCid, filePayload);
+  assertNearPayloadFits(filePayload);
+  let fileResult: { txHash: string; blockHeight?: number };
+  try {
+    fileResult = await signer.callAnchor(chain.moduleAddress, fileCid, filePayload);
+  } catch (error) {
+    throw new PartialAnchorError(txHashes, chunks.length, chunks.length, error);
+  }
   const fileTxHash = fileResult.txHash;
   lastBlockHeight = fileResult.blockHeight ?? lastBlockHeight;
   txHashes.push(fileTxHash);

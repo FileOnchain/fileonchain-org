@@ -135,6 +135,34 @@ export const batchByCount = <T>(items: readonly T[], maxPerBatch: number): T[][]
   return batches;
 };
 
+/**
+ * Thrown when a multi-transaction anchor fails partway: some transactions
+ * already landed on-chain and their hashes must not be lost — callers can
+ * record them, resume from `failedIndex`, or surface them to the user.
+ */
+export class PartialAnchorError extends Error {
+  /** The underlying send failure. */
+  readonly cause?: unknown;
+
+  constructor(
+    /** Hashes of every transaction accepted before the failure, in order. */
+    readonly txHashes: string[],
+    /** How many payloads (or batches) were sent successfully. */
+    readonly payloadsSent: number,
+    /** Zero-based index of the payload (or batch) whose send failed. */
+    readonly failedIndex: number,
+    cause: unknown,
+  ) {
+    super(
+      `Anchoring failed at payload ${failedIndex} after ${payloadsSent} successful transaction(s): ${
+        cause instanceof Error ? cause.message : String(cause)
+      }`
+    );
+    this.name = "PartialAnchorError";
+    this.cause = cause;
+  }
+}
+
 /** What one sequential send resolves with; block info is best-effort. */
 export interface SequentialSendResult {
   txHash: string;
@@ -176,7 +204,14 @@ export const runSequentialChunkedAnchor = async ({
 
   for (const [index, payload] of payloads.entries()) {
     onProgress?.({ stage: "signing", chunksAnchored, chunksTotal });
-    const { txHash, blockNumber, blockHash } = await send(payload, index);
+    let result: SequentialSendResult;
+    try {
+      result = await send(payload, index);
+    } catch (error) {
+      // Don't discard the transactions that already landed.
+      throw new PartialAnchorError(txHashes, index, index, error);
+    }
+    const { txHash, blockNumber, blockHash } = result;
     txHashes.push(txHash);
     lastBlockNumber = blockNumber ?? lastBlockNumber;
     lastBlockHash = blockHash ?? lastBlockHash;

@@ -78,9 +78,28 @@ export interface BuildFileAnchorParams {
   platformId?: string;
 }
 
+const SHA256_HEX_RE = /^[0-9a-f]{64}$/;
+
+/** Sanity cap on the `uri` field — anchors carry pointers, not documents. */
+export const MAX_ANCHOR_URI_LENGTH = 2048;
+
+/** Sanity cap on the `pid` (platform id) field. */
+export const MAX_ANCHOR_PLATFORM_ID_LENGTH = 64;
+
 /** Serialize the file-level anchor payload. */
 export const buildFileAnchorPayload = ({ cid, sha256, uri, platformId }: BuildFileAnchorParams): string => {
   if (!isValidCID(cid)) throw new Error(`"${cid}" is not a valid CIDv1 base32 string.`);
+  if (sha256 && !SHA256_HEX_RE.test(sha256)) {
+    throw new Error(`"${sha256}" is not a 64-char lowercase hex SHA-256.`);
+  }
+  if (uri && uri.length > MAX_ANCHOR_URI_LENGTH) {
+    throw new Error(`Anchor uri is ${uri.length} chars; the maximum is ${MAX_ANCHOR_URI_LENGTH}.`);
+  }
+  if (platformId && platformId.length > MAX_ANCHOR_PLATFORM_ID_LENGTH) {
+    throw new Error(
+      `Platform id is ${platformId.length} chars; the maximum is ${MAX_ANCHOR_PLATFORM_ID_LENGTH}.`
+    );
+  }
   const payload: FileAnchorPayload = {
     p: ANCHOR_PROTOCOL,
     v: ANCHOR_PAYLOAD_VERSION,
@@ -111,6 +130,11 @@ export const buildChunkAnchorPayload = ({
   total,
   includeData = false,
 }: BuildChunkAnchorParams): string => {
+  if (!isValidCID(chunk.cid)) throw new Error(`"${chunk.cid}" is not a valid CIDv1 base32 string.`);
+  if (!isValidCID(fileCid)) throw new Error(`"${fileCid}" is not a valid CIDv1 base32 string.`);
+  if (chunk.nextCid && !isValidCID(chunk.nextCid)) {
+    throw new Error(`"${chunk.nextCid}" is not a valid CIDv1 base32 string.`);
+  }
   const payload: ChunkAnchorPayload = {
     p: ANCHOR_PROTOCOL,
     v: ANCHOR_PAYLOAD_VERSION,
@@ -125,18 +149,36 @@ export const buildChunkAnchorPayload = ({
   return JSON.stringify(payload);
 };
 
+/** Longest base64 `d` field the parser accepts — a 64 KiB chunk is ~87K
+ * base64 chars, so 100K bounds memory without rejecting any legal chunk. */
+export const MAX_CHUNK_DATA_BASE64_LENGTH = 100_000;
+
 /** Parse an on-chain payload back; null if it isn't one of ours. */
 export const parseAnchorPayload = (raw: string): AnchorPayload | null => {
   try {
     const parsed = JSON.parse(raw) as Partial<AnchorPayload>;
     if (parsed.p !== ANCHOR_PROTOCOL || parsed.v !== ANCHOR_PAYLOAD_VERSION) return null;
-    if (typeof parsed.cid !== "string") return null;
+    if (typeof parsed.cid !== "string" || !isValidCID(parsed.cid)) return null;
     if (parsed.op === "anchor") {
-      return isValidCID(parsed.cid) ? (parsed as FileAnchorPayload) : null;
+      return parsed as FileAnchorPayload;
     }
     if (parsed.op === "chunk") {
       const chunk = parsed as Partial<ChunkAnchorPayload>;
-      if (typeof chunk.fileCid !== "string" || typeof chunk.idx !== "number") return null;
+      if (typeof chunk.fileCid !== "string" || !isValidCID(chunk.fileCid)) return null;
+      if (
+        typeof chunk.idx !== "number" ||
+        typeof chunk.total !== "number" ||
+        !Number.isSafeInteger(chunk.idx) ||
+        !Number.isSafeInteger(chunk.total) ||
+        chunk.idx < 0 ||
+        chunk.total < 0 ||
+        chunk.idx >= chunk.total
+      ) {
+        return null;
+      }
+      if (chunk.d !== undefined) {
+        if (typeof chunk.d !== "string" || chunk.d.length > MAX_CHUNK_DATA_BASE64_LENGTH) return null;
+      }
       return chunk as ChunkAnchorPayload;
     }
     return null;

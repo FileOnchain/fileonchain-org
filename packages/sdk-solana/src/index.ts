@@ -8,7 +8,9 @@ import {
   batchByBytes,
   buildChunkedAnchorPayloads,
   buildFileAnchorPayload,
+  PartialAnchorError,
   resolveFamilyChain,
+  utf8ByteLength,
   type AnchorChunk,
   type AnchorProgressHandler,
   type BuildFileAnchorParams,
@@ -143,15 +145,22 @@ export const anchorChunkedFile = async (
     uri,
     includeData: embedData,
   });
-  const batches = batchByBytes(payloads, maxMemoBytesPerTx, (payload) => payload.length);
+  const batches = batchByBytes(payloads, maxMemoBytesPerTx, utf8ByteLength);
 
   const txHashes: string[] = [];
   let lastSlot: number | undefined;
   let chunksAnchored = 0;
 
-  for (const batch of batches) {
+  for (const [batchIndex, batch] of batches.entries()) {
     onProgress?.({ stage: "signing", chunksAnchored, chunksTotal: total });
-    const { signature, slot } = await sendMemoTransaction(connection, signer, batch);
+    let result: { signature: string; slot: number };
+    try {
+      result = await sendMemoTransaction(connection, signer, batch);
+    } catch (error) {
+      // Don't discard the transactions that already landed.
+      throw new PartialAnchorError(txHashes, batchIndex, batchIndex, error);
+    }
+    const { signature, slot } = result;
     txHashes.push(signature);
     lastSlot = slot;
     chunksAnchored = Math.min(chunksAnchored + batch.length, total);

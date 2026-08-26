@@ -5,7 +5,9 @@ import {
   buildChunkedAnchorPayloads,
   buildFileAnchorPayload,
   parseAnchorPayload,
+  PartialAnchorError,
   resolveFamilyChain,
+  utf8ByteLength,
   type AnchorChunk,
   type AnchorProgressHandler,
   type BuildFileAnchorParams,
@@ -61,6 +63,12 @@ export interface SubstrateAnchorParams extends BuildFileAnchorParams {
   address: AddressOrPair;
   /** Injected signer (e.g. from a browser extension); omit for a keyring pair. */
   signer?: Signer;
+  /**
+   * Resolve only once the extrinsic's block is finalized instead of at
+   * `isInBlock` (the default). An in-block receipt can still be invalidated
+   * by a reorg; opt in when the receipt feeds an evidence package.
+   */
+  waitForFinalization?: boolean;
 }
 
 export interface SubstrateAnchorReceipt {
@@ -69,12 +77,17 @@ export interface SubstrateAnchorReceipt {
   remark: string;
 }
 
-/** Sign, send, and resolve when the extrinsic lands in a block. */
+/**
+ * Sign, send, and resolve when the extrinsic lands in a block — or, with
+ * `waitForFinalization`, only once the block is finalized (an in-block
+ * extrinsic can still be dropped by a reorg).
+ */
 const signAndSendInBlock = (
   api: ApiPromise,
   tx: SubmittableExtrinsic<"promise">,
   address: AddressOrPair,
   signer?: Signer,
+  waitForFinalization = false,
 ): Promise<{ txHash: string; blockHash: string }> =>
   new Promise((resolve, reject) => {
     let unsubscribe: (() => void) | undefined;
@@ -97,6 +110,14 @@ const signAndSendInBlock = (
           }
           return;
         }
+        if (waitForFinalization) {
+          if (status.isFinalized) {
+            settle(() =>
+              resolve({ txHash: txHash.toHex(), blockHash: status.asFinalized.toHex() })
+            );
+          }
+          return;
+        }
         if (status.isInBlock) {
           settle(() =>
             resolve({ txHash: txHash.toHex(), blockHash: status.asInBlock.toHex() })
@@ -116,12 +137,18 @@ const signAndSendInBlock = (
  */
 export const anchorCIDWithRemark = async (
   api: ApiPromise,
-  { chainId, address, signer, ...payload }: SubstrateAnchorParams
+  { chainId, address, signer, waitForFinalization, ...payload }: SubstrateAnchorParams
 ): Promise<SubstrateAnchorReceipt> => {
   resolveSubstrateChain(chainId);
   const remark = buildAnchorRemark(payload);
   const tx = api.tx.system.remarkWithEvent(remark);
-  const { txHash, blockHash } = await signAndSendInBlock(api, tx, address, signer);
+  const { txHash, blockHash } = await signAndSendInBlock(
+    api,
+    tx,
+    address,
+    signer,
+    waitForFinalization
+  );
   return { txHash, blockHash, remark };
 };
 
@@ -147,6 +174,12 @@ export interface SubstrateChunkedAnchorParams {
   includeData?: boolean;
   /** Split into multiple batch extrinsics past this many payload bytes. */
   maxBatchBytes?: number;
+  /**
+   * Resolve each batch only once its block is finalized instead of at
+   * `isInBlock` (the default). An in-block receipt can still be invalidated
+   * by a reorg; opt in when the receipt feeds an evidence package.
+   */
+  waitForFinalization?: boolean;
   onProgress?: AnchorProgressHandler;
 }
 
@@ -172,6 +205,7 @@ export const anchorChunkedFile = async (
     uri,
     includeData,
     maxBatchBytes = DEFAULT_MAX_BATCH_BYTES,
+    waitForFinalization,
     onProgress,
   }: SubstrateChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
@@ -186,7 +220,7 @@ export const anchorChunkedFile = async (
     uri,
     includeData: embedData,
   });
-  const batches = batchByBytes(remarks, maxBatchBytes, (remark) => remark.length);
+  const batches = batchByBytes(remarks, maxBatchBytes, utf8ByteLength);
 
   const submitter =
     typeof address === "string" ? address : (address as { address: string }).address;
@@ -195,11 +229,18 @@ export const anchorChunkedFile = async (
   let lastBlockHash = "";
   let chunksAnchored = 0;
 
-  for (const batch of batches) {
+  for (const [batchIndex, batch] of batches.entries()) {
     onProgress?.({ stage: "signing", chunksAnchored, chunksTotal: total });
     const txs = batch.map((remark) => api.tx.system.remarkWithEvent(remark));
     const tx = txs.length === 1 ? txs[0] : api.tx.utility.batchAll(txs);
-    const { txHash, blockHash } = await signAndSendInBlock(api, tx, address, signer);
+    let result: { txHash: string; blockHash: string };
+    try {
+      result = await signAndSendInBlock(api, tx, address, signer, waitForFinalization);
+    } catch (error) {
+      // Don't discard the batches that already landed.
+      throw new PartialAnchorError(txHashes, batchIndex, batchIndex, error);
+    }
+    const { txHash, blockHash } = result;
     txHashes.push(txHash);
     lastBlockHash = blockHash;
     // The final remark of the final batch is the file anchor, not a chunk.
