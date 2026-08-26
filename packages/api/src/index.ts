@@ -194,6 +194,25 @@ export interface RetentionPolicy {
   source: "policy" | "default";
 }
 
+/**
+ * Enforce a safe API origin: https everywhere, with plain http allowed only
+ * for local development hosts. Keeps `fok_` keys off cleartext transports.
+ */
+const assertSafeBaseUrl = (baseUrl: string): void => {
+  let parsed: URL;
+  try {
+    parsed = new URL(baseUrl);
+  } catch {
+    throw new Error(`Invalid FileOnChain API base URL "${baseUrl}".`);
+  }
+  if (parsed.protocol === "https:") return;
+  const localHosts = ["localhost", "127.0.0.1", "[::1]"];
+  if (parsed.protocol === "http:" && localHosts.includes(parsed.hostname)) return;
+  throw new Error(
+    `FileOnChain API base URL must use https (got "${baseUrl}"); http is allowed only for localhost.`
+  );
+};
+
 const sleep = (ms: number, signal?: AbortSignal): Promise<void> =>
   new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -214,6 +233,7 @@ export class FileOnChainClient {
 
   constructor({ apiKey, baseUrl = DEFAULT_BASE_URL, fetch: fetchImpl }: FileOnChainClientOptions) {
     if (!apiKey) throw new Error("An API key is required (create one in the dashboard).");
+    assertSafeBaseUrl(baseUrl);
     this.apiKey = apiKey;
     this.baseUrl = baseUrl.replace(/\/+$/, "");
     this.fetchImpl = fetchImpl ?? fetch;
@@ -221,13 +241,14 @@ export class FileOnChainClient {
 
   private async request<T>(
     endpoint: string,
-    init?: { method?: string; body?: unknown; signal?: AbortSignal },
+    init?: { method?: string; body?: unknown; signal?: AbortSignal; headers?: Record<string, string> },
   ): Promise<T> {
     const response = await this.fetchImpl(`${this.baseUrl}${endpoint}`, {
       method: init?.method ?? "GET",
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
         ...(init?.body !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...init?.headers,
       },
       body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
       signal: init?.signal,
@@ -239,29 +260,48 @@ export class FileOnChainClient {
     return (await response.json()) as T;
   }
 
+  /** Minimal shape guard so a malformed response fails loudly, naming its
+   * endpoint, instead of surfacing `undefined` fields downstream. */
+  private static assertJobShape(payload: { job?: unknown }, endpoint: string): AnchorJob {
+    const job = payload?.job as Partial<AnchorJob> | undefined;
+    if (!job || typeof job !== "object" || typeof job.id !== "string" || typeof job.status !== "string") {
+      throw new Error(`Malformed response from ${endpoint}: expected a job object with id and status.`);
+    }
+    return job as AnchorJob;
+  }
+
   /**
    * Anchor a CID on one or more chains. Anchoring runs within the request,
    * so a 200 means the returned job is already "complete"; failures surface
    * as FileOnChainApiError (402 insufficient credits, 503 hosted signer not
    * configured, 502 on-chain send failed; both anchoring failures refund
    * credits, …).
+   *
+   * Every call sends an `Idempotency-Key` header (a random UUID unless
+   * `idempotencyKey` pins one) so a retried request — e.g. after a network
+   * timeout whose original attempt did land — can be deduplicated instead
+   * of double-charging. Note: full protection requires the server to
+   * actually dedupe on the key; the header alone changes nothing.
    */
-  async anchor(request: AnchorRequest, options?: { signal?: AbortSignal }): Promise<AnchorJob> {
-    const { job } = await this.request<{ job: AnchorJob }>("/api/v1/anchor", {
+  async anchor(
+    request: AnchorRequest,
+    options?: { signal?: AbortSignal; idempotencyKey?: string },
+  ): Promise<AnchorJob> {
+    const idempotencyKey = options?.idempotencyKey ?? globalThis.crypto.randomUUID();
+    const payload = await this.request<{ job: AnchorJob }>("/api/v1/anchor", {
       method: "POST",
       body: request,
       signal: options?.signal,
+      headers: { "Idempotency-Key": idempotencyKey },
     });
-    return job;
+    return FileOnChainClient.assertJobShape(payload, "/api/v1/anchor");
   }
 
   /** Fetch one anchor job owned by the API key's account. */
   async getJob(id: string, options?: { signal?: AbortSignal }): Promise<AnchorJob> {
-    const { job } = await this.request<{ job: AnchorJob }>(
-      `/api/v1/anchor/${encodeURIComponent(id)}`,
-      { signal: options?.signal },
-    );
-    return job;
+    const endpoint = `/api/v1/anchor/${encodeURIComponent(id)}`;
+    const payload = await this.request<{ job: AnchorJob }>(endpoint, { signal: options?.signal });
+    return FileOnChainClient.assertJobShape(payload, endpoint);
   }
 
   /** Poll a job until it leaves "pending"/"anchoring" or the timeout hits. */
@@ -281,8 +321,21 @@ export class FileOnChainClient {
   }
 
   /** Current credit balance in micro-USDC (string) and USDC (number). */
-  getCredits(options?: { signal?: AbortSignal }): Promise<CreditBalance> {
-    return this.request<CreditBalance>("/api/v1/credits", { signal: options?.signal });
+  async getCredits(options?: { signal?: AbortSignal }): Promise<CreditBalance> {
+    const balance = await this.request<CreditBalance>("/api/v1/credits", {
+      signal: options?.signal,
+    });
+    if (
+      !balance ||
+      typeof balance !== "object" ||
+      typeof balance.balanceMicroUsdc !== "string" ||
+      typeof balance.balanceUsdc !== "number"
+    ) {
+      throw new Error(
+        "Malformed response from /api/v1/credits: expected balanceMicroUsdc and balanceUsdc.",
+      );
+    }
+    return balance;
   }
 
   /* ------------------------------------------------------------------ */

@@ -46,6 +46,23 @@ const toolError = (message: string) => ({
   isError: true,
 });
 
+/** https everywhere; plain http only for local development hosts, so the
+ * API key never rides a cleartext transport. */
+const assertSafeApiUrl = (apiUrl: string): void => {
+  let parsed: URL;
+  try {
+    parsed = new URL(apiUrl);
+  } catch {
+    throw new Error(`FILEONCHAIN_API_URL is not a valid URL: "${apiUrl}".`);
+  }
+  if (parsed.protocol === "https:") return;
+  const localHosts = ["localhost", "127.0.0.1", "[::1]"];
+  if (parsed.protocol === "http:" && localHosts.includes(parsed.hostname)) return;
+  throw new Error(
+    `FILEONCHAIN_API_URL must use https (got "${apiUrl}"); http is allowed only for localhost.`,
+  );
+};
+
 /** Lazily constructed so read-only tools work without any env. */
 const getApiClient = (): FileOnChainClient => {
   const apiKey = process.env.FILEONCHAIN_API_KEY;
@@ -54,7 +71,9 @@ const getApiClient = (): FileOnChainClient => {
       "FILEONCHAIN_API_KEY is not set. Create an API key in the FileOnChain dashboard (https://fileonchain.org/dashboard/keys) and export it before using anchoring or account tools.",
     );
   }
-  return new FileOnChainClient({ apiKey, baseUrl: process.env.FILEONCHAIN_API_URL });
+  const apiUrl = process.env.FILEONCHAIN_API_URL;
+  if (apiUrl) assertSafeApiUrl(apiUrl);
+  return new FileOnChainClient({ apiKey, baseUrl: apiUrl });
 };
 
 const runApiTool = async (run: (client: FileOnChainClient) => Promise<unknown>) => {
@@ -150,8 +169,10 @@ server.registerTool(
   async ({ chainId, txHash, address }) => {
     const chain = getChain(chainId as ChainId);
     if (!chain) return toolError(`Unknown chain "${chainId}". Use list_chains to see valid ids.`);
-    if (txHash) return json({ url: buildTxUrl(chain, txHash) });
-    if (address) return json({ url: buildAddressUrl(chain, address) });
+    // Encode caller-supplied values so they can't smuggle path segments or
+    // query strings into the generated explorer link.
+    if (txHash) return json({ url: buildTxUrl(chain, encodeURIComponent(txHash)) });
+    if (address) return json({ url: buildAddressUrl(chain, encodeURIComponent(address)) });
     return toolError("Provide either txHash or address.");
   },
 );
@@ -217,20 +238,27 @@ server.registerTool(
       "Deterministic LOCAL verification of a FileOnChain evidence envelope (or legacy package): schema, canonical encoding, artifact and envelope signatures, Merkle inclusion, and receipt structure. Runs entirely in-process — no FileOnChain service is called; optional online receipt confirmation talks only to public RPC endpoints. Returns the structured report (valid / valid-with-warnings / incomplete / invalid).",
     inputSchema: {
       evidenceJson: z.string().describe("The evidence envelope or legacy package, as JSON text"),
+      subjectBytesBase64: z
+        .string()
+        .optional()
+        .describe(
+          "Base64 of the raw subject/artifact bytes (not a hash), to also check content integrity",
+        ),
       subjectSha256Bytes: z
         .string()
         .optional()
-        .describe("Base64 of the subject/artifact bytes, to also check content integrity"),
+        .describe("Deprecated alias of subjectBytesBase64 (despite the name, raw bytes, base64)"),
       online: z
         .boolean()
         .optional()
         .describe("Also confirm settlement receipts against public RPC endpoints (default false)"),
     },
   },
-  async ({ evidenceJson, subjectSha256Bytes, online }) => {
+  async ({ evidenceJson, subjectBytesBase64, subjectSha256Bytes, online }) => {
     try {
-      const subjectBytes = subjectSha256Bytes
-        ? Uint8Array.from(Buffer.from(subjectSha256Bytes, "base64"))
+      const base64 = subjectBytesBase64 ?? subjectSha256Bytes;
+      const subjectBytes = base64
+        ? Uint8Array.from(Buffer.from(base64, "base64"))
         : undefined;
       const report = await verifyEvidenceJson(evidenceJson, {
         subjectBytes,
