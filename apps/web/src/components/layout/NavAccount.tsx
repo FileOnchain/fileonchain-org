@@ -3,19 +3,44 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { signOut, useSession } from "next-auth/react";
-import { FiLogOut, FiUser } from "react-icons/fi";
+import { FiCreditCard, FiLogOut, FiUser } from "react-icons/fi";
+import { getFamilyAddress, useWalletStates } from "@/states/wallet";
+import { Identicon } from "@/components/ui/Identicon";
 import { cn } from "@/lib/cn";
 import { trackEvent } from "@/lib/analytics";
 
+const ChainConnectModal = dynamic(
+  () => import("@/components/chain/ChainConnectModal").then((m) => m.ChainConnectModal),
+  { ssr: false },
+);
+
+const menuItemClass =
+  "flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm text-foreground outline-none hover:bg-surface-elevated data-[highlighted]:bg-surface-elevated";
+
 /**
- * NavAccount — session-aware account button next to NavWallet. Signed out it
- * links to /login; signed in it opens a dropdown with the dashboard link and
- * sign-out. Wallet connection (NavWallet) is independent of the session.
+ * NavAccount — the single identity control in the nav; session and wallet
+ * are one surface, not two buttons:
+ *
+ * - signed out, nothing connected → "Sign in" linking to /login (OAuth +
+ *   the same wallet panel the connect modal renders);
+ * - signed out, wallet connected → the address chip, opening the connect
+ *   modal (sign in with the wallet, public profile shortcut);
+ * - signed in → avatar dropdown with dashboard, wallet (connect/manage +
+ *   public profile once connected), and sign-out.
  */
 export const NavAccount = () => {
   const { data: session, status } = useSession();
+  const [connectOpen, setConnectOpen] = React.useState(false);
+
+  const connectedAddress = useWalletStates((s) =>
+    getFamilyAddress(s, s.chainFamily),
+  );
+  const shortAddress = connectedAddress
+    ? `${connectedAddress.slice(0, 6)}…${connectedAddress.slice(-4)}`
+    : null;
 
   if (status === "loading") {
     return (
@@ -28,17 +53,37 @@ export const NavAccount = () => {
 
   if (!session?.user) {
     return (
-      <Link
-        href="/login"
-        className={cn(
-          "inline-flex items-center justify-center h-9 px-3 rounded-md text-xs md:text-sm font-medium",
-          "bg-surface border border-border text-foreground hover:bg-surface-elevated",
-          "transition-colors duration-base ease-out-soft",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+      <>
+        {shortAddress ? (
+          <button
+            type="button"
+            onClick={() => setConnectOpen(true)}
+            aria-label="Wallet and sign-in"
+            className={cn(
+              "inline-flex items-center justify-center gap-2 h-9 px-3 md:px-4 rounded-md text-xs md:text-sm font-medium font-mono",
+              "bg-surface border border-border text-foreground hover:bg-surface-elevated",
+              "transition-colors duration-base ease-out-soft",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            )}
+          >
+            {connectedAddress && <Identicon value={connectedAddress} size={18} />}
+            {shortAddress}
+          </button>
+        ) : (
+          <Link
+            href="/login"
+            className={cn(
+              "inline-flex items-center justify-center h-9 px-3 md:px-4 rounded-md text-xs md:text-sm font-medium",
+              "bg-primary text-primary-foreground hover:bg-primary-hover",
+              "transition-colors duration-base ease-out-soft",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            )}
+          >
+            Sign in
+          </Link>
         )}
-      >
-        Sign in
-      </Link>
+        <ChainConnectModal open={connectOpen} onOpenChange={setConnectOpen} />
+      </>
     );
   }
 
@@ -46,62 +91,95 @@ export const NavAccount = () => {
   const initial = (name ?? email ?? "?").slice(0, 1).toUpperCase();
 
   return (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger asChild>
-        <button
-          type="button"
-          aria-label="Account menu"
-          className={cn(
-            "inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full",
-            "border border-border bg-surface text-sm font-semibold text-foreground hover:bg-surface-elevated",
-            "transition-colors duration-base ease-out-soft",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-          )}
-        >
-          {image ? (
-            <Image src={image} alt="" width={36} height={36} unoptimized />
-          ) : (
-            initial
-          )}
-        </button>
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Portal>
-        <DropdownMenu.Content
-          align="end"
-          sideOffset={8}
-          className="z-50 min-w-[200px] rounded-lg border border-border bg-surface p-1.5 shadow-elev-2"
-        >
-          <div className="px-2.5 py-2">
-            <p className="truncate text-sm font-medium text-foreground">
-              {name ?? "Account"}
-            </p>
-            {email && <p className="truncate text-xs text-muted">{email}</p>}
-          </div>
-          <DropdownMenu.Separator className="my-1 h-px bg-border" />
-          <DropdownMenu.Item asChild>
-            <Link
-              href="/dashboard"
-              className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm text-foreground outline-none hover:bg-surface-elevated data-[highlighted]:bg-surface-elevated"
-            >
-              <FiUser size={14} aria-hidden />
-              Dashboard
-            </Link>
-          </DropdownMenu.Item>
-          <DropdownMenu.Item
-            className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm text-foreground outline-none hover:bg-surface-elevated data-[highlighted]:bg-surface-elevated"
-            onSelect={() => {
-              trackEvent("auth_sign_out", {});
-              // signOut performs its own navigation to "/" — don't stack a
-              // router.refresh() on top (Next 15.0.x Router hook-count bug).
-              void signOut({ redirectTo: "/" });
-            }}
+    <>
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger asChild>
+          <button
+            type="button"
+            aria-label="Account menu"
+            className={cn(
+              "inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full",
+              "border border-border bg-surface text-sm font-semibold text-foreground hover:bg-surface-elevated",
+              "transition-colors duration-base ease-out-soft",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+            )}
           >
-            <FiLogOut size={14} aria-hidden />
-            Sign out
-          </DropdownMenu.Item>
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Root>
+            {image ? (
+              <Image src={image} alt="" width={36} height={36} unoptimized />
+            ) : (
+              initial
+            )}
+          </button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            align="end"
+            sideOffset={8}
+            className="z-50 min-w-[200px] rounded-lg border border-border bg-surface p-1.5 shadow-elev-2"
+          >
+            <div className="px-2.5 py-2">
+              <p className="truncate text-sm font-medium text-foreground">
+                {name ?? "Account"}
+              </p>
+              {email && <p className="truncate text-xs text-muted">{email}</p>}
+            </div>
+            <DropdownMenu.Separator className="my-1 h-px bg-border" />
+            <DropdownMenu.Item asChild>
+              <Link href="/dashboard" className={menuItemClass}>
+                <FiUser size={14} aria-hidden />
+                Dashboard
+              </Link>
+            </DropdownMenu.Item>
+            {connectedAddress ? (
+              <>
+                <DropdownMenu.Item asChild>
+                  <Link
+                    href={`/profile/${encodeURIComponent(connectedAddress)}`}
+                    className={menuItemClass}
+                  >
+                    <Identicon value={connectedAddress} size={14} />
+                    <span className="min-w-0">
+                      <span className="block">Public profile</span>
+                      <span className="block truncate font-mono text-[11px] text-muted">
+                        {shortAddress}
+                      </span>
+                    </span>
+                  </Link>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  className={menuItemClass}
+                  onSelect={() => setConnectOpen(true)}
+                >
+                  <FiCreditCard size={14} aria-hidden />
+                  Manage wallet
+                </DropdownMenu.Item>
+              </>
+            ) : (
+              <DropdownMenu.Item
+                className={menuItemClass}
+                onSelect={() => setConnectOpen(true)}
+              >
+                <FiCreditCard size={14} aria-hidden />
+                Connect wallet
+              </DropdownMenu.Item>
+            )}
+            <DropdownMenu.Item
+              className={menuItemClass}
+              onSelect={() => {
+                trackEvent("auth_sign_out", {});
+                // signOut performs its own navigation to "/" — don't stack a
+                // router.refresh() on top (Next 15.0.x Router hook-count bug).
+                void signOut({ redirectTo: "/" });
+              }}
+            >
+              <FiLogOut size={14} aria-hidden />
+              Sign out
+            </DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
+      <ChainConnectModal open={connectOpen} onOpenChange={setConnectOpen} />
+    </>
   );
 };
 
