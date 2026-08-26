@@ -99,6 +99,13 @@ export interface NearChunkedAnchorParams {
   uri?: string;
   /** Originating platform id (payload attribution); defaults to FileOnChain's platform 1. */
   platformId?: string;
+  /**
+   * Skip chunk transactions a previous attempt of the identical request
+   * already landed — pass the `failedIndex` of the PartialAnchorError it
+   * threw (`chunks.length` means every chunk landed and only the file-level
+   * anchor is left). The receipt covers only the transactions this run sends.
+   */
+  resumeFrom?: number;
   onProgress?: AnchorProgressHandler;
 }
 
@@ -109,15 +116,19 @@ export interface NearChunkedAnchorParams {
  */
 export const anchorChunkedFile = async (
   signer: NearAnchorSigner,
-  { chainId, fileCid, chunks, sha256, uri, includeData, platformId = "1", onProgress }: NearChunkedAnchorParams
+  { chainId, fileCid, chunks, sha256, uri, includeData, platformId = "1", resumeFrom, onProgress }: NearChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
   const chain = resolveNearChain(chainId);
   const embedData = includeData ?? chain.embedsChunkData ?? false;
   const total = chunks.length;
   const txHashes: string[] = [];
   let lastBlockHeight: number | undefined;
+  // Clamp so a stale resume index can only ever skip chunk anchors; the
+  // file-level anchor is always re-sent by the run that completes.
+  const startAt = Math.min(Math.max(Math.floor(resumeFrom ?? 0), 0), total);
 
   for (const [index, chunk] of chunks.entries()) {
+    if (index < startAt) continue; // landed in a previous attempt
     onProgress?.({ stage: "signing", chunksAnchored: chunk.index, chunksTotal: total });
     const payload = buildChunkAnchorPayload({ fileCid, chunk, total, includeData: embedData });
     assertNearPayloadFits(payload);
@@ -126,7 +137,8 @@ export const anchorChunkedFile = async (
       result = await signer.callAnchor(chain.moduleAddress, chunk.cid, payload);
     } catch (error) {
       // Don't discard the chunk transactions that already landed.
-      throw new PartialAnchorError(txHashes, index, index, error);
+      // `failedIndex` stays absolute so it can seed the next `resumeFrom`.
+      throw new PartialAnchorError(txHashes, txHashes.length, index, error);
     }
     const { txHash, blockHeight } = result;
     txHashes.push(txHash);
@@ -146,7 +158,7 @@ export const anchorChunkedFile = async (
   try {
     fileResult = await signer.callAnchor(chain.moduleAddress, fileCid, filePayload);
   } catch (error) {
-    throw new PartialAnchorError(txHashes, chunks.length, chunks.length, error);
+    throw new PartialAnchorError(txHashes, txHashes.length, chunks.length, error);
   }
   const fileTxHash = fileResult.txHash;
   lastBlockHeight = fileResult.blockHeight ?? lastBlockHeight;

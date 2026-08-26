@@ -93,6 +93,12 @@ export interface TronChunkedAnchorParams {
   uri?: string;
   /** Override the per-chain memo byte budget. */
   maxMemoBytes?: number;
+  /**
+   * Skip payloads a previous attempt of the identical request already
+   * landed — pass the `failedIndex` of the PartialAnchorError it threw.
+   * The receipt covers only the transactions this run sends.
+   */
+  resumeFrom?: number;
   onProgress?: AnchorProgressHandler;
 }
 
@@ -111,6 +117,7 @@ export const anchorChunkedFile = async (
     uri,
     includeData,
     maxMemoBytes = DEFAULT_MAX_MEMO_BYTES,
+    resumeFrom,
     onProgress,
   }: TronChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
@@ -131,6 +138,7 @@ export const anchorChunkedFile = async (
     chunksTotal: chunks.length,
     submitter: signer.address,
     send: (memo) => signer.sendMemoTransaction(memo),
+    resumeFrom,
     onProgress,
   });
 };

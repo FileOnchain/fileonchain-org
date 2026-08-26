@@ -91,6 +91,12 @@ export interface TonChunkedAnchorParams {
   uri?: string;
   /** Override the per-chain comment byte budget. */
   maxCommentBytes?: number;
+  /**
+   * Skip payloads a previous attempt of the identical request already
+   * landed — pass the `failedIndex` of the PartialAnchorError it threw.
+   * The receipt covers only the transactions this run sends.
+   */
+  resumeFrom?: number;
   onProgress?: AnchorProgressHandler;
 }
 
@@ -110,6 +116,7 @@ export const anchorChunkedFile = async (
     uri,
     includeData,
     maxCommentBytes = DEFAULT_MAX_COMMENT_BYTES,
+    resumeFrom,
     onProgress,
   }: TonChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
@@ -130,6 +137,7 @@ export const anchorChunkedFile = async (
     chunksTotal: chunks.length,
     submitter: signer.address,
     send: (comment) => signer.sendCommentTransaction(comment),
+    resumeFrom,
     onProgress,
   });
 };

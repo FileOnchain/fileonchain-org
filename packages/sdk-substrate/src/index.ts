@@ -180,6 +180,14 @@ export interface SubstrateChunkedAnchorParams {
    * by a reorg; opt in when the receipt feeds an evidence package.
    */
   waitForFinalization?: boolean;
+  /**
+   * Skip batches a previous attempt of the identical request already
+   * landed — pass the `failedIndex` of the PartialAnchorError it threw.
+   * Batching is deterministic, so the index stays valid while the request
+   * inputs (chunks, budgets, flags) are unchanged. The receipt covers only
+   * the transactions this run sends.
+   */
+  resumeFrom?: number;
   onProgress?: AnchorProgressHandler;
 }
 
@@ -206,6 +214,7 @@ export const anchorChunkedFile = async (
     includeData,
     maxBatchBytes = DEFAULT_MAX_BATCH_BYTES,
     waitForFinalization,
+    resumeFrom,
     onProgress,
   }: SubstrateChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
@@ -228,8 +237,16 @@ export const anchorChunkedFile = async (
   const txHashes: string[] = [];
   let lastBlockHash = "";
   let chunksAnchored = 0;
+  // Clamp so a stale resume index can never skip the final batch (it
+  // carries the file-level anchor).
+  const startAt = Math.min(Math.max(Math.floor(resumeFrom ?? 0), 0), batches.length - 1);
 
   for (const [batchIndex, batch] of batches.entries()) {
+    if (batchIndex < startAt) {
+      // Landed in a previous attempt — still counts toward progress.
+      chunksAnchored = Math.min(chunksAnchored + batch.length, total);
+      continue;
+    }
     onProgress?.({ stage: "signing", chunksAnchored, chunksTotal: total });
     const txs = batch.map((remark) => api.tx.system.remarkWithEvent(remark));
     const tx = txs.length === 1 ? txs[0] : api.tx.utility.batchAll(txs);
@@ -237,8 +254,9 @@ export const anchorChunkedFile = async (
     try {
       result = await signAndSendInBlock(api, tx, address, signer, waitForFinalization);
     } catch (error) {
-      // Don't discard the batches that already landed.
-      throw new PartialAnchorError(txHashes, batchIndex, batchIndex, error);
+      // Don't discard the batches that already landed. `failedIndex` stays
+      // absolute so it can seed the next attempt's `resumeFrom`.
+      throw new PartialAnchorError(txHashes, txHashes.length, batchIndex, error);
     }
     const { txHash, blockHash } = result;
     txHashes.push(txHash);

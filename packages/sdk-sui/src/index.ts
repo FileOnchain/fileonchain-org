@@ -131,6 +131,14 @@ export interface SuiChunkedAnchorParams {
   maxCallsPerTx?: number;
   /** Override the total payload bytes allowed per PTB. */
   maxBytesPerTx?: number;
+  /**
+   * Skip batches a previous attempt of the identical request already
+   * landed — pass the `failedIndex` of the PartialAnchorError it threw.
+   * Batching is deterministic, so the index stays valid while the request
+   * inputs (chunks, budgets, flags) are unchanged. The receipt covers only
+   * the transactions this run sends.
+   */
+  resumeFrom?: number;
   onProgress?: AnchorProgressHandler;
 }
 
@@ -152,6 +160,7 @@ export const anchorChunkedFile = async (
     platformId = "1",
     maxCallsPerTx = DEFAULT_MAX_CALLS_PER_TX,
     maxBytesPerTx = DEFAULT_MAX_BYTES_PER_TX,
+    resumeFrom,
     onProgress,
   }: SuiChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
@@ -179,15 +188,24 @@ export const anchorChunkedFile = async (
   const digests: string[] = [];
   let lastCheckpoint: number | undefined;
   let chunksAnchored = 0;
+  // Clamp so a stale resume index can never skip the final batch (it
+  // carries the file-level anchor).
+  const startAt = Math.min(Math.max(Math.floor(resumeFrom ?? 0), 0), batches.length - 1);
 
   for (const [batchIndex, batch] of batches.entries()) {
+    if (batchIndex < startAt) {
+      // Landed in a previous attempt — still counts toward progress.
+      chunksAnchored = Math.min(chunksAnchored + batch.length, total);
+      continue;
+    }
     onProgress?.({ stage: "signing", chunksAnchored, chunksTotal: total });
     let result: { digest: string; checkpoint?: number };
     try {
       result = await signer.executeAnchorCalls(target, batch);
     } catch (error) {
-      // Don't discard the transactions that already landed.
-      throw new PartialAnchorError(digests, batchIndex, batchIndex, error);
+      // Don't discard the transactions that already landed. `failedIndex`
+      // stays absolute so it can seed the next attempt's `resumeFrom`.
+      throw new PartialAnchorError(digests, digests.length, batchIndex, error);
     }
     const { digest, checkpoint } = result;
     digests.push(digest);

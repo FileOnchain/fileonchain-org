@@ -124,6 +124,12 @@ export interface CardanoChunkedAnchorParams {
   sha256?: string;
   /** Optional IPFS / Arweave pointer, on the file-level anchor. */
   uri?: string;
+  /**
+   * Skip payloads a previous attempt of the identical request already
+   * landed — pass the `failedIndex` of the PartialAnchorError it threw.
+   * The receipt covers only the transactions this run sends.
+   */
+  resumeFrom?: number;
   onProgress?: AnchorProgressHandler;
 }
 
@@ -135,7 +141,7 @@ export interface CardanoChunkedAnchorParams {
  */
 export const anchorChunkedFile = async (
   signer: CardanoAnchorSigner,
-  { chainId, fileCid, chunks, sha256, uri, includeData, onProgress }: CardanoChunkedAnchorParams
+  { chainId, fileCid, chunks, sha256, uri, includeData, resumeFrom, onProgress }: CardanoChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
   const chain = resolveCardanoChain(chainId);
 
@@ -155,6 +161,7 @@ export const anchorChunkedFile = async (
     chunksTotal: chunks.length,
     submitter: signer.address,
     send: (payload) => signer.submitMetadataTransaction(splitForMetadata(payload)),
+    resumeFrom,
     onProgress,
   });
 };

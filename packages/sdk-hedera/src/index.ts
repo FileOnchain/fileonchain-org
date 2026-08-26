@@ -88,6 +88,12 @@ export interface HederaChunkedAnchorParams {
   sha256?: string;
   /** Optional IPFS / Arweave pointer, on the file-level anchor. */
   uri?: string;
+  /**
+   * Skip payloads a previous attempt of the identical request already
+   * landed — pass the `failedIndex` of the PartialAnchorError it threw.
+   * The receipt covers only the transactions this run sends.
+   */
+  resumeFrom?: number;
   onProgress?: AnchorProgressHandler;
 }
 
@@ -99,7 +105,7 @@ export interface HederaChunkedAnchorParams {
  */
 export const anchorChunkedFile = async (
   signer: HederaAnchorSigner,
-  { chainId, fileCid, chunks, sha256, uri, includeData, onProgress }: HederaChunkedAnchorParams
+  { chainId, fileCid, chunks, sha256, uri, includeData, resumeFrom, onProgress }: HederaChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
   const chain = resolveHederaChain(chainId);
 
@@ -122,6 +128,7 @@ export const anchorChunkedFile = async (
       const { txHash, sequenceNumber } = await signer.submitTopicMessage(chain.hcsTopicId, message);
       return { txHash, blockNumber: sequenceNumber };
     },
+    resumeFrom,
     onProgress,
   });
 };

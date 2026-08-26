@@ -109,6 +109,14 @@ export interface SolanaChunkedAnchorParams {
   uri?: string;
   /** Split into more transactions past this many memo bytes per tx. */
   maxMemoBytesPerTx?: number;
+  /**
+   * Skip batches a previous attempt of the identical request already
+   * landed — pass the `failedIndex` of the PartialAnchorError it threw.
+   * Batching is deterministic, so the index stays valid while the request
+   * inputs (chunks, budgets, flags) are unchanged. The receipt covers only
+   * the transactions this run sends.
+   */
+  resumeFrom?: number;
   onProgress?: AnchorProgressHandler;
 }
 
@@ -131,6 +139,7 @@ export const anchorChunkedFile = async (
     uri,
     includeData,
     maxMemoBytesPerTx = DEFAULT_MAX_MEMO_BYTES_PER_TX,
+    resumeFrom,
     onProgress,
   }: SolanaChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
@@ -150,15 +159,24 @@ export const anchorChunkedFile = async (
   const txHashes: string[] = [];
   let lastSlot: number | undefined;
   let chunksAnchored = 0;
+  // Clamp so a stale resume index can never skip the final batch (it
+  // carries the file-level anchor).
+  const startAt = Math.min(Math.max(Math.floor(resumeFrom ?? 0), 0), batches.length - 1);
 
   for (const [batchIndex, batch] of batches.entries()) {
+    if (batchIndex < startAt) {
+      // Landed in a previous attempt — still counts toward progress.
+      chunksAnchored = Math.min(chunksAnchored + batch.length, total);
+      continue;
+    }
     onProgress?.({ stage: "signing", chunksAnchored, chunksTotal: total });
     let result: { signature: string; slot: number };
     try {
       result = await sendMemoTransaction(connection, signer, batch);
     } catch (error) {
-      // Don't discard the transactions that already landed.
-      throw new PartialAnchorError(txHashes, batchIndex, batchIndex, error);
+      // Don't discard the transactions that already landed. `failedIndex`
+      // stays absolute so it can seed the next attempt's `resumeFrom`.
+      throw new PartialAnchorError(txHashes, txHashes.length, batchIndex, error);
     }
     const { signature, slot } = result;
     txHashes.push(signature);
