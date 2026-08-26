@@ -438,10 +438,10 @@ export const CHAINS: readonly ChainConfig[] = [
     explorerAddressPath: "/address/",
     nativeCurrency: { symbol: "ETH", decimals: 18 },
     icon: "/chains/sepolia.svg",
-    registryContract: "0xF81abde8b6474e6b169B85Dd74b61b9A9829BE64",
-    cacheContract: "0xBB9Da1763A615fB8329ea5503de73A34F9FEE903",
-    donationContract: "0xB2c219b84a876b4700114D58C2D5ba6B0B851D33",
-    usdcContract: "0xA449fDB39639a20d3403Be4024c54b35B82F5E4E", // MockUSDC
+    registryContract: "0x48608fDF953501dd7AB9893Dd44Ac86cD9916E7e",
+    cacheContract: "0x0e7584B3F0f31315801a389533047E986cfa52F8",
+    donationContract: "0x108828808963bEBb41CcAB066dbc3BEEd540a2C8",
+    usdcContract: "0x844A18c403732DdD5Ffa213F45Ee4699D2899584", // MockUSDC
     programId: null,
     moduleAddress: null,
     palletContract: null,

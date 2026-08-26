@@ -106,6 +106,34 @@ chain.
 (`forge script ... --zksync`) or zkSync's own tooling; the Solidity itself
 needs no changes.
 
+## Current deployments
+
+Record **proxy** addresses here after each broadcast. Implementations
+are listed only so upgrades know what to replace; `chains.ts` always
+holds the proxies.
+
+### Ethereum Sepolia (`evm:11155111`) — 2026-08-26
+
+Verified on [sepolia.etherscan.io](https://sepolia.etherscan.io).
+Admin / FileRegistry owner: `0xa8F8D90026b58B12e449E6696E93b8F6D797868A`.
+`USDC_ADDRESS` was unset, so the script deployed MockUSDC.
+
+| Contract | Proxy (in `chains.ts`) | Implementation |
+| --- | --- | --- |
+| FileRegistry | [`0x48608fDF953501dd7AB9893Dd44Ac86cD9916E7e`](https://sepolia.etherscan.io/address/0x48608fDF953501dd7AB9893Dd44Ac86cD9916E7e) | [`0x501dbE049D9135f95D4D58e89DF28586037332a4`](https://sepolia.etherscan.io/address/0x501dbE049D9135f95D4D58e89DF28586037332a4) |
+| CachePayments | [`0x0e7584B3F0f31315801a389533047E986cfa52F8`](https://sepolia.etherscan.io/address/0x0e7584B3F0f31315801a389533047E986cfa52F8) | [`0x6f145C12806Bdc64e7344e25dE5e3D487996dA64`](https://sepolia.etherscan.io/address/0x6f145C12806Bdc64e7344e25dE5e3D487996dA64) |
+| DonationEscrow | [`0x108828808963bEBb41CcAB066dbc3BEEd540a2C8`](https://sepolia.etherscan.io/address/0x108828808963bEBb41CcAB066dbc3BEEd540a2C8) | [`0x21Fcf2242A1A42180279dd9817462358E513AB6A`](https://sepolia.etherscan.io/address/0x21Fcf2242A1A42180279dd9817462358E513AB6A) |
+| MockUSDC | [`0x844A18c403732DdD5Ffa213F45Ee4699D2899584`](https://sepolia.etherscan.io/address/0x844A18c403732DdD5Ffa213F45Ee4699D2899584) | n/a (not proxied) |
+
+This replaces the 2026-07-22 Sepolia proxies. Auto EVM Chronos
+(`evm:8700`) is unchanged.
+
+Remaining ops (does not land in git):
+
+1. Fund the account behind `ANCHOR_EVM_PRIVATE_KEY` with Sepolia ETH.
+2. PAYG wallet upload + credits/BYOK worker upload on Sepolia; confirm
+   explorer links. Then bump `integrationStatus` to `"webapp-integrated"`.
+
 ## After deploying
 
 If the contracts changed since the last deploy, regenerate the SDK ABIs
