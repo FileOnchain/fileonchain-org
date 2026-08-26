@@ -16,6 +16,7 @@ export const sendEvmAnchor = async ({
   platformId,
   includeData,
   uri,
+  resumeFrom,
   onProgress,
 }: AnchorRequest): Promise<ChunkedAnchorReceipt> => {
   const { anchorChunkedFile, resolveEvmChain, toViemChain } = await import(
@@ -58,6 +59,7 @@ export const sendEvmAnchor = async ({
     platformId,
     includeData,
     uri,
+    resumeFrom,
     onProgress,
   });
 };

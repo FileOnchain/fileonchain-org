@@ -276,6 +276,13 @@ export interface EvmChunkedAnchorParams {
   platformId?: string;
   /** Reused for receipt waits; created from the chain RPC otherwise. */
   publicClient?: PublicClient;
+  /**
+   * Skip chunk transactions a previous attempt of the identical request
+   * already landed — pass the `failedIndex` of the PartialAnchorError it
+   * threw (`chunks.length` means every chunk landed and only the file-level
+   * anchor is left). The receipt covers only the transactions this run sends.
+   */
+  resumeFrom?: number;
   onProgress?: AnchorProgressHandler;
 }
 
@@ -296,6 +303,7 @@ export const anchorChunkedFile = async (
     includeData,
     platformId = DEFAULT_PLATFORM_ID,
     publicClient,
+    resumeFrom,
     onProgress,
   }: EvmChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
@@ -308,8 +316,12 @@ export const anchorChunkedFile = async (
   const client = publicClientFor(chain, publicClient);
   const total = chunks.length;
   const txHashes: string[] = [];
+  // Clamp so a stale resume index can only ever skip chunk anchors; the
+  // file-level anchor is always re-sent by the run that completes.
+  const startAt = Math.min(Math.max(Math.floor(resumeFrom ?? 0), 0), total);
 
   for (const [index, chunk] of chunks.entries()) {
+    if (index < startAt) continue; // landed in a previous attempt
     onProgress?.({ stage: "signing", chunksAnchored: chunk.index, chunksTotal: total });
     const payload = buildChunkAnchorPayload({ fileCid, chunk, total, includeData: embedData });
     let txHash: Hex;
@@ -324,7 +336,8 @@ export const anchorChunkedFile = async (
       });
     } catch (error) {
       // Don't discard the chunk transactions that already landed.
-      throw new PartialAnchorError(txHashes, index, index, error);
+      // `failedIndex` stays absolute so it can seed the next `resumeFrom`.
+      throw new PartialAnchorError(txHashes, txHashes.length, index, error);
     }
     txHashes.push(txHash);
     onProgress?.({
@@ -348,7 +361,7 @@ export const anchorChunkedFile = async (
         onProgress?.({ ...progress, chunksAnchored: total, chunksTotal: total }),
     });
   } catch (error) {
-    throw new PartialAnchorError(txHashes, chunks.length, chunks.length, error);
+    throw new PartialAnchorError(txHashes, txHashes.length, chunks.length, error);
   }
   txHashes.push(fileAnchor.txHash);
 

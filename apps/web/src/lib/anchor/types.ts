@@ -25,6 +25,13 @@ export interface AnchorRequest {
   /** Pointer to where the bytes live, on the file-level anchor — a
    * `fileonchain://<chainId>/<cid>` storage URI or any external location. */
   uri?: string;
+  /**
+   * Resume a partially-landed anchor: the `failedIndex` from the
+   * PartialAnchorError a previous attempt of this exact request threw.
+   * Units are per family (payload index or batch index) — only feed back
+   * a value produced by the same chain with identical chunks and flags.
+   */
+  resumeFrom?: number;
   onProgress?: AnchorProgressHandler;
 }
 

@@ -111,6 +111,13 @@ export interface AptosChunkedAnchorParams {
   uri?: string;
   /** Originating platform id (payload attribution); defaults to FileOnChain's platform 1. */
   platformId?: string;
+  /**
+   * Skip chunk transactions a previous attempt of the identical request
+   * already landed — pass the `failedIndex` of the PartialAnchorError it
+   * threw (`chunks.length` means every chunk landed and only the file-level
+   * anchor is left). The receipt covers only the transactions this run sends.
+   */
+  resumeFrom?: number;
   onProgress?: AnchorProgressHandler;
 }
 
@@ -121,14 +128,18 @@ export interface AptosChunkedAnchorParams {
  */
 export const anchorChunkedFile = async (
   signer: AptosAnchorSigner,
-  { chainId, fileCid, chunks, sha256, uri, includeData, platformId = "1", onProgress }: AptosChunkedAnchorParams
+  { chainId, fileCid, chunks, sha256, uri, includeData, platformId = "1", resumeFrom, onProgress }: AptosChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
   const chain = resolveAptosChain(chainId);
   const embedData = includeData ?? chain.embedsChunkData ?? false;
   const total = chunks.length;
   const txHashes: string[] = [];
+  // Clamp so a stale resume index can only ever skip chunk anchors; the
+  // file-level anchor is always re-sent by the run that completes.
+  const startAt = Math.min(Math.max(Math.floor(resumeFrom ?? 0), 0), total);
 
   for (const [index, chunk] of chunks.entries()) {
+    if (index < startAt) continue; // landed in a previous attempt
     onProgress?.({ stage: "signing", chunksAnchored: chunk.index, chunksTotal: total });
     const payload = buildChunkAnchorPayload({ fileCid, chunk, total, includeData: embedData });
     assertAptosPayloadFits(payload);
@@ -139,7 +150,8 @@ export const anchorChunkedFile = async (
       ));
     } catch (error) {
       // Don't discard the chunk transactions that already landed.
-      throw new PartialAnchorError(txHashes, index, index, error);
+      // `failedIndex` stays absolute so it can seed the next `resumeFrom`.
+      throw new PartialAnchorError(txHashes, txHashes.length, index, error);
     }
     txHashes.push(hash);
     onProgress?.({
@@ -159,7 +171,7 @@ export const anchorChunkedFile = async (
       anchorPayload(chain.moduleAddress, fileCid, filePayload)
     ));
   } catch (error) {
-    throw new PartialAnchorError(txHashes, chunks.length, chunks.length, error);
+    throw new PartialAnchorError(txHashes, txHashes.length, chunks.length, error);
   }
   txHashes.push(fileTxHash);
   onProgress?.({ stage: "confirmed", chunksAnchored: total, chunksTotal: total, txHash: fileTxHash });

@@ -139,6 +139,13 @@ export const batchByCount = <T>(items: readonly T[], maxPerBatch: number): T[][]
  * Thrown when a multi-transaction anchor fails partway: some transactions
  * already landed on-chain and their hashes must not be lost — callers can
  * record them, resume from `failedIndex`, or surface them to the user.
+ *
+ * To resume, retry the *identical* request with `resumeFrom: failedIndex` —
+ * every family's `anchorChunkedFile` accepts it and skips the sends that
+ * already landed. `failedIndex` is counted in the family's own send unit
+ * (payloads for one-payload-per-transaction families, batches for batching
+ * families); batching is deterministic, so the index stays valid as long as
+ * the request inputs are unchanged.
  */
 export class PartialAnchorError extends Error {
   /** The underlying send failure. */
@@ -180,6 +187,12 @@ export interface RunSequentialChunkedAnchorParams {
   submitter: string;
   /** Send one payload as one transaction and resolve once it's accepted. */
   send: (payload: string, index: number) => Promise<SequentialSendResult>;
+  /**
+   * Skip payloads a previous attempt of the identical request already
+   * landed — pass the `failedIndex` of the PartialAnchorError it threw.
+   * The receipt then covers only the transactions this run sends.
+   */
+  resumeFrom?: number;
   onProgress?: AnchorProgressHandler;
 }
 
@@ -195,21 +208,26 @@ export const runSequentialChunkedAnchor = async ({
   chunksTotal,
   submitter,
   send,
+  resumeFrom,
   onProgress,
 }: RunSequentialChunkedAnchorParams): Promise<ChunkedAnchorReceipt> => {
+  // Clamp so a stale resume index can never skip the final (file) payload.
+  const startAt = Math.min(Math.max(Math.floor(resumeFrom ?? 0), 0), payloads.length - 1);
   const txHashes: string[] = [];
   let lastBlockNumber: number | undefined;
   let lastBlockHash: string | undefined;
-  let chunksAnchored = 0;
+  let chunksAnchored = Math.min(startAt, chunksTotal);
 
   for (const [index, payload] of payloads.entries()) {
+    if (index < startAt) continue; // landed in a previous attempt
     onProgress?.({ stage: "signing", chunksAnchored, chunksTotal });
     let result: SequentialSendResult;
     try {
       result = await send(payload, index);
     } catch (error) {
-      // Don't discard the transactions that already landed.
-      throw new PartialAnchorError(txHashes, index, index, error);
+      // Don't discard the transactions that already landed. `failedIndex`
+      // stays absolute so it can seed the next attempt's `resumeFrom`.
+      throw new PartialAnchorError(txHashes, txHashes.length, index, error);
     }
     const { txHash, blockNumber, blockHash } = result;
     txHashes.push(txHash);

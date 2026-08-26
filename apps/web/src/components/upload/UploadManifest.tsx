@@ -30,6 +30,9 @@ interface UploadManifestProps {
   storageTxHash: string | null;
   txHash: string | null;
   connectedAddress: string | null;
+  /** A previous attempt landed some transactions — the next anchor resumes
+   * from where it stopped instead of starting over. */
+  resumeAvailable?: boolean;
   disabled: boolean;
   onConnect: () => void;
   onAnchor: () => void;
@@ -76,6 +79,7 @@ const UploadManifest = ({
   storageTxHash,
   txHash,
   connectedAddress,
+  resumeAvailable = false,
   disabled,
   onConnect,
   onAnchor,
@@ -126,9 +130,11 @@ const UploadManifest = ({
             ? `Sending anchors ${anchorProgress}/${chunkCount}…`
             : "Anchoring server-side…"
           : paymentMethod === "payg"
-            ? storageMode === "onchain"
-              ? "Sign, store & anchor"
-              : "Sign & anchor"
+            ? resumeAvailable
+              ? "Resume anchoring"
+              : storageMode === "onchain"
+                ? "Sign, store & anchor"
+                : "Sign & anchor"
             : paymentMethod === "credits"
               ? "Anchor with credits"
               : "Anchor via provider";

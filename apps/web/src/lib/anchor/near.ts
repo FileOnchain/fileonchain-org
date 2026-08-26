@@ -17,6 +17,7 @@ export const sendNearAnchor = async ({
   platformId,
   includeData,
   uri,
+  resumeFrom,
   onProgress,
 }: AnchorRequest): Promise<ChunkedAnchorReceipt> => {
   const { nearAddress } = useWalletStates.getState();
@@ -58,6 +59,6 @@ export const sendNearAnchor = async ({
       callAnchor: (contractId, cid, payload) =>
         sendFunctionCall(contractId, ANCHOR_METHOD, { cid, payload }, "0", "30000000000000"),
     },
-    { chainId: chain.id, fileCid, chunks, platformId, includeData, uri, onProgress },
+    { chainId: chain.id, fileCid, chunks, platformId, includeData, uri, resumeFrom, onProgress },
   );
 };

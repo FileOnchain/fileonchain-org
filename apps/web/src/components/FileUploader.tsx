@@ -89,6 +89,7 @@ const FileUploader = () => {
     externalUri,
     chunkSize,
     storageTxHash,
+    pendingResume,
     setStorageMode,
     setStorageChainId,
     setExternalUri,
@@ -325,6 +326,15 @@ const FileUploader = () => {
                   on it yet. Pick an active chain from the network switcher.
                 </p>
               )}
+              {pendingResume && anchorStatus !== "done" && !anchorBusy && (
+                <p className="mb-3 text-sm text-warning">
+                  {pendingResume.landedTxCount}{" "}
+                  {pendingResume.landedTxCount === 1 ? "transaction" : "transactions"} from a
+                  previous attempt already landed on-chain and stay valid. Anchoring again
+                  resumes from where it stopped — the landed transactions aren&apos;t re-sent
+                  or re-paid.
+                </p>
+              )}
               <UploadManifest
                 fileName={file.name}
                 chunkCount={Math.max(1, cids.length)}
@@ -338,6 +348,7 @@ const FileUploader = () => {
                 storageTxHash={storageTxHash}
                 txHash={preview?.txHash ?? null}
                 connectedAddress={connectedAddress}
+                resumeAvailable={Boolean(pendingResume)}
                 disabled={
                   cids.length === 0 || isUploading || anchorStatus === "done" || chainNotActive
                 }
