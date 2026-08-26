@@ -7,8 +7,10 @@ import {
   artifactSigningPayload,
   buildEnvelope,
   bytesToHex,
+  finalizeEnvelope,
   sha256Hex,
   sha256HexUtf8,
+  type EvidenceEnvelope,
   type SubjectDescriptor,
 } from "@fileonchain/protocol";
 import { verifyEnvelope, verifyEvidenceJson } from "../src/index";
@@ -103,6 +105,182 @@ describe("context binding", () => {
       report.checks.find((c) => c.group === "envelope-signatures" && c.name === "envelope-signature[0]")
         ?.status,
     ).toBe("pass");
+  });
+});
+
+describe("honest reporting", () => {
+  it("marks unattested reports: attested=false without any verified signature", async () => {
+    const raw = readFileSync(resolve(fixturesDir, "minimal-hash-only.json"), "utf8");
+    const report = await verifyEvidenceJson(raw);
+    expect(report.ok).toBe(true);
+    expect(report.attested).toBe(false);
+  });
+
+  it("marks attested reports: attested=true once a signature verifies", async () => {
+    const raw = readFileSync(resolve(fixturesDir, "signed-artifact.json"), "utf8");
+    const report = await verifyEvidenceJson(raw);
+    expect(report.attested).toBe(true);
+  });
+
+  it("never reports an unsigned envelope digest as tamper-evidence", async () => {
+    // Attacker model: take an unsigned finalized envelope, tamper a
+    // receipt AND recompute the digest. The digest matches again — the
+    // report must not read as tamper-proof.
+    const subject: SubjectDescriptor = {
+      type: "artifact",
+      digests: { sha256: sha256HexUtf8("tamper-me") },
+    };
+    const original = buildEnvelope({
+      subject,
+      receipts: {
+        settlement: [
+          {
+            type: "settlement",
+            adapter: "fileonchain-evm-anchor/v1",
+            system: "eip155:11155111",
+            payload: { chainId: "evm:11155111", txHash: "0x" + "ab".repeat(32), blockNumber: 1 },
+          },
+        ],
+      },
+    });
+    const tampered = structuredClone(original) as EvidenceEnvelope;
+    (tampered.receipts.settlement[0].payload as { blockNumber: number }).blockNumber = 999999;
+    const recomputed = finalizeEnvelope(tampered);
+    expect(recomputed.envelope?.digest.sha256).not.toBe(original.envelope?.digest.sha256);
+    const report = await verifyEnvelope(recomputed);
+    const digestCheck = report.checks.find((c) => c.name === "envelope-digest");
+    expect(digestCheck?.status).toBe("warning");
+    expect(digestCheck?.detail).toMatch(/unsigned/);
+    expect(report.attested).toBe(false);
+  });
+
+  it("keeps the strong digest message only when an envelope signature verifies", async () => {
+    const raw = readFileSync(resolve(fixturesDir, "full-receipts-envelope-signed.json"), "utf8");
+    const report = await verifyEvidenceJson(raw);
+    const digestCheck = report.checks.find((c) => c.name === "envelope-digest");
+    expect(digestCheck?.status).toBe("pass");
+    expect(digestCheck?.detail).toMatch(/envelope signature/);
+  });
+
+  it("reports offline settlement receipts as unknown, never pass", async () => {
+    const raw = readFileSync(resolve(fixturesDir, "full-receipts-envelope-signed.json"), "utf8");
+    const report = await verifyEvidenceJson(raw);
+    const offline = report.checks.find((c) => c.name.startsWith("settlement[") && c.name.endsWith(":offline"));
+    expect(offline?.status).toBe("unknown");
+    expect(offline?.detail).toMatch(/on-chain binding not verified offline/);
+  });
+
+  it("downgrades inclusion proofs whose root no settlement receipt anchors", async () => {
+    const subject: SubjectDescriptor = {
+      type: "artifact",
+      digests: { sha256: sha256HexUtf8("batched-subject") },
+    };
+    const { buildMerkleTree } = await import("@fileonchain/protocol");
+    const tree = buildMerkleTree([subject.digests!.sha256!, sha256HexUtf8("sibling")]);
+    const envelope = buildEnvelope({
+      subject,
+      receipts: {
+        inclusion: [
+          {
+            type: "inclusion",
+            adapter: "fileonchain-merkle/v1",
+            payload: {
+              root: tree.root,
+              leafIndex: 0,
+              leafCount: tree.leafCount,
+              proof: tree.proofFor(0),
+            },
+          },
+        ],
+      },
+    });
+    const report = await verifyEnvelope(envelope);
+    const inclusion = report.checks.find(
+      (c) => c.name.includes("fileonchain-merkle") && c.name.endsWith(":offline"),
+    );
+    expect(inclusion?.status).toBe("unknown");
+    expect(inclusion?.detail).toMatch(/not anchored by any settlement receipt/);
+  });
+
+  it("checks migrated legacy inclusion proofs under the legacy-scheme adapter", async () => {
+    const { migrateLegacyEvidence } = await import("@fileonchain/protocol");
+    const { buildMerkleTree: buildLegacyTree } = await import("@fileonchain/utils");
+    const sha256 = sha256HexUtf8("legacy-batched");
+    const tree = buildLegacyTree([sha256, sha256HexUtf8("legacy-sibling")]);
+    const envelope = migrateLegacyEvidence(
+      {
+        p: "fileonchain-evidence",
+        v: 1,
+        artifact: { cid: "bafkreigh2akiscaildcqabsyg3dfr6chu3fgpregiymsck7e7aqa4s52zy", sha256 },
+        signatures: [],
+        storage: [{ mode: "evidence-only" }],
+        settlements: [],
+        inclusion: { root: tree.root, leafIndex: 0, proof: tree.proofFor(0) },
+        createdAt: "2026-07-11T12:00:00Z",
+      },
+      { migratedAt: "2026-07-11T13:00:00Z" },
+    );
+    expect(envelope.receipts.inclusion[0].adapter).toBe("fileonchain-merkle-legacy/v1");
+    const report = await verifyEnvelope(envelope);
+    const inclusion = report.checks.find(
+      (c) => c.name.includes("fileonchain-merkle-legacy") && c.name.endsWith(":offline"),
+    );
+    // Proof verifies under the legacy scheme, then honestly downgrades:
+    // no settlement receipt anchors the root.
+    expect(inclusion?.status).toBe("unknown");
+    expect(inclusion?.detail).toMatch(/not anchored by any settlement receipt/);
+  });
+
+  it("rejects lenient ed25519 encodings (uppercase / 0x-prefixed hex)", async () => {
+    const seed = new Uint8Array(32).fill(4);
+    const publicKey = bytesToHex(ed25519.getPublicKey(seed));
+    const encoder = new TextEncoder();
+    const subject: SubjectDescriptor = {
+      type: "artifact",
+      digests: { sha256: sha256Hex(encoder.encode("strict-hex")) },
+    };
+    const payload = artifactSigningPayload({ subject });
+    const signature = bytesToHex(ed25519.sign(encoder.encode(payload), seed));
+    const envelope = buildEnvelope({
+      subject,
+      signatures: [
+        {
+          signer: { kind: "agent", publicKey: publicKey.toUpperCase(), scheme: "ed25519" },
+          payloadDigest: sha256HexUtf8(payload),
+          signature,
+        },
+      ],
+    });
+    const report = await verifyEnvelope(envelope);
+    const check = report.checks.find((c) => c.name === "signature[0]");
+    expect(check?.status).toBe("fail");
+    expect(check?.detail).toMatch(/lowercase hex/);
+  });
+});
+
+describe("wire-form safety", () => {
+  const envelopeRaw = () =>
+    JSON.stringify(
+      buildEnvelope({
+        subject: { type: "artifact", digests: { sha256: sha256HexUtf8("wire-safety") } },
+      }),
+    );
+
+  it("rejects duplicate top-level keys in the wire form", async () => {
+    const raw = envelopeRaw().replace(
+      '"protocol":"fileonchain-evidence"',
+      '"protocol":"fileonchain-evidence","protocol":"fileonchain-evidence"',
+    );
+    const report = await verifyEvidenceJson(raw);
+    expect(report.status).toBe("invalid");
+    expect(report.checks[0].detail).toMatch(/duplicate key "protocol"/);
+  });
+
+  it("rejects __proto__ keys in the wire form", async () => {
+    const raw = `{"__proto__":{"polluted":true},${envelopeRaw().slice(1)}`;
+    const report = await verifyEvidenceJson(raw);
+    expect(report.status).toBe("invalid");
+    expect(report.checks[0].detail).toMatch(/__proto__/);
   });
 });
 

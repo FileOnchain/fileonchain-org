@@ -11,6 +11,12 @@
 use near_sdk::serde_json::json;
 use near_sdk::{env, near, PanicOnDefault};
 
+/// NEAR caps total log output per receipt at 16,384 bytes; the payload is
+/// logged verbatim inside the EVENT_JSON envelope, so cap it below the
+/// protocol limit with headroom for the envelope (standard/version/event
+/// fields, submitter account id, cid, JSON escaping).
+const MAX_PAYLOAD_BYTES: usize = 15_800;
+
 #[near(contract_state)]
 #[derive(PanicOnDefault)]
 pub struct FileRegistry {}
@@ -26,6 +32,10 @@ impl FileRegistry {
     /// Re-anchoring the same CID is allowed — the earliest event wins for
     /// indexers.
     pub fn anchor_cid(&mut self, cid: String, payload: String) {
+        assert!(
+            payload.len() <= MAX_PAYLOAD_BYTES,
+            "FileRegistry: payload exceeds {MAX_PAYLOAD_BYTES} bytes (NEAR caps log output per receipt at 16,384 bytes)"
+        );
         let event = json!({
             "standard": "fileonchain",
             "version": "1.0.0",
@@ -68,6 +78,22 @@ mod tests {
         assert!(logs[0].contains(r#""event":"cid_anchored""#));
         assert!(logs[0].contains("bafybeigdyrzt5examplecid"));
         assert!(logs[0].contains(accounts(1).as_str()));
+    }
+
+    #[test]
+    #[should_panic(expected = "payload exceeds")]
+    fn oversized_payload_is_rejected() {
+        set_context(accounts(1));
+        let mut contract = FileRegistry::new();
+        contract.anchor_cid("bafycid".to_string(), "x".repeat(MAX_PAYLOAD_BYTES + 1));
+    }
+
+    #[test]
+    fn max_size_payload_is_accepted() {
+        set_context(accounts(1));
+        let mut contract = FileRegistry::new();
+        contract.anchor_cid("bafycid".to_string(), "x".repeat(MAX_PAYLOAD_BYTES));
+        assert_eq!(get_logs().len(), 1);
     }
 
     #[test]

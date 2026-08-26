@@ -42,6 +42,9 @@ export { CIDV1_BASE32_RE, isValidCID, validateOrError } from "./cid";
 export {
   ANCHOR_PROTOCOL,
   ANCHOR_PAYLOAD_VERSION,
+  MAX_ANCHOR_URI_LENGTH,
+  MAX_ANCHOR_PLATFORM_ID_LENGTH,
+  MAX_CHUNK_DATA_BASE64_LENGTH,
   buildFileAnchorPayload,
   buildChunkAnchorPayload,
   parseAnchorPayload,
@@ -117,6 +120,7 @@ export {
   buildChunkedAnchorPayloads,
   batchByBytes,
   batchByCount,
+  PartialAnchorError,
   runSequentialChunkedAnchor,
   type ResolveFamilyChainOptions,
   type BuildChunkedAnchorPayloadsParams,

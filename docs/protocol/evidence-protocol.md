@@ -176,7 +176,12 @@ JSON**: the UTF-8 bytes of a deterministic serialization. Conforming
 implementations **MUST** produce byte-identical canonical output for
 the same value. The rules:
 
-1. Object keys **MUST** be sorted by Unicode code point at every depth.
+1. Object keys **MUST** be sorted by **UTF-16 code unit** at every
+   depth — the default ECMAScript string comparison. This differs from
+   Unicode code-point order for astral-plane keys: a surrogate pair's
+   first unit (0xD800–0xDBFF) sorts *below* BMP characters above it,
+   so e.g. the key U+10000 sorts before U+FB00. Implementations in
+   other languages **MUST** reproduce UTF-16 code unit order exactly.
 2. Arrays **MUST** be serialized in place; element order is
    significant.
 3. There **MUST** be no insignificant whitespace.
@@ -189,10 +194,17 @@ the same value. The rules:
 7. Strings are **NOT** Unicode-normalized. Producers **MUST** emit the
    exact code points they intend to sign (see §16.1).
 8. Numbers **SHOULD** be integers within the IEEE-754 safe range
-   (|n| ≤ 2^53 − 1). Fractional values are serialized with the
-   ECMAScript number-to-string algorithm, which conforming
-   implementations **MUST** reproduce exactly; producers **SHOULD**
-   prefer strings for any value where that is a burden.
+   (|n| ≤ 2^53 − 1). Negative zero and integers outside the safe
+   range are errors — they cannot round-trip unambiguously.
+   Fractional values are serialized with the ECMAScript
+   number-to-string algorithm, which conforming implementations
+   **MUST** reproduce exactly; producers **SHOULD** prefer strings for
+   any value where that is a burden.
+9. An own `"__proto__"` key is an error: ordinary ECMAScript object
+   construction silently routes it to the prototype setter, so the
+   member cannot be represented faithfully and would otherwise vanish
+   from the canonical bytes. Canonicalization **MUST** reject it, and
+   verifiers **MUST** reject it in the wire form (see §16.1).
 
 The reference implementation is `canonicalStringify` in
 [`packages/protocol/src/canonical.ts`](../../packages/protocol/src/canonical.ts).
@@ -200,7 +212,8 @@ The reference implementation is `canonicalStringify` in
 *Note (non-normative).* Canonicalization operates on parsed values.
 Because standard JSON parsers silently keep the last of duplicate keys,
 post-parse canonicalization cannot detect duplicates in the wire form —
-see §16.1 for the required mitigation.
+verifiers scan the raw text before parsing (`scanWireJson` in the
+reference implementation); see §16.1.
 
 ## 7. Claims and extensions
 
@@ -424,10 +437,19 @@ individually. The batching pattern:
 1. Build a **manifest** — a document listing the subjects — and an
    envelope whose subject has `type: "manifest"`.
 2. Build a **Merkle tree** over the subjects' SHA-256 digests.
-   Construction is normative: leaves are lowercase-hex SHA-256 digests
-   in manifest order; a parent is SHA-256 of the concatenation of its
-   children's 64 raw bytes (left ‖ right); an odd node is paired with
-   itself. Reference: [`packages/protocol/src/merkle.ts`](../../packages/protocol/src/merkle.ts).
+   Construction is normative and RFC-6962-style:
+   - leaves are lowercase-hex SHA-256 digests in manifest order;
+   - a **leaf node** is `SHA-256(0x00 ‖ leaf-digest-bytes)`;
+   - an **internal node** is `SHA-256(0x01 ‖ left ‖ right)` over the
+     children's raw 32-byte values;
+   - a lone node at the end of a level is **promoted unchanged** to the
+     next level — it is never paired with itself.
+
+   The domain-separation prefixes prevent an internal node from being
+   presented as a leaf; promotion prevents distinct leaf sets from
+   producing the same root (`root([a,b,c]) ≠ root([a,b,c,c])` — the
+   CVE-2012-2459 class). Reference:
+   [`packages/protocol/src/merkle.ts`](../../packages/protocol/src/merkle.ts).
 3. Settle the **root** once on each chosen settlement system.
 4. Give every subject's envelope an **inclusion receipt** carrying its
    proof.
@@ -439,6 +461,7 @@ payload is:
 {
   "root": "…64 hex…",
   "leafIndex": 0,
+  "leafCount": 3,
   "proof": ["…64 hex…", "…"],
   "leafDigest": "…optional; defaults to the subject's sha256…",
   "manifestDigest": "…optional sha256 of the canonical manifest…"
@@ -446,8 +469,21 @@ payload is:
 ```
 
 Verification recomputes the path from the leaf (the subject's `sha256`
-digest when `leafDigest` is absent) through the proof to the root; the
-check is pure and requires no I/O.
+digest when `leafDigest` is absent) through the proof to the root using
+the RFC 9162 §2.1.3.2 inclusion-proof algorithm — `leafCount` (the
+tree's total number of leaves) is required, because promotion skips
+levels. The check is pure and requires no I/O.
+
+A verified proof shows only that the leaf is under the root. The root
+itself proves nothing until a settlement receipt of the envelope
+anchors it: the reference verifier reports a self-consistent proof
+whose root no settlement receipt anchors as *unknown*, never *pass*
+(§16.10).
+
+*Migration note.* Inclusion proofs migrated from `legacy-evidence-v1`
+were built with the pre-separation scheme (no domain separation,
+odd-node self-pairing) and are tagged `fileonchain-merkle-legacy/v1`;
+they MUST NOT be presented under `fileonchain-merkle/v1`.
 
 ## 12. Envelope digests and signatures
 
@@ -524,12 +560,17 @@ authorization — claimed, not proven); and the key status as `unknown`
 **Step 5 — Envelope digest and envelope signatures.** If the envelope
 is a draft, report `warning` and mark the result *incomplete*
 ("receipts are not yet tamper-bound"). Otherwise recompute the envelope
-digest (§12) and compare (`pass`/`fail`; a mismatch means content
-changed after finalization). If there are no envelope signatures,
-report `unknown` ("nobody attests to the assembled envelope as a
-whole"); for each one, check its `payloadDigest` against this
-envelope's digest (`fail` on mismatch) and verify the signature under
-its scheme.
+digest (§12) and compare: a mismatch is `fail` (content changed after
+finalization). A matching digest is `pass` **only when at least one
+envelope signature covering it verifies** — an unsigned digest is
+self-consistent bookkeeping, not tamper-evidence, because anyone who
+can edit the envelope can recompute it; with zero (or zero valid)
+envelope signatures the digest check is `warning` ("does not protect
+against modification by anyone who can recompute it"). If there are no
+envelope signatures, additionally report `unknown` ("nobody attests to
+the assembled envelope as a whole"); for each one, check its
+`payloadDigest` against this envelope's digest (`fail` on mismatch)
+and verify the signature under its scheme.
 
 **Step 6 — Receipts, through their adapters.** For every receipt in
 `storage`, `settlement`, and `inclusion` order: if no adapter is
@@ -541,16 +582,37 @@ endpoints (the caller may override endpoints per system identifier),
 or report `unknown` if the adapter defines none; when not requested,
 report `skipped` for adapters that define an online check.
 
+Settlement receipts demand particular honesty. Offline, a `txHash` is
+only a claimed pointer — nothing local proves the transaction exists,
+let alone that it references this evidence — so the built-in settlement
+adapters report offline settlement checks as `unknown` ("structure
+only; on-chain binding not verified offline"), never `pass`. Online, a
+settlement check **MUST NOT** pass on transaction success alone: the
+reference EVM adapter fetches the full transaction, decodes the anchor
+calldata (`anchorChunk(bytes32,bytes32,string)` / `anchorCID`, whose
+`uri` argument carries the fileonchain anchor payload), and requires
+the embedded cid/sha256 to reference the envelope's subject or one of
+its inclusion roots — decoding failures and content mismatches are
+`fail`. Where an adapter cannot yet decode a system's transaction
+content (non-EVM systems in the reference verifier), the online check
+is `unknown`, never `pass`.
+
+After the receipt checks, the verifier cross-binds inclusion proofs to
+settlement receipts: a verified proof stays `pass` only when its root
+was proven on-chain by a passing settlement check; otherwise it is
+downgraded to `unknown` ("proof self-consistent; root not anchored by
+any settlement receipt") — see §16.10.
+
 Built-in adapters of the reference verifier:
 `fileonchain-merkle/v1` (inclusion, pure),
-`fileonchain-evm-anchor/v1` (EVM settlement; online check confirms the
-transaction receipt and block against a public RPC endpoint and
-reports inclusion, not finality), `fileonchain-anchor/v1` (settlement
-on non-EVM systems, same payload shape; online confirmation reported
-`unknown` with an explorer link where the reference verifier has no
-client), `fileonchain-storage/v1` and the legacy adapters
-`fileonchain-storage-legacy/v1` / `fileonchain-anchor-legacy/v1`
-(§15.2).
+`fileonchain-evm-anchor/v1` (EVM settlement; online check decodes and
+binds the anchor transaction as above and reports inclusion, not
+finality), `fileonchain-anchor/v1` (settlement on non-EVM systems,
+same payload shape; online confirmation reported `unknown` with an
+explorer link where the reference verifier has no client),
+`fileonchain-storage/v1` and the legacy adapters
+`fileonchain-storage-legacy/v1` / `fileonchain-anchor-legacy/v1` /
+`fileonchain-merkle-legacy/v1` (§15.2).
 
 ## 14. Result semantics
 
@@ -571,6 +633,13 @@ distinguishable both from `pass` and from `fail`. The output of this
 algorithm is **locally verified evidence**: a report of what was
 checked and how, never a blanket statement that the envelope's claims
 are true.
+
+The reference verifier's report additionally carries two flags that
+must not be conflated: `ok` means "not malformed" (no check failed),
+while `attested` is true only when at least one artifact or envelope
+signature verified cryptographically. A well-formed, unsigned envelope
+is `ok` but not `attested` — integrity and timestamps only, no
+attribution.
 
 ## 15. Versioning
 
@@ -593,8 +662,12 @@ remains verifiable forever through the reference verifier's legacy
 path, and is convertible with the migration tool
 (`fileonchain migrate`, backed by `migrateLegacyEvidence` in
 [`packages/protocol/src/migrate.ts`](../../packages/protocol/src/migrate.ts)).
-Migration maps storage/settlement records onto the legacy adapters
-(`fileonchain-storage-legacy/v1`, `fileonchain-anchor-legacy/v1`) and
+Migration validates the legacy package first (invalid input is
+refused, never converted into a plausible-looking envelope), maps
+storage/settlement records onto the legacy adapters
+(`fileonchain-storage-legacy/v1`, `fileonchain-anchor-legacy/v1`),
+maps legacy inclusion proofs — built with the pre-separation Merkle
+scheme — onto `fileonchain-merkle-legacy/v1` (§11), and maps
 EVM chain ids onto CAIP-2 systems. Migration **MUST NOT** claim to
 preserve original signatures as valid protocol signatures — the signing
 payload changed shape, so they cannot verify; they are preserved
@@ -612,9 +685,17 @@ All signatures and digests depend on byte-identical canonical output
 - **Duplicate JSON keys.** Standard parsers keep the last duplicate
   silently, so post-parse canonicalization cannot see duplicates in the
   wire form. Two wire documents differing only in a shadowed duplicate
-  key canonicalize identically. Verifiers that must rule this out
-  **SHOULD** scan the raw text for duplicate keys before parsing, and
-  producers **MUST NOT** emit them.
+  key canonicalize identically — a human reads one `"subject"`, the
+  verifier checks another. Producers **MUST NOT** emit duplicate keys,
+  and conforming verifiers **MUST** scan the raw text before parsing
+  and reject wire forms containing a duplicate key within one object
+  (the same key at different depths is fine) or any `"__proto__"` key
+  (§6 rule 9). The scan must decode string escapes (the escaped form
+  `"\u0061"` is the same key as `"a"`) and must not be fooled by
+  key-like text inside string values.
+  The reference implementation is `scanWireJson`
+  ([`packages/protocol/src/wire.ts`](../../packages/protocol/src/wire.ts)),
+  applied by both `parseEnvelope` and `verifyEvidenceJson`.
 - **Unicode non-normalization.** Strings are signed as the exact code
   points emitted. Visually identical strings in different normalization
   forms (e.g. NFC vs NFD) are different bytes and different digests.
@@ -643,11 +724,15 @@ verifier fails the signature at step 4 before any cryptography runs.
 
 Artifact signatures deliberately do not cover receipts (§8.2), so on
 their own they cannot detect a receipt being swapped for a weaker one,
-silently dropped, or reordered. The envelope digest closes this: the
-digested region includes all three receipt arrays in order, so any such
-change alters the digest, failing step 5 on a finalized envelope.
-Relying parties who care about receipt completeness **SHOULD** insist
-on finalized envelopes and, ideally, at least one envelope signature.
+silently dropped, or reordered. The envelope digest closes this **only
+when signed**: the digested region includes all three receipt arrays
+in order, so any such change alters the digest — but an attacker who
+can edit the envelope can also recompute the digest, so an unsigned
+digest detects accidents, not adversaries. The verifier reports an
+unsigned matching digest as `warning`, not `pass` (§13, step 5).
+Relying parties who care about receipt completeness **MUST** insist on
+finalized envelopes with at least one valid envelope signature from a
+key they trust.
 
 ### 16.4 Envelope digest recursion
 
@@ -710,17 +795,25 @@ rejected regardless of what the provider claims.
 
 ### 16.10 Merkle proof manipulation
 
-Inclusion proofs are only as strong as the binding between the root and
-a settlement receipt. An attacker who controls tree construction can
-place arbitrary leaves in it, and the odd-node duplication rule means a
-duplicated leaf pairs with itself — none of which lets an attacker
-*forge* membership for a digest that is not in the tree (that requires
-a SHA-256 collision), but relying parties should note: an inclusion
-proof shows the subject digest is under the root; it says nothing about
-what *else* is under the root, and it is meaningful only when the root
-itself appears in a settlement receipt (or manifest) the relying party
-accepts. Proofs **MUST** be checked against the root from the receipt,
-never against a root supplied separately.
+The tree construction (§11) carries two structural defenses: the
+leaf/internal domain-separation prefixes stop an internal node from
+being replayed as a leaf (a second-preimage setup in undomained
+trees), and lone-node promotion stops distinct leaf sets from sharing
+a root (`root([a,b,c]) ≠ root([a,b,c,c])` — the CVE-2012-2459 class
+that odd-node self-duplication permits).
+
+Neither defense addresses the deeper limit: the root in an inclusion
+receipt is attacker-choosable. An attacker who controls tree
+construction can build any tree around any leaf, so a proof that
+verifies against the receipt's own root proves nothing by itself. An
+inclusion proof is meaningful only when the root is anchored by a
+settlement receipt (or manifest) the relying party accepts — the
+reference verifier therefore reports a self-consistent proof `pass`
+only when a passing settlement check proved the same root on the
+settlement system, and `unknown` otherwise (§13, step 6). Proofs
+**MUST** be checked against the root from the receipt, never against a
+root supplied separately, and an inclusion proof still says nothing
+about what *else* is under the root.
 
 ### 16.11 Conflicting signatures
 

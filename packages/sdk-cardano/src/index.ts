@@ -1,9 +1,12 @@
 import {
+  assertPayloadFits,
   buildChunkedAnchorPayloads,
   buildFileAnchorPayload,
   ChainNotProvisionedError,
+  FAMILY_PAYLOAD_BUDGET_BYTES,
   resolveFamilyChain,
   runSequentialChunkedAnchor,
+  utf8ByteLength,
   type AnchorChunk,
   type AnchorProgressHandler,
   type BuildFileAnchorParams,
@@ -27,18 +30,31 @@ import {
 /** CIP-20 "message" label, so anchors render readably in every explorer. */
 export const CARDANO_METADATA_LABEL = 674;
 
-/** Protocol cap per metadata string. */
+/** Protocol cap per metadata string — 64 **bytes** when UTF-8 encoded. */
 export const METADATA_STRING_LIMIT = 64;
 
 /**
- * Split a payload into ≤64-char slices, in order. Splitting on characters
- * is safe: payloads are JSON, ASCII.
+ * Split a payload into ordered slices of at most 64 UTF-8 **bytes** each —
+ * the ledger counts encoded bytes, not characters. Splits only on code-point
+ * boundaries, so multi-byte characters and surrogate pairs are never torn
+ * across slices.
  */
 export const splitForMetadata = (payload: string): string[] => {
   const chunks: string[] = [];
-  for (let i = 0; i < payload.length; i += METADATA_STRING_LIMIT) {
-    chunks.push(payload.slice(i, i + METADATA_STRING_LIMIT));
+  let current = "";
+  let currentBytes = 0;
+  // for..of iterates code points, so a surrogate pair stays together.
+  for (const char of payload) {
+    const charBytes = utf8ByteLength(char);
+    if (current && currentBytes + charBytes > METADATA_STRING_LIMIT) {
+      chunks.push(current);
+      current = "";
+      currentBytes = 0;
+    }
+    current += char;
+    currentBytes += charBytes;
   }
+  if (current) chunks.push(current);
   return chunks;
 };
 
@@ -75,12 +91,20 @@ export interface CardanoAnchorParams extends BuildFileAnchorParams {
 }
 
 /** Anchor a single CID as one metadata transaction. */
+const assertCardanoPayloadFits = (payload: string): void =>
+  assertPayloadFits(
+    payload,
+    FAMILY_PAYLOAD_BUDGET_BYTES.cardano,
+    `Cardano CIP-20 metadata holds up to ${FAMILY_PAYLOAD_BUDGET_BYTES.cardano} bytes within transaction limits`
+  );
+
 export const anchorCIDWithMetadata = async (
   signer: CardanoAnchorSigner,
   { chainId, ...payload }: CardanoAnchorParams
 ): Promise<{ txHash: string; payload: string }> => {
   resolveCardanoChain(chainId);
   const serialized = buildFileAnchorPayload(payload);
+  assertCardanoPayloadFits(serialized);
   const { txHash } = await signer.submitMetadataTransaction(splitForMetadata(serialized));
   return { txHash, payload: serialized };
 };
@@ -115,16 +139,19 @@ export const anchorChunkedFile = async (
 ): Promise<ChunkedAnchorReceipt> => {
   const chain = resolveCardanoChain(chainId);
 
-  // No blockNumber in the receipt — CIP-30 wallets return only the hash.
-  return runSequentialChunkedAnchor({
-    chainId: chain.id,
-    payloads: buildChunkedAnchorPayloads({
+  const payloads = buildChunkedAnchorPayloads({
     fileCid,
     chunks,
     sha256,
     uri,
     includeData: includeData ?? chain.embedsChunkData ?? false,
-  }),
+  });
+  for (const payload of payloads) assertCardanoPayloadFits(payload);
+
+  // No blockNumber in the receipt — CIP-30 wallets return only the hash.
+  return runSequentialChunkedAnchor({
+    chainId: chain.id,
+    payloads,
     chunksTotal: chunks.length,
     submitter: signer.address,
     send: (payload) => signer.submitMetadataTransaction(splitForMetadata(payload)),

@@ -6,6 +6,7 @@ import {
   migrateLegacyEvidence,
   sha256HexUtf8,
   validateEnvelope,
+  validateLegacyEvidencePackage,
   type LegacyEvidencePackage,
 } from "../src/index";
 
@@ -45,7 +46,19 @@ describe("legacy migration", () => {
     expect(envelope.envelope?.digest.sha256).toBe(computeEnvelopeDigest(envelope));
     expect(envelope.receipts.settlement[0].adapter).toBe("fileonchain-anchor-legacy/v1");
     expect(envelope.receipts.settlement[0].system).toBe("eip155:11155111");
-    expect(envelope.receipts.inclusion[0].adapter).toBe("fileonchain-merkle/v1");
+    // Legacy proofs use the pre-separation Merkle scheme and must never be
+    // presented under the current fileonchain-merkle/v1 adapter id.
+    expect(envelope.receipts.inclusion[0].adapter).toBe("fileonchain-merkle-legacy/v1");
+  });
+
+  it("refuses to migrate an invalid legacy package", () => {
+    const invalid = { ...legacy, artifact: { ...legacy.artifact, sha256: "NOT-HEX" } };
+    expect(() => migrateLegacyEvidence(invalid, { migratedAt: "2026-07-11T13:00:00Z" })).toThrow(
+      /Refusing to migrate.*sha256/,
+    );
+    expect(validateLegacyEvidencePackage(invalid)).toContain(
+      "artifact.sha256 is not 64 lowercase hex chars",
+    );
   });
 
   it("never presents legacy signatures as protocol artifact signatures", () => {

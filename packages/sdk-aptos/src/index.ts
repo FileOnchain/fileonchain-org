@@ -1,7 +1,10 @@
 import {
+  assertPayloadFits,
   buildChunkAnchorPayload,
   buildFileAnchorPayload,
   ChainNotProvisionedError,
+  FAMILY_PAYLOAD_BUDGET_BYTES,
+  PartialAnchorError,
   resolveFamilyChain,
   type AnchorChunk,
   type AnchorProgressHandler,
@@ -56,6 +59,13 @@ export const resolveAptosChain = (
     },
   }) as ChainConfig & { moduleAddress: string };
 
+const assertAptosPayloadFits = (payload: string): void =>
+  assertPayloadFits(
+    payload,
+    FAMILY_PAYLOAD_BUDGET_BYTES.aptos,
+    `Aptos entry-function string args hold up to ${FAMILY_PAYLOAD_BUDGET_BYTES.aptos} bytes (within the 64 KiB transaction cap)`
+  );
+
 const anchorPayload = (moduleAddress: string, cid: string, payload: string): AptosEntryFunctionPayload => ({
   type: "entry_function_payload",
   function: `${moduleAddress}::${ANCHOR_FUNCTION}`,
@@ -77,6 +87,7 @@ export const anchorCID = async (
 ): Promise<{ hash: string; payload: string }> => {
   const chain = resolveAptosChain(chainId);
   const serialized = buildFileAnchorPayload(payload);
+  assertAptosPayloadFits(serialized);
   const { hash } = await signer.signAndSubmitTransaction(
     anchorPayload(chain.moduleAddress, payload.cid, serialized)
   );
@@ -117,12 +128,19 @@ export const anchorChunkedFile = async (
   const total = chunks.length;
   const txHashes: string[] = [];
 
-  for (const chunk of chunks) {
+  for (const [index, chunk] of chunks.entries()) {
     onProgress?.({ stage: "signing", chunksAnchored: chunk.index, chunksTotal: total });
     const payload = buildChunkAnchorPayload({ fileCid, chunk, total, includeData: embedData });
-    const { hash } = await signer.signAndSubmitTransaction(
-      anchorPayload(chain.moduleAddress, chunk.cid, payload)
-    );
+    assertAptosPayloadFits(payload);
+    let hash: string;
+    try {
+      ({ hash } = await signer.signAndSubmitTransaction(
+        anchorPayload(chain.moduleAddress, chunk.cid, payload)
+      ));
+    } catch (error) {
+      // Don't discard the chunk transactions that already landed.
+      throw new PartialAnchorError(txHashes, index, index, error);
+    }
     txHashes.push(hash);
     onProgress?.({
       stage: "submitting",
@@ -134,9 +152,15 @@ export const anchorChunkedFile = async (
 
   onProgress?.({ stage: "signing", chunksAnchored: total, chunksTotal: total });
   const filePayload = buildFileAnchorPayload({ cid: fileCid, sha256, uri, platformId });
-  const { hash: fileTxHash } = await signer.signAndSubmitTransaction(
-    anchorPayload(chain.moduleAddress, fileCid, filePayload)
-  );
+  assertAptosPayloadFits(filePayload);
+  let fileTxHash: string;
+  try {
+    ({ hash: fileTxHash } = await signer.signAndSubmitTransaction(
+      anchorPayload(chain.moduleAddress, fileCid, filePayload)
+    ));
+  } catch (error) {
+    throw new PartialAnchorError(txHashes, chunks.length, chunks.length, error);
+  }
   txHashes.push(fileTxHash);
   onProgress?.({ stage: "confirmed", chunksAnchored: total, chunksTotal: total, txHash: fileTxHash });
 

@@ -1,13 +1,20 @@
-import { createPublicClient, http } from "viem";
 import {
   registerAdapter,
+  LEGACY_INCLUSION_ADAPTER_ID,
   LEGACY_SETTLEMENT_ADAPTER_ID,
   LEGACY_STORAGE_ADAPTER_ID,
   type AdapterCheckResult,
+  type EvidenceEnvelope,
   type Receipt,
   type ReceiptAdapter,
 } from "@fileonchain/protocol";
-import { buildTxUrl, getChain, parseStorageUri } from "@fileonchain/utils";
+import {
+  buildTxUrl,
+  getChain,
+  parseStorageUri,
+  verifyMerkleInclusion as verifyLegacyMerkleInclusion,
+} from "@fileonchain/utils";
+import { confirmEvmAnchorOnline, type AnchorBindingTarget } from "./evm-anchor";
 
 /**
  * Built-in receipt adapters for the reference verifier. Each adapter owns
@@ -41,16 +48,37 @@ const offlineSettlementCheck = (receipt: Receipt): AdapterCheckResult => {
     return { status: "fail", detail: "settlement payload has no txHash" };
   }
   const chain = chainFor(receipt);
+  // Honest limit: offline, a txHash is just a claimed pointer — nothing
+  // here proves the transaction exists or references this evidence.
   return {
-    status: "pass",
+    status: "unknown",
     detail: chain
-      ? `receipt structurally valid — confirm at ${buildTxUrl(chain, payload.txHash)}`
-      : `receipt structurally valid on unknown system ${receipt.system ?? "?"}`,
+      ? `structure only — on-chain binding not verified offline; confirm at ${buildTxUrl(chain, payload.txHash)}`
+      : `structure only on unknown system ${receipt.system ?? "?"} — on-chain binding not verified offline`,
   };
+};
+
+/**
+ * What the on-chain anchor payload must reference to bind the settlement
+ * to this evidence: the subject's sha256 or cid, or an inclusion
+ * receipt's Merkle root (manifest-batched settlements anchor the root,
+ * not each subject).
+ */
+const settlementBindingTargets = (envelope: EvidenceEnvelope): AnchorBindingTarget[] => {
+  const targets: AnchorBindingTarget[] = [];
+  const sha256 = envelope.subject.digests?.sha256;
+  if (sha256) targets.push({ label: "the subject sha256", value: sha256 });
+  if (envelope.subject.cid) targets.push({ label: "the subject cid", value: envelope.subject.cid });
+  for (const receipt of envelope.receipts.inclusion) {
+    const root = (receipt.payload as { root?: unknown }).root;
+    if (typeof root === "string") targets.push({ label: "an inclusion receipt root", value: root });
+  }
+  return targets;
 };
 
 const onlineSettlementCheck = async (
   receipt: Receipt,
+  envelope: EvidenceEnvelope,
   endpoints?: Record<string, string>,
 ): Promise<AdapterCheckResult> => {
   const payload = receipt.payload as AnchorSettlementPayload;
@@ -59,39 +87,20 @@ const onlineSettlementCheck = async (
     return { status: "unknown", detail: `no known endpoint for system ${receipt.system ?? "?"}` };
   }
   if (chain.family !== "evm") {
+    // Never a bare `pass` here: without decoding the transaction's actual
+    // content there is no binding to this evidence.
     return {
       status: "unknown",
       detail: `online confirmation for ${chain.family} is not built into the reference verifier — confirm at ${buildTxUrl(chain, payload.txHash ?? "")}`,
     };
   }
-  try {
-    const rpcUrl =
-      endpoints?.[receipt.system ?? ""] ?? endpoints?.[chain.id] ?? chain.rpcUrl;
-    const client = createPublicClient({ transport: http(rpcUrl) });
-    const txReceipt = await client.getTransactionReceipt({
-      hash: payload.txHash as `0x${string}`,
-    });
-    if (txReceipt.status !== "success") {
-      return { status: "fail", detail: "transaction reverted" };
-    }
-    if (
-      payload.blockNumber !== undefined &&
-      Number(txReceipt.blockNumber) !== payload.blockNumber
-    ) {
-      return {
-        status: "fail",
-        detail: `block mismatch: receipt says ${payload.blockNumber}, chain says ${txReceipt.blockNumber}`,
-      };
-    }
-    // Finality note: a passing check confirms inclusion, not finality —
-    // relying parties should apply the chain's own finality depth.
-    return { status: "pass", detail: `confirmed in block ${txReceipt.blockNumber} (inclusion, not finality)` };
-  } catch (error) {
-    return {
-      status: "unknown",
-      detail: `online confirmation unavailable: ${error instanceof Error ? error.message : String(error)}`,
-    };
-  }
+  const rpcUrl = endpoints?.[receipt.system ?? ""] ?? endpoints?.[chain.id] ?? chain.rpcUrl;
+  return confirmEvmAnchorOnline({
+    rpcUrl,
+    txHash: payload.txHash ?? "",
+    expectedBlockNumber: payload.blockNumber,
+    targets: settlementBindingTargets(envelope),
+  });
 };
 
 /** EVM anchor settlement receipts (new format). */
@@ -99,8 +108,8 @@ export const evmAnchorAdapter: ReceiptAdapter = {
   id: "fileonchain-evm-anchor/v1",
   type: "settlement",
   checkOffline: (receipt) => offlineSettlementCheck(receipt),
-  checkOnline: (receipt, _envelope, options) =>
-    onlineSettlementCheck(receipt, options?.endpoints),
+  checkOnline: (receipt, envelope, options) =>
+    onlineSettlementCheck(receipt, envelope, options?.endpoints),
 };
 
 /** Anchor settlement receipts on non-EVM systems (same payload shape). */
@@ -108,8 +117,8 @@ export const anchorAdapter: ReceiptAdapter = {
   id: "fileonchain-anchor/v1",
   type: "settlement",
   checkOffline: (receipt) => offlineSettlementCheck(receipt),
-  checkOnline: (receipt, _envelope, options) =>
-    onlineSettlementCheck(receipt, options?.endpoints),
+  checkOnline: (receipt, envelope, options) =>
+    onlineSettlementCheck(receipt, envelope, options?.endpoints),
 };
 
 /** Legacy settlement receipts wrapped by the migration tool. */
@@ -117,8 +126,48 @@ export const legacySettlementAdapter: ReceiptAdapter = {
   id: LEGACY_SETTLEMENT_ADAPTER_ID,
   type: "settlement",
   checkOffline: (receipt) => offlineSettlementCheck(receipt),
-  checkOnline: (receipt, _envelope, options) =>
-    onlineSettlementCheck(receipt, options?.endpoints),
+  checkOnline: (receipt, envelope, options) =>
+    onlineSettlementCheck(receipt, envelope, options?.endpoints),
+};
+
+/**
+ * Migrated legacy inclusion proofs — the pre-separation Merkle scheme
+ * (no leaf/internal domain separation, odd-node self-pairing). Kept only
+ * so migrated packages stay checkable; new proofs use the domain-
+ * separated `fileonchain-merkle/v1`.
+ */
+export const legacyMerkleAdapter: ReceiptAdapter = {
+  id: LEGACY_INCLUSION_ADAPTER_ID,
+  type: "inclusion",
+  checkOffline(receipt, envelope): AdapterCheckResult {
+    const payload = receipt.payload as {
+      root?: string;
+      leafIndex?: number;
+      proof?: string[];
+      leafDigest?: string;
+    };
+    const leaf = payload.leafDigest ?? envelope.subject.digests?.sha256;
+    if (!leaf) return { status: "fail", detail: "no leaf digest (payload or subject sha256)" };
+    if (
+      typeof payload.root !== "string" ||
+      !Number.isInteger(payload.leafIndex) ||
+      !Array.isArray(payload.proof)
+    ) {
+      return { status: "fail", detail: "payload needs root, leafIndex, proof[]" };
+    }
+    const included = verifyLegacyMerkleInclusion(
+      leaf,
+      payload.leafIndex as number,
+      payload.proof,
+      payload.root,
+    );
+    return included
+      ? {
+          status: "pass",
+          detail: `legacy-scheme proof: leaf ${payload.leafIndex} proves into root ${payload.root}`,
+        }
+      : { status: "fail", detail: "inclusion proof does not reach the root" };
+  },
 };
 
 interface LegacyStoragePayload {
@@ -168,5 +217,6 @@ export const storageAdapter: ReceiptAdapter = {
 registerAdapter(evmAnchorAdapter);
 registerAdapter(anchorAdapter);
 registerAdapter(legacySettlementAdapter);
+registerAdapter(legacyMerkleAdapter);
 registerAdapter(legacyStorageAdapter);
 registerAdapter(storageAdapter);

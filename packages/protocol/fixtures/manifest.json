@@ -53,6 +53,16 @@
       "description": "Unknown extension namespace preserved"
     },
     {
+      "file": "duplicate-key-wire.json",
+      "expectedStatus": "invalid",
+      "description": "Duplicate JSON key in the wire form — humans read one value, parsers keep another"
+    },
+    {
+      "file": "proto-key-wire.json",
+      "expectedStatus": "invalid",
+      "description": "Own \"__proto__\" key in the wire form — silently dropped by ordinary object construction"
+    },
+    {
       "file": "legacy-evidence-v1.json",
       "expectedStatus": "valid-with-warnings",
       "description": "Pre-separation package, verified via the legacy path"

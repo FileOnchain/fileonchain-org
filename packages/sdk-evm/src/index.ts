@@ -14,6 +14,7 @@ import {
   buildFileAnchorPayload,
   ChainNotProvisionedError,
   isValidCID,
+  PartialAnchorError,
   resolveFamilyChain,
   ZERO_ADDRESS,
   type AnchorChunk,
@@ -133,7 +134,8 @@ export interface AnchorCIDParams {
   cid: string;
   /** SHA-256 of the raw content; defaults to the zero hash when unknown. */
   contentHash?: Hex;
-  /** Payload / pointer for the anchor; defaults to the file anchor payload. */
+  /** Optional storage/external pointer carried inside the versioned file
+   * anchor payload (the payload itself is always written). */
   uri?: string;
   /** Originating platform id carried in the payload (attribution only). */
   platformId?: string;
@@ -171,7 +173,7 @@ export const anchorCID = async (
   const chain = resolveEvmChain(chainId);
   const account = requireAccount(walletClient);
   const client = publicClientFor(chain, publicClient);
-  const payload = uri || buildFileAnchorPayload({ cid, platformId });
+  const payload = buildFileAnchorPayload({ cid, uri: uri || undefined, platformId });
 
   onProgress?.({ stage: "signing", chunksAnchored: 0, chunksTotal: 0 });
   const txHash = await walletClient.writeContract({
@@ -307,17 +309,23 @@ export const anchorChunkedFile = async (
   const total = chunks.length;
   const txHashes: string[] = [];
 
-  for (const chunk of chunks) {
+  for (const [index, chunk] of chunks.entries()) {
     onProgress?.({ stage: "signing", chunksAnchored: chunk.index, chunksTotal: total });
     const payload = buildChunkAnchorPayload({ fileCid, chunk, total, includeData: embedData });
-    const txHash = await walletClient.writeContract({
-      chain: viemChain,
-      account,
-      address: chain.registryContract,
-      abi: fileRegistryAbi,
-      functionName: "anchorChunk",
-      args: [cidToBytes32(chunk.cid), zeroHash, payload],
-    });
+    let txHash: Hex;
+    try {
+      txHash = await walletClient.writeContract({
+        chain: viemChain,
+        account,
+        address: chain.registryContract,
+        abi: fileRegistryAbi,
+        functionName: "anchorChunk",
+        args: [cidToBytes32(chunk.cid), zeroHash, payload],
+      });
+    } catch (error) {
+      // Don't discard the chunk transactions that already landed.
+      throw new PartialAnchorError(txHashes, index, index, error);
+    }
     txHashes.push(txHash);
     onProgress?.({
       stage: "submitting",
@@ -327,16 +335,21 @@ export const anchorChunkedFile = async (
     });
   }
 
-  const fileAnchor = await anchorCID(walletClient, {
-    chainId,
-    cid: fileCid,
-    contentHash,
-    uri,
-    platformId,
-    publicClient: client,
-    onProgress: (progress) =>
-      onProgress?.({ ...progress, chunksAnchored: total, chunksTotal: total }),
-  });
+  let fileAnchor: AnchorCIDReceipt;
+  try {
+    fileAnchor = await anchorCID(walletClient, {
+      chainId,
+      cid: fileCid,
+      contentHash,
+      uri,
+      platformId,
+      publicClient: client,
+      onProgress: (progress) =>
+        onProgress?.({ ...progress, chunksAnchored: total, chunksTotal: total }),
+    });
+  } catch (error) {
+    throw new PartialAnchorError(txHashes, chunks.length, chunks.length, error);
+  }
   txHashes.push(fileAnchor.txHash);
 
   onProgress?.({

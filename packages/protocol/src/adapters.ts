@@ -17,6 +17,14 @@ export type AdapterCheckStatus = "pass" | "fail" | "warning" | "unknown" | "skip
 export interface AdapterCheckResult {
   status: AdapterCheckStatus;
   detail: string;
+  /**
+   * Digests / content identifiers this check proved the external system
+   * actually references (e.g. the cid and sha256 decoded from an anchor
+   * transaction's calldata). Lets a verifier cross-bind other checks —
+   * an inclusion root counts as anchored only when a settlement check
+   * proved the root on the settlement system.
+   */
+  boundValues?: string[];
 }
 
 export interface OnlineCheckOptions {
@@ -56,9 +64,11 @@ export const MERKLE_INCLUSION_ADAPTER_ID = "fileonchain-merkle/v1" as const;
 
 /**
  * Inclusion receipt payload for `fileonchain-merkle/v1`:
- * `{ root, leafIndex, proof[], leafDigest?, manifestDigest? }` — all
- * digests lowercase-hex SHA-256. When `leafDigest` is absent, the leaf is
- * the envelope subject's sha256 digest.
+ * `{ root, leafIndex, leafCount, proof[], leafDigest?, manifestDigest? }`
+ * — all digests lowercase-hex SHA-256. When `leafDigest` is absent, the
+ * leaf is the envelope subject's sha256 digest. `leafCount` is the
+ * tree's total number of leaves; the RFC-9162-style verification cannot
+ * run without it.
  */
 export const merkleInclusionAdapter: ReceiptAdapter = {
   id: MERKLE_INCLUSION_ADAPTER_ID,
@@ -67,6 +77,7 @@ export const merkleInclusionAdapter: ReceiptAdapter = {
     const payload = receipt.payload as {
       root?: string;
       leafIndex?: number;
+      leafCount?: number;
       proof?: string[];
       leafDigest?: string;
     };
@@ -75,18 +86,23 @@ export const merkleInclusionAdapter: ReceiptAdapter = {
     if (
       typeof payload.root !== "string" ||
       !Number.isInteger(payload.leafIndex) ||
+      !Number.isInteger(payload.leafCount) ||
       !Array.isArray(payload.proof)
     ) {
-      return { status: "fail", detail: "payload needs root, leafIndex, proof[]" };
+      return { status: "fail", detail: "payload needs root, leafIndex, leafCount, proof[]" };
     }
     const included = verifyMerkleInclusion(
       leaf,
       payload.leafIndex as number,
       payload.proof,
       payload.root,
+      payload.leafCount as number,
     );
     return included
-      ? { status: "pass", detail: `leaf ${payload.leafIndex} proves into root ${payload.root}` }
+      ? {
+          status: "pass",
+          detail: `leaf ${payload.leafIndex} of ${payload.leafCount} proves into root ${payload.root}`,
+        }
       : { status: "fail", detail: "inclusion proof does not reach the root" };
   },
 };

@@ -29,9 +29,9 @@ export const FAMILY_PAYLOAD_BUDGET_BYTES: Record<ChainFamily, number> = {
   solana: 700, // one SPL Memo inside a 1232-byte packet
   aptos: 49152, // entry-function string arg within the 64 KiB tx cap
   cosmos: 256, // Cosmos Hub default maxMemoCharacters
-  sui: 16384, // pure-argument size limit per call
-  starknet: 32768, // ByteArray calldata, conservative
-  near: 65536, // function-call args, conservative
+  sui: 16000, // max_pure_argument_size is 16384; BCS adds a length prefix
+  starknet: 8192, // per-event data cap is ~300 felts (~9 KB packed)
+  near: 15360, // max_total_log_length is 16384 incl. the EVENT_JSON envelope
   tron: 2048, // transaction data/memo field
   cardano: 8192, // CIP-20 metadata (64-byte string array) within tx limits
   ton: 1000, // text comment on a transfer

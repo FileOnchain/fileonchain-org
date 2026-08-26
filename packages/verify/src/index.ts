@@ -4,6 +4,7 @@ import "@fileonchain/agent-profile"; // register the Agent Evidence Profile
 import {
   isLegacyEvidencePackage,
   parseEnvelope,
+  scanWireJson,
   type EvidenceEnvelope,
 } from "@fileonchain/protocol";
 import { parseEvidencePackage } from "@fileonchain/utils";
@@ -44,6 +45,24 @@ export const verifyEvidenceJson = async (
   } catch {
     return summarize(
       [{ name: "schema", group: "schema", status: "fail", detail: "not valid JSON" }],
+      false,
+    );
+  }
+
+  // Wire-form safety before any interpretation: duplicate keys make the
+  // parsed value differ from what a human reads, and "__proto__" keys are
+  // dropped by ordinary object construction — both are rejected outright.
+  const wireProblems = scanWireJson(raw);
+  if (wireProblems.length > 0) {
+    return summarize(
+      [
+        {
+          name: "wire-form",
+          group: "schema",
+          status: "fail",
+          detail: `unsafe JSON wire form: ${wireProblems.join("; ")}`,
+        },
+      ],
       false,
     );
   }
@@ -105,6 +124,7 @@ export { verifySchemeSignature } from "./signatures";
 export {
   anchorAdapter,
   evmAnchorAdapter,
+  legacyMerkleAdapter,
   legacySettlementAdapter,
   legacyStorageAdapter,
   storageAdapter,

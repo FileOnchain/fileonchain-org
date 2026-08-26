@@ -1,9 +1,14 @@
 import {
+  assertPayloadFits,
+  batchByBytes,
   batchByCount,
   buildChunkAnchorPayload,
   buildFileAnchorPayload,
   ChainNotProvisionedError,
+  FAMILY_PAYLOAD_BUDGET_BYTES,
+  PartialAnchorError,
   resolveFamilyChain,
+  utf8ByteLength,
   type AnchorChunk,
   type AnchorProgressHandler,
   type BuildFileAnchorParams,
@@ -69,6 +74,20 @@ export const resolveSuiChain = (
  */
 export const DEFAULT_MAX_CALLS_PER_TX = 128;
 
+/**
+ * Total payload bytes per PTB — conservative headroom under Sui's 128 KiB
+ * max_tx_size_bytes once BCS encoding and the calls' CID arguments are
+ * counted.
+ */
+export const DEFAULT_MAX_BYTES_PER_TX = 100_000;
+
+const assertSuiPayloadFits = (payload: string): void =>
+  assertPayloadFits(
+    payload,
+    FAMILY_PAYLOAD_BUDGET_BYTES.sui,
+    `Sui pure arguments hold up to ${FAMILY_PAYLOAD_BUDGET_BYTES.sui} bytes (max_pure_argument_size is 16384 incl. the BCS length prefix)`
+  );
+
 export interface SuiAnchorParams extends BuildFileAnchorParams {
   /** A `sui:*` chain id, e.g. "sui:mainnet". */
   chainId: ChainId;
@@ -83,6 +102,7 @@ export const anchorCID = async (
 ): Promise<{ digest: string; payload: string }> => {
   const chain = resolveSuiChain(chainId);
   const serialized = buildFileAnchorPayload({ ...payload, platformId });
+  assertSuiPayloadFits(serialized);
   const { digest } = await signer.executeAnchorCalls(
     `${chain.moduleAddress}::${ANCHOR_FUNCTION}`,
     [{ cid: payload.cid, payload: serialized }]
@@ -109,6 +129,8 @@ export interface SuiChunkedAnchorParams {
   platformId?: string;
   /** Override how many move calls share one PTB. */
   maxCallsPerTx?: number;
+  /** Override the total payload bytes allowed per PTB. */
+  maxBytesPerTx?: number;
   onProgress?: AnchorProgressHandler;
 }
 
@@ -129,6 +151,7 @@ export const anchorChunkedFile = async (
     includeData,
     platformId = "1",
     maxCallsPerTx = DEFAULT_MAX_CALLS_PER_TX,
+    maxBytesPerTx = DEFAULT_MAX_BYTES_PER_TX,
     onProgress,
   }: SuiChunkedAnchorParams
 ): Promise<ChunkedAnchorReceipt> => {
@@ -146,14 +169,27 @@ export const anchorChunkedFile = async (
     cid: fileCid,
     payload: buildFileAnchorPayload({ cid: fileCid, sha256, uri, platformId }),
   });
+  for (const call of calls) assertSuiPayloadFits(call.payload);
+
+  // Bound each PTB by total payload bytes first, then by call count.
+  const batches = batchByBytes(calls, maxBytesPerTx, (call) =>
+    utf8ByteLength(call.payload)
+  ).flatMap((batch) => batchByCount(batch, maxCallsPerTx));
 
   const digests: string[] = [];
   let lastCheckpoint: number | undefined;
   let chunksAnchored = 0;
 
-  for (const batch of batchByCount(calls, maxCallsPerTx)) {
+  for (const [batchIndex, batch] of batches.entries()) {
     onProgress?.({ stage: "signing", chunksAnchored, chunksTotal: total });
-    const { digest, checkpoint } = await signer.executeAnchorCalls(target, batch);
+    let result: { digest: string; checkpoint?: number };
+    try {
+      result = await signer.executeAnchorCalls(target, batch);
+    } catch (error) {
+      // Don't discard the transactions that already landed.
+      throw new PartialAnchorError(digests, batchIndex, batchIndex, error);
+    }
+    const { digest, checkpoint } = result;
     digests.push(digest);
     lastCheckpoint = checkpoint ?? lastCheckpoint;
     // The trailing file-level call is not a chunk, so cap at the total.

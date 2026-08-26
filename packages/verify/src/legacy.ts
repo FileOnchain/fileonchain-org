@@ -9,7 +9,7 @@ import {
   verifyMerkleInclusion,
   type EvidencePackage,
 } from "@fileonchain/utils";
-import { createPublicClient, http } from "viem";
+import { confirmEvmAnchorOnline, type AnchorBindingTarget } from "./evm-anchor";
 import { summarize, type CheckResult, type VerificationReport } from "./report";
 import { verifySchemeSignature } from "./signatures";
 
@@ -136,6 +136,59 @@ export const verifyLegacyPackage = async (
     });
   }
 
+  // Settlement receipts are checked before the inclusion proof is
+  // reported: an inclusion proof only means something when its root is
+  // actually anchored by a settlement transaction, and only the online
+  // check can prove that binding.
+  const settlementChecks: CheckResult[] = [];
+  const anchoredValues = new Set<string>();
+  const bindingTargets: AnchorBindingTarget[] = [
+    { label: "the artifact sha256", value: pkg.artifact.sha256 },
+    { label: "the artifact cid", value: pkg.artifact.cid },
+    ...(pkg.inclusion ? [{ label: "the inclusion root", value: pkg.inclusion.root }] : []),
+  ];
+  for (const [i, receipt] of pkg.settlements.entries()) {
+    const name = `settlement[${i}]`;
+    const chain = getChain(receipt.chainId);
+    if (!options.checkSettlements) {
+      settlementChecks.push({
+        name,
+        group: "settlement-receipts",
+        status: "skipped",
+        detail: chain
+          ? `offline — confirm at ${buildTxUrl(chain, receipt.txHash)}`
+          : `offline — unknown system ${receipt.chainId}`,
+      });
+      continue;
+    }
+    if (!chain || chain.family !== "evm") {
+      settlementChecks.push({
+        name,
+        group: "settlement-receipts",
+        status: "unknown",
+        detail: chain
+          ? `online confirmation for ${chain.family} is not built in — confirm at ${buildTxUrl(chain, receipt.txHash)}`
+          : `unknown system ${receipt.chainId}`,
+      });
+      continue;
+    }
+    const confirmation = await confirmEvmAnchorOnline({
+      rpcUrl: options.rpcUrls?.[receipt.chainId] ?? chain.rpcUrl,
+      txHash: receipt.txHash,
+      expectedBlockNumber: receipt.blockNumber,
+      targets: bindingTargets,
+    });
+    if (confirmation.status === "pass") {
+      for (const value of confirmation.boundValues) anchoredValues.add(value);
+    }
+    settlementChecks.push({
+      name,
+      group: "settlement-receipts",
+      status: confirmation.status,
+      detail: confirmation.detail,
+    });
+  }
+
   if (pkg.inclusion) {
     const included = verifyMerkleInclusion(
       pkg.artifact.sha256,
@@ -143,21 +196,32 @@ export const verifyLegacyPackage = async (
       pkg.inclusion.proof,
       pkg.inclusion.root,
     );
-    checks.push(
-      included
-        ? {
-            name: "merkle-inclusion",
-            group: "inclusion-receipts",
-            status: "pass",
-            detail: `leaf ${pkg.inclusion.leafIndex} proves into root ${pkg.inclusion.root}`,
-          }
-        : {
-            name: "merkle-inclusion",
-            group: "inclusion-receipts",
-            status: "fail",
-            detail: "inclusion proof does not reach the root",
-          },
-    );
+    if (!included) {
+      checks.push({
+        name: "merkle-inclusion",
+        group: "inclusion-receipts",
+        status: "fail",
+        detail: "inclusion proof does not reach the root",
+      });
+    } else if (anchoredValues.has(pkg.inclusion.root)) {
+      checks.push({
+        name: "merkle-inclusion",
+        group: "inclusion-receipts",
+        status: "pass",
+        detail: `leaf ${pkg.inclusion.leafIndex} proves into root ${pkg.inclusion.root} — root anchored by a confirmed settlement receipt`,
+      });
+    } else {
+      // The proof verifies against the root the package itself supplies —
+      // meaningless unless a settlement receipt anchors that root.
+      checks.push({
+        name: "merkle-inclusion",
+        group: "inclusion-receipts",
+        status: "unknown",
+        detail: options.checkSettlements
+          ? `proof self-consistent; root ${pkg.inclusion.root} not anchored by any confirmed settlement receipt`
+          : `proof self-consistent; root ${pkg.inclusion.root} not anchored by any settlement receipt (offline mode)`,
+      });
+    }
   }
 
   for (const [i, receipt] of pkg.storage.entries()) {
@@ -188,67 +252,7 @@ export const verifyLegacyPackage = async (
     }
   }
 
-  for (const [i, receipt] of pkg.settlements.entries()) {
-    const name = `settlement[${i}]`;
-    const chain = getChain(receipt.chainId);
-    if (!options.checkSettlements) {
-      checks.push({
-        name,
-        group: "settlement-receipts",
-        status: "skipped",
-        detail: chain
-          ? `offline — confirm at ${buildTxUrl(chain, receipt.txHash)}`
-          : `offline — unknown system ${receipt.chainId}`,
-      });
-      continue;
-    }
-    if (!chain || chain.family !== "evm") {
-      checks.push({
-        name,
-        group: "settlement-receipts",
-        status: "unknown",
-        detail: chain
-          ? `online confirmation for ${chain.family} is not built in — confirm at ${buildTxUrl(chain, receipt.txHash)}`
-          : `unknown system ${receipt.chainId}`,
-      });
-      continue;
-    }
-    try {
-      const client = createPublicClient({
-        transport: http(options.rpcUrls?.[receipt.chainId] ?? chain.rpcUrl),
-      });
-      const txReceipt = await client.getTransactionReceipt({
-        hash: receipt.txHash as `0x${string}`,
-      });
-      if (txReceipt.status !== "success") {
-        checks.push({ name, group: "settlement-receipts", status: "fail", detail: "transaction reverted" });
-      } else if (
-        receipt.blockNumber !== undefined &&
-        Number(txReceipt.blockNumber) !== receipt.blockNumber
-      ) {
-        checks.push({
-          name,
-          group: "settlement-receipts",
-          status: "fail",
-          detail: `block mismatch: receipt says ${receipt.blockNumber}, chain says ${txReceipt.blockNumber}`,
-        });
-      } else {
-        checks.push({
-          name,
-          group: "settlement-receipts",
-          status: "pass",
-          detail: `confirmed in block ${txReceipt.blockNumber} (inclusion, not finality)`,
-        });
-      }
-    } catch (error) {
-      checks.push({
-        name,
-        group: "settlement-receipts",
-        status: "unknown",
-        detail: `online confirmation unavailable: ${error instanceof Error ? error.message : String(error)}`,
-      });
-    }
-  }
+  checks.push(...settlementChecks);
 
   // Legacy packages predate envelope digests: receipts are not tamper-bound.
   checks.push({
