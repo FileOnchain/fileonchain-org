@@ -16,6 +16,7 @@ export const sendAptosAnchor = async ({
   platformId,
   includeData,
   uri,
+  resumeFrom,
   onProgress,
 }: AnchorRequest): Promise<ChunkedAnchorReceipt> => {
   const { anchorChunkedFile, resolveAptosChain } = await import(
@@ -38,6 +39,6 @@ export const sendAptosAnchor = async ({
 
   return anchorChunkedFile(
     { address: aptosAddress, signAndSubmitTransaction },
-    { chainId: chain.id, fileCid, chunks, platformId, includeData, uri, onProgress },
+    { chainId: chain.id, fileCid, chunks, platformId, includeData, uri, resumeFrom, onProgress },
   );
 };

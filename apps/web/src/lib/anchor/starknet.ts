@@ -15,6 +15,7 @@ export const sendStarknetAnchor = async ({
   platformId,
   includeData,
   uri,
+  resumeFrom,
   onProgress,
 }: AnchorRequest): Promise<ChunkedAnchorReceipt> => {
   const { starknetAddress } = useWalletStates.getState();
@@ -44,6 +45,6 @@ export const sendStarknetAnchor = async ({
         return { transactionHash: result.transaction_hash };
       },
     },
-    { chainId: chain.id, fileCid, chunks, platformId, includeData, uri, onProgress },
+    { chainId: chain.id, fileCid, chunks, platformId, includeData, uri, resumeFrom, onProgress },
   );
 };

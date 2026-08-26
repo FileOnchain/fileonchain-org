@@ -20,6 +20,7 @@ export const sendTronAnchor = async ({
   chunks,
   includeData,
   uri,
+  resumeFrom,
   onProgress,
 }: AnchorRequest): Promise<ChunkedAnchorReceipt> => {
   const { tronAddress } = useWalletStates.getState();
@@ -64,6 +65,6 @@ export const sendTronAnchor = async ({
         return { txHash: receipt.txid ?? receipt.transaction?.txID ?? "" };
       },
     },
-    { chainId: chain.id, fileCid, chunks, includeData, uri, onProgress },
+    { chainId: chain.id, fileCid, chunks, includeData, uri, resumeFrom, onProgress },
   );
 };
