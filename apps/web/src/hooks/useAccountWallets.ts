@@ -23,8 +23,9 @@ export interface AccountWallet {
  *   via sign-message and stores the verified link on the account, and
  *   `isLinked(family, address)` reports the current state.
  *
- * Consumers: ChainConnectModal (verify/sign-in step after connecting),
- * LinkWalletModal (profile linking), dashboard surfaces.
+ * Consumers: WalletConnectPanel (the shared connect + sign-in surface,
+ * rendered by ChainConnectModal and /login), LinkWalletModal (profile
+ * linking), dashboard surfaces.
  */
 export const useAccountWallets = () => {
   const { status } = useSession();
@@ -119,6 +120,10 @@ export const useAccountWallets = () => {
         nonce: proof.nonce,
         publicKey: proof.publicKey ?? "",
         fullMessage: proof.fullMessage ?? "",
+        // TON Connect binds these into the signed digest — the verifier
+        // needs them; empty for every other family.
+        timestamp: proof.timestamp != null ? String(proof.timestamp) : "",
+        domain: proof.domain ?? "",
       });
       if (!response || response.error) {
         throw new Error("Signature verification failed — please try again");

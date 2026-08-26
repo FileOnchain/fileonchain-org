@@ -25,7 +25,7 @@ import CIDPreviewPanel from "@/components/registry/CIDPreviewPanel";
 import { cn } from "@/lib/cn";
 
 // Same unified connect modal as the nav — loaded with `ssr: false` so the
-// heavy chain SDK bundles never execute during SSR (see NavWallet).
+// heavy chain SDK bundles never execute during SSR (see NavAccount).
 const ChainConnectModal = dynamic(
   () => import("@/components/chain/ChainConnectModal").then((m) => m.ChainConnectModal),
   { ssr: false },

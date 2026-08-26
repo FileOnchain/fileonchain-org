@@ -1,12 +1,22 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { signIn } from "next-auth/react";
 import { FaGithub, FaGoogle } from "react-icons/fa6";
 import Button from "@/components/ui/Button";
-import WalletSignInButtons from "@/components/auth/WalletSignInButtons";
 import type { OAuthProviderInfo } from "@/lib/auth/config";
 import { trackEvent } from "@/lib/analytics";
+
+// The same panel the nav's connect modal renders — connect and sign-in are
+// one flow. `ssr: false` keeps the chain-SDK bundles out of Node SSR.
+const WalletConnectPanel = dynamic(
+  () =>
+    import("@/components/chain/WalletConnectPanel").then(
+      (m) => m.WalletConnectPanel,
+    ),
+  { ssr: false },
+);
 
 interface LoginOptionsProps {
   oauthProviders: OAuthProviderInfo[];
@@ -63,7 +73,11 @@ export const LoginOptions = ({ oauthProviders, next }: LoginOptionsProps) => {
         <span className="h-px flex-1 bg-border" />
       </div>
 
-      <WalletSignInButtons next={next} />
+      {/* Full-page navigation after sign-in: the fresh session cookie
+          reaches every server component, and it avoids racing the /login
+          page's own server-side redirect (client push + refresh here trips
+          Next 15.0.x's Router). */}
+      <WalletConnectPanel onSignedIn={() => window.location.assign(next)} />
     </div>
   );
 };

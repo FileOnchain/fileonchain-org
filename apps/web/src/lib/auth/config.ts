@@ -92,8 +92,12 @@ providers.push(
         nonce,
         publicKey: typeof publicKey === "string" ? publicKey : undefined,
         fullMessage: typeof fullMessage === "string" ? fullMessage : undefined,
-        timestamp: typeof timestamp === "string" ? Number(timestamp) : undefined,
-        domain: typeof domain === "string" ? domain : undefined,
+        // Credentials travel as strings — non-TON families send "" here.
+        timestamp:
+          typeof timestamp === "string" && timestamp !== ""
+            ? Number(timestamp)
+            : undefined,
+        domain: typeof domain === "string" && domain !== "" ? domain : undefined,
       });
       if (!result.ok) return null;
 

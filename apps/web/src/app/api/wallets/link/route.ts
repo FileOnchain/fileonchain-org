@@ -18,8 +18,16 @@ export async function POST(request: Request) {
       string,
       unknown
     > | null;
-    const { family, address, signature, nonce, publicKey, fullMessage } =
-      body ?? {};
+    const {
+      family,
+      address,
+      signature,
+      nonce,
+      publicKey,
+      fullMessage,
+      timestamp,
+      domain,
+    } = body ?? {};
     if (
       !isWalletFamily(family) ||
       typeof address !== "string" ||
@@ -39,6 +47,9 @@ export async function POST(request: Request) {
       nonce,
       publicKey: typeof publicKey === "string" ? publicKey : undefined,
       fullMessage: typeof fullMessage === "string" ? fullMessage : undefined,
+      // TON Connect binds these into the signed digest; absent elsewhere.
+      timestamp: typeof timestamp === "number" ? timestamp : undefined,
+      domain: typeof domain === "string" ? domain : undefined,
     });
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 401 });

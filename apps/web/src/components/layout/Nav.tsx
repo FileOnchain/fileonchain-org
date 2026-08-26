@@ -9,7 +9,6 @@ import { motion, LayoutGroup } from "motion/react";
 import { cn } from "@/lib/cn";
 import ThemeSwitch from "@/components/ThemeSwitch";
 import ChainSwitcher from "@/components/chain/ChainSwitcher";
-import NavWallet from "@/components/layout/NavWallet";
 import NavAccount from "@/components/layout/NavAccount";
 
 interface NavLink {
@@ -29,7 +28,8 @@ const PRIMARY_LINKS: NavLink[] = [
 
 /**
  * Nav — sticky top navigation. Renders primary links, the chain switcher,
- * the wallet button, and the theme toggle. Collapses to a hamburger menu
+ * the identity button (session + wallet), and the theme toggle. Collapses
+ * to a hamburger menu
  * below the `md` breakpoint. Uses a LayoutGroup with a shared `layoutId`
  * on the active-link pill so the highlight slides between routes instead
  * of appearing/disappearing abruptly.
@@ -97,7 +97,6 @@ const Nav = () => {
           <div className="hidden md:block">
             <ChainSwitcher />
           </div>
-          <NavWallet />
           <NavAccount />
           <ThemeSwitch />
 
