@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import { FiCheckCircle, FiKey, FiLogIn } from "react-icons/fi";
 import type { ChainFamily } from "@fileonchain/sdk";
 import { Button } from "@/components/ui/Button";
@@ -13,7 +12,9 @@ interface WalletAccountPanelProps {
   family: ChainFamily;
   /** Address of the wallet connected for this family (panel hidden when null). */
   address: string | null;
-  /** Called after a successful sign-in so the parent can close the modal. */
+  /** Called after a successful sign-in. The caller owns the one follow-up
+   * navigation action (close + router.refresh, or a full-page redirect) —
+   * stacking more than one trips a Next 15.0.x Router bug. */
   onSignedIn?: () => void;
 }
 
@@ -31,7 +32,6 @@ export const WalletAccountPanel = ({
   address,
   onSignedIn,
 }: WalletAccountPanelProps) => {
-  const router = useRouter();
   const { toast } = useToast();
   const {
     authed,
@@ -59,9 +59,6 @@ export const WalletAccountPanel = ({
         variant: "success",
       });
       onSignedIn?.();
-      // Single follow-up router action (no push alongside) — re-renders
-      // server components with the new session cookie.
-      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign-in failed");
     } finally {
