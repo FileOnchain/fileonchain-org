@@ -1,6 +1,7 @@
 import { ApiPromise, NetworkId } from "@autonomys/auto-utils";
 import { create } from "zustand";
 import type { ChainFamily } from "@fileonchain/sdk";
+import { isWalletFamily } from "@/lib/auth/wallet-message";
 import type { Account } from "@/types/types";
 
 interface WalletState {
@@ -110,6 +111,68 @@ export const getFamilyAddress = (
   }
 };
 
+const WALLET_STORAGE_KEY = "fileonchain-wallet";
+
+/** The serializable identity slice persisted across reloads — which wallet
+ * is connected, not the live handles (api stays in-memory; providers are
+ * re-requested on demand by the family hooks and signers). */
+const identitySlice = (state: WalletState) => ({
+  chainFamily: state.chainFamily,
+  networkId: state.networkId,
+  selectedAccount: state.selectedAccount,
+  evmAddress: state.evmAddress,
+  solanaAddress: state.solanaAddress,
+  aptosAddress: state.aptosAddress,
+  cosmosAddress: state.cosmosAddress,
+  suiAddress: state.suiAddress,
+  starknetAddress: state.starknetAddress,
+  nearAddress: state.nearAddress,
+  tronAddress: state.tronAddress,
+  cardanoAddress: state.cardanoAddress,
+  tonAddress: state.tonAddress,
+  hederaAddress: state.hederaAddress,
+});
+
+let identityHydrated = false;
+
+/**
+ * Restore the persisted wallet identity after mount (idempotent; SSR markup
+ * stays deterministic — same pattern as states/preferences.ts). Until this
+ * runs, connections are not persisted either, so a pre-hydration set can
+ * never clobber the stored identity.
+ */
+export const hydrateWalletIdentity = () => {
+  if (typeof window === "undefined" || identityHydrated) return;
+  identityHydrated = true;
+  try {
+    const raw = window.localStorage.getItem(WALLET_STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const patch: Partial<WalletState> = {};
+    if (isWalletFamily(parsed.chainFamily)) patch.chainFamily = parsed.chainFamily;
+    if (typeof parsed.networkId === "string")
+      patch.networkId = parsed.networkId as NetworkId;
+    const account = parsed.selectedAccount as Account | null | undefined;
+    if (account && typeof account === "object" && typeof account.address === "string")
+      patch.selectedAccount = account;
+    if (typeof parsed.evmAddress === "string")
+      patch.evmAddress = parsed.evmAddress as `0x${string}`;
+    if (typeof parsed.solanaAddress === "string") patch.solanaAddress = parsed.solanaAddress;
+    if (typeof parsed.aptosAddress === "string") patch.aptosAddress = parsed.aptosAddress;
+    if (typeof parsed.cosmosAddress === "string") patch.cosmosAddress = parsed.cosmosAddress;
+    if (typeof parsed.suiAddress === "string") patch.suiAddress = parsed.suiAddress;
+    if (typeof parsed.starknetAddress === "string") patch.starknetAddress = parsed.starknetAddress;
+    if (typeof parsed.nearAddress === "string") patch.nearAddress = parsed.nearAddress;
+    if (typeof parsed.tronAddress === "string") patch.tronAddress = parsed.tronAddress;
+    if (typeof parsed.cardanoAddress === "string") patch.cardanoAddress = parsed.cardanoAddress;
+    if (typeof parsed.tonAddress === "string") patch.tonAddress = parsed.tonAddress;
+    if (typeof parsed.hederaAddress === "string") patch.hederaAddress = parsed.hederaAddress;
+    useWalletStates.setState(patch);
+  } catch {
+    // Corrupt or blocked storage — start disconnected.
+  }
+};
+
 export const useWalletStates = create<WalletStateAndHelpers>((set) => ({
   ...initialState,
   setNetworkId: (networkId) => set(() => ({ networkId })),
@@ -130,3 +193,18 @@ export const useWalletStates = create<WalletStateAndHelpers>((set) => ({
   setHederaAddress: (hederaAddress) => set(() => ({ hederaAddress })),
   clear: () => set(() => ({ ...initialState })),
 }));
+
+// Persist the identity slice on every change (clear() persists the reset,
+// so disconnecting really forgets the wallet). Gated on hydration so the
+// initial empty state never overwrites a stored identity.
+useWalletStates.subscribe((state) => {
+  if (typeof window === "undefined" || !identityHydrated) return;
+  try {
+    window.localStorage.setItem(
+      WALLET_STORAGE_KEY,
+      JSON.stringify(identitySlice(state)),
+    );
+  } catch {
+    // Storage unavailable (private mode, quota) — stay in-memory only.
+  }
+});
