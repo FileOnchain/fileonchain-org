@@ -5,7 +5,7 @@ import {
   processFileToIPLDFormat,
   stringToCid,
 } from "@autonomys/auto-dag-data";
-import { MemoryBlockstore } from "blockstore-core/memory";
+import { IpldMemoryBlockstore } from "@/lib/ipld/blockstore";
 import {
   ChangeEvent,
   DragEvent,
@@ -282,7 +282,7 @@ export const useFileUploader = () => {
       setIsUploading(true);
 
       try {
-        const blockstore = new MemoryBlockstore();
+        const blockstore = new IpldMemoryBlockstore();
         const fileBufferIterable = fileToBufferIterable(selectedFile);
 
         const ipldCid = await processFileToIPLDFormat(
@@ -306,7 +306,14 @@ export const useFileUploader = () => {
 
         await handleSearch(chunks);
       } catch (e) {
-        setError((e as Error).message);
+        // Preparation errors come from the IPLD/CID libraries, whose
+        // messages ("Invalid data") say nothing about the file the user
+        // just picked. Name the step that failed and keep the original as
+        // the detail.
+        const detail = (e as Error).message;
+        setError(
+          `Could not prepare "${selectedFile.name}" for anchoring${detail ? `: ${detail}` : "."}`,
+        );
       } finally {
         setIsUploading(false);
       }
