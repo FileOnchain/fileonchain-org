@@ -9,6 +9,13 @@ packages:
 # match the pre-v11 behavior — Renovate bumps flow through immediately.
 minimumReleaseAge: 1440
 
+# pnpm 11.25 added explicit task-graph scheduling (ERR_PNPM_TASK_CYCLE).
+# @fileonchain/sdk#build, @fileonchain/api#build, and
+# @fileonchain/verify#build form a deliberate build cycle, which the new
+# scheduler would otherwise refuse to run. Downgrade the cycle to a warning
+# so the previous arbitrary-order execution is restored.
+ignoreWorkspaceCycles: true
+
 overrides:
   "@polkadot/util": "14.0.3"
   "@polkadot/util-crypto": "14.0.3"
