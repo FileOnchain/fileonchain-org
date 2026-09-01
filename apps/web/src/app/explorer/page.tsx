@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import LiveLedgerTicker, { StatCounter } from "@/components/LiveLedgerTicker";
-import { compactNumber, truncateCID } from "@/lib/cid/format";
+import { truncateCID } from "@/lib/cid/format";
 import {
   ACTIVE_CHAINS,
   ACTIVE_FAMILIES,
@@ -110,29 +110,32 @@ export default async function ExplorerPage({ searchParams }: PageProps) {
       {/* Stats strip ----------------------------------------- */}
       <section className="mt-10">
         <div className="grid grid-cols-2 gap-4 rounded-2xl border border-border bg-surface p-6 md:grid-cols-4">
+          {/* format must be a named variant here — this is a Server
+              Component, and function props can't cross into the client
+              StatCounter (they aren't serializable and crash the render). */}
           <StatCounter
             value={stats.totalChains || ACTIVE_CHAINS.length}
             label="Chains reporting"
             hint={ACTIVE_FAMILIES.map((f) => CHAIN_FAMILY_LABELS[f]).join(" · ")}
-            format={(n) => Math.round(n).toString()}
+            format="integer"
           />
           <StatCounter
             value={stats.totalFiles}
             label="Distinct CIDs"
             hint="Indexed"
-            format={(n) => compactNumber(n)}
+            format="compact"
           />
           <StatCounter
             value={stats.totalAnchors}
             label="Onchain anchors"
             hint="Across all chains"
-            format={(n) => compactNumber(n)}
+            format="compact"
           />
           <StatCounter
             value={stats.uniqueUploaders}
             label="Unique uploaders"
             hint="Distinct submitter addrs"
-            format={(n) => Math.round(n).toString()}
+            format="integer"
           />
         </div>
       </section>

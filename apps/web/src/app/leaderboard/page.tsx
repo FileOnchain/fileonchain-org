@@ -4,7 +4,6 @@ import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import LeaderboardTable from "@/components/leaderboard/LeaderboardTable";
 import { StatCounter } from "@/components/LiveLedgerTicker";
-import { formatBytes } from "@/lib/cid/format";
 import type { PublicProfile } from "@/lib/mock/profiles";
 import { getLeaderboard } from "@/lib/mock/profiles";
 
@@ -67,23 +66,26 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
       />
 
       <div className="mb-8 grid grid-cols-1 gap-6 rounded-2xl border border-border bg-surface p-6 sm:grid-cols-3 sm:gap-8">
+        {/* format must be a named variant here — this is a Server
+            Component, and function props can't cross into the client
+            StatCounter (they aren't serializable and crash the render). */}
         <StatCounter
           value={totalAnchors}
           label="Anchors on the board"
           hint="All ranked uploaders"
-          format={(n) => Math.round(n).toLocaleString()}
+          format="locale"
         />
         <StatCounter
           value={totalBytes}
           label="Bytes kept alive"
           hint="Across all runtimes"
-          format={(n) => formatBytes(n)}
+          format="bytes"
         />
         <StatCounter
           value={totalDonated}
           label="Donated back"
           hint="Public cache funding"
-          format={(n) => Math.round(n).toString()}
+          format="integer"
           suffix=" USDC"
         />
       </div>
