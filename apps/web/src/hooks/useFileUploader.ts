@@ -30,6 +30,7 @@ import {
 import { ChunkData, generateCIDs } from "@/utils/generateCIDs";
 import { readFileContent } from "@/utils/readFileContent";
 import { anchorFileOnChain, type AnchorOutcome } from "@/lib/anchor";
+import { notifyIndexer } from "@/lib/anchor/notify-indexer";
 import {
   anchorFingerprint,
   clearPartialAnchor,
@@ -562,7 +563,16 @@ export const useFileUploader = () => {
           chunk_count: chunks.length,
         });
         resetPartialAnchor();
-        return { ...outcome, txHashes: [...priorAnchorTxHashes, ...outcome.txHashes] };
+        const allTxHashes = [...priorAnchorTxHashes, ...outcome.txHashes];
+        // Nudge the explorer indexer right away so the FileOnChain
+        // explorer link on the success screen resolves immediately
+        // instead of 404ing until the next cron scan. Fire-and-forget —
+        // the cron scan remains the safety net.
+        notifyIndexer(activeChain, allTxHashes);
+        if (storageChain && !storesOnAnchorChain && storageTxHashes.length > 0) {
+          notifyIndexer(storageChain, storageTxHashes);
+        }
+        return { ...outcome, txHashes: allTxHashes };
       } catch (error) {
         if (error instanceof PartialAnchorError && fingerprint) {
           const txHashes = [...priorAnchorTxHashes, ...error.txHashes];

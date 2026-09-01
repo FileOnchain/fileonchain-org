@@ -178,7 +178,7 @@ export const runIndexerScan = async (): Promise<IndexerScanReport> => {
     console.error("[indexer-scan] chain scan failed", { chainId, error: s.reason });
     return { chainId, fromBlock: 0, toBlock: 0, eventsAdded: 0 };
   });
-  const totalEventsAdded = results.reduce((acc, r) => r.eventsAdded, 0);
+  const totalEventsAdded = results.reduce((acc, r) => acc + r.eventsAdded, 0);
   return { chains: results, totalEventsAdded };
 }
 
