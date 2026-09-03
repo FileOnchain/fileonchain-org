@@ -19,21 +19,21 @@ const STEPS = [
     Icon: FiLayers,
     title: "Hash & describe",
     body:
-      "An agent output, a tool call log, or any artifact is hashed client-side — SHA-256 — with provenance claims alongside: run id, agent id, model metadata, approvals. Manifests batch a whole session into one root.",
+      "Any file — a document, a dataset, an agent output — is hashed client-side, SHA-256. Provenance claims ride alongside when you want them: run id, agent id, model metadata, approvals. Manifests batch many artifacts into one root.",
   },
   {
     n: "02",
     Icon: FiShield,
     title: "Sign it",
     body:
-      "Agent keys, wallets, or organization keys sign the canonical descriptor — including delegated signing, where an agent signs on behalf of an organization. Signatures answer who; the next step answers when.",
+      "Your wallet, an agent key, or an organization key signs the canonical descriptor — including delegated signing, where an agent signs on behalf of an organization. Signatures answer who; the next step answers when.",
   },
   {
     n: "03",
     Icon: FiLink,
     title: "Anchor it",
     body:
-      "The hash (or Merkle root) is settled on the public systems you choose, for each system's ordinary transaction fee. The settlement receipts fix the record in time. Hash-only by default — raw bytes never required.",
+      "The hash (or Merkle root) is settled on the public systems you choose, for each system's ordinary transaction fee. Opt into permanent on-chain storage to keep the bytes too — hash-only stays the default; raw bytes are never required.",
   },
   {
     n: "04",
@@ -54,13 +54,13 @@ const HowItWorks = () => (
           The pipeline
         </p>
         <h2 className="text-balance text-3xl font-bold tracking-tight md:text-4xl text-foreground">
-          Four steps from agent run to evidence.
+          Four steps from file to evidence.
         </h2>
       </div>
       <p className="max-w-sm text-sm text-muted">
         The same pipeline the SDK, the hosted API, and the MCP server run
-        through — whether the artifact is one agent output or a whole
-        session batched behind a signed manifest.
+        through — whether the artifact is a single file, one agent output,
+        or a whole session batched behind a signed manifest.
       </p>
     </header>
 

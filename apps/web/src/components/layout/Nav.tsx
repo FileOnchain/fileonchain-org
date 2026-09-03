@@ -16,7 +16,7 @@ interface NavLink {
 }
 
 const PRIMARY_LINKS: NavLink[] = [
-  { href: "/#dropzone", label: "Upload file" },
+  { href: "/upload-file", label: "Upload file" },
   { href: "/agent-evidence", label: "Agent Evidence" },
   { href: "/explorer", label: "Explorer" },
   { href: "/protocol", label: "Protocol" },
