@@ -3,11 +3,27 @@
 import * as React from "react";
 import { motion } from "motion/react";
 import { MAINNET_CHAINS, isChainActive } from "@fileonchain/sdk";
+import { formatBytes } from "@/lib/cid/format";
+
+/**
+ * Named formatters, so Server Components can pick a format without
+ * passing a function across the server→client boundary (functions are
+ * not serializable — passing one crashes the whole route render).
+ * Client callers may still pass a function directly.
+ */
+export type StatFormat = "integer" | "compact" | "locale" | "bytes";
+
+const NAMED_FORMATS: Record<StatFormat, (n: number) => string> = {
+  integer: (n) => Math.round(n).toString(),
+  compact: (n) => compactNumber(n),
+  locale: (n) => Math.round(n).toLocaleString(),
+  bytes: (n) => formatBytes(n),
+};
 
 interface StatProps {
   value: number;
-  /** Compact formatter — caller's responsibility to format display. */
-  format?: (n: number) => string;
+  /** Compact formatter — a named variant (server-safe) or a function. */
+  format?: StatFormat | ((n: number) => string);
   suffix?: string;
   prefix?: string;
   label: string;
@@ -53,8 +69,10 @@ export const StatCounter = ({
     return () => cancelAnimationFrame(raf);
   }, [value, inView]);
 
-  const defaultFormat = (n: number) => Math.round(n).toLocaleString();
-  const formatFn = format ?? defaultFormat;
+  const formatFn =
+    typeof format === "function"
+      ? format
+      : NAMED_FORMATS[format ?? "locale"];
 
   return (
     <motion.div

@@ -1,12 +1,13 @@
 import * as React from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { FiArrowRight, FiSearch } from "react-icons/fi";
 import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import LiveLedgerTicker, { StatCounter } from "@/components/LiveLedgerTicker";
-import { compactNumber, truncateCID } from "@/lib/cid/format";
+import { truncateCID } from "@/lib/cid/format";
 import {
   ACTIVE_CHAINS,
   ACTIVE_FAMILIES,
@@ -47,6 +48,18 @@ interface PageProps {
 const isFamily = (v: string | undefined): v is ChainFamily =>
   !!v && ACTIVE_FAMILIES.includes(v as ChainFamily);
 
+/**
+ * Server action for the search form. A plain string `action` can't
+ * target the dynamic `/explorer/[cid]` route (the literal "[cid]" path
+ * would 404), so the redirect happens server-side — which also keeps
+ * the form working without client JS.
+ */
+async function searchCid(formData: FormData) {
+  "use server";
+  const cid = String(formData.get("cid") ?? "").trim();
+  redirect(cid ? `/explorer/${encodeURIComponent(cid)}` : "/explorer");
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function ExplorerPage({ searchParams }: PageProps) {
@@ -69,10 +82,9 @@ export default async function ExplorerPage({ searchParams }: PageProps) {
           lede="Every CID that has been publicly anchored on FileOnChain. Search a CID to see which chains committed it, the on-chain tx hash, block number, and submitter. Or browse recent anchors below."
         />
 
-        {/* Search bar — submits to the detail page route */}
+        {/* Search bar — server action redirects to the detail page */}
         <form
-          action="/explorer/[cid]"
-          method="get"
+          action={searchCid}
           className="flex flex-col gap-2 sm:flex-row"
           role="search"
           aria-label="Search a CID"
@@ -110,29 +122,32 @@ export default async function ExplorerPage({ searchParams }: PageProps) {
       {/* Stats strip ----------------------------------------- */}
       <section className="mt-10">
         <div className="grid grid-cols-2 gap-4 rounded-2xl border border-border bg-surface p-6 md:grid-cols-4">
+          {/* format must be a named variant here — this is a Server
+              Component, and function props can't cross into the client
+              StatCounter (they aren't serializable and crash the render). */}
           <StatCounter
             value={stats.totalChains || ACTIVE_CHAINS.length}
             label="Chains reporting"
             hint={ACTIVE_FAMILIES.map((f) => CHAIN_FAMILY_LABELS[f]).join(" · ")}
-            format={(n) => Math.round(n).toString()}
+            format="integer"
           />
           <StatCounter
             value={stats.totalFiles}
             label="Distinct CIDs"
             hint="Indexed"
-            format={(n) => compactNumber(n)}
+            format="compact"
           />
           <StatCounter
             value={stats.totalAnchors}
             label="Onchain anchors"
             hint="Across all chains"
-            format={(n) => compactNumber(n)}
+            format="compact"
           />
           <StatCounter
             value={stats.uniqueUploaders}
             label="Unique uploaders"
             hint="Distinct submitter addrs"
-            format={(n) => Math.round(n).toString()}
+            format="integer"
           />
         </div>
       </section>

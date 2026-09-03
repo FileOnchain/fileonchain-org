@@ -18,6 +18,7 @@ import {
   AnchorWorkerUnavailableError,
 } from "@/lib/server/anchor-worker";
 import { getUserRpcOverrides } from "@/lib/server/rpc-endpoints";
+import { ingestAnchorTxs, isEvmTxHash } from "@/lib/indexer/ingest";
 import { enforceAnchorQuota } from "@/lib/server/quotas";
 import { enqueueWebhookDeliveries } from "@/lib/server/webhooks";
 import { getProjectOrgId } from "@/lib/server/projects";
@@ -289,6 +290,24 @@ export const anchorWithAccount = async (
     })
     .where(eq(uploadJobs.id, job.id))
     .returning();
+
+  // Index the landed anchors immediately — the response hands the client
+  // a FileOnChain explorer link, which must resolve without waiting for
+  // the next cron scan window. Best-effort: an ingest failure never fails
+  // the job (the cron scan is the safety net), and `ingestAnchorTxs`
+  // isolates per-tx errors internally.
+  const evmTxsByChain = new Map<ChainId, Array<`0x${string}`>>();
+  for (const tx of workerResult.txs) {
+    if (!isEvmTxHash(tx.txHash)) continue;
+    const hashes = evmTxsByChain.get(tx.chainId) ?? [];
+    hashes.push(tx.txHash);
+    evmTxsByChain.set(tx.chainId, hashes);
+  }
+  await Promise.all(
+    Array.from(evmTxsByChain, ([chainId, hashes]) =>
+      ingestAnchorTxs(chainId, hashes),
+    ),
+  );
 
   // Always log the `upload_anchor` row; also log `api_call` when the
   // request came in through the API surface. The two rows travel
