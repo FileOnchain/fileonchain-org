@@ -51,18 +51,20 @@ wired end-to-end.
 | Ethereum Sepolia (`evm:11155111`) | Settlement (anchor-only FileRegistry contract) | `@fileonchain/sdk-evm` | `testnet-deployed` (PAYG + server-worker QA pending) | 2026-08-26 |
 | Auto EVM Chronos (`evm:8700`) | Settlement (anchor-only FileRegistry contract, testnet) | `@fileonchain/sdk-evm` | `testnet-deployed` (PAYG + server-worker QA pending) | 2026-07-22 |
 | Auto EVM mainnet (`evm:870`) | Settlement target — flips when the Chronos-tested registry lands on the mainnet domain | `@fileonchain/sdk-evm` | `testnet-deployed` (mainnet pending) | 2026-07-22 |
-| Cosmos Hub Testnet (`cosmos:theta-testnet-001`) | Settlement (tx memo, testnet) | `@fileonchain/sdk-cosmos` | `webapp-integrated` | 2026-07-22 |
-| TRON Nile (`tron:nile`) | Settlement (memo, testnet) | `@fileonchain/sdk-tron` | `webapp-integrated` | 2026-07-22 |
-| Cardano Preprod (`cardano:preprod`) | Settlement (tx metadata, testnet) | `@fileonchain/sdk-cardano` | `webapp-integrated` | 2026-07-22 |
-| TON Testnet (`ton:testnet`) | Settlement (transfer comment, testnet) | `@fileonchain/sdk-ton` | `webapp-integrated` | 2026-07-22 |
 
-**Memo-family mainnet promotion path** — the four memo-family mainnet entries
-remain `status: "planned"` / `integrationStatus: "implemented"` /
-`memoAnchoring: false`. To open mainnet for a family, fund the testnet
-signer (runbook at `docs/deploy/memo-families.md`), confirm a credits
-upload renders on the live explorer, and configure the corresponding
-mainnet `ANCHOR_*` env var. Then change that mainnet entry from
-`...MEMO_MAINNET_ROLLOUT.pendingQa` to
+**Memo-family promotion path** — the four memo-family **testnet** entries
+(`cosmos:theta-testnet-001`, `tron:nile`, `cardano:preprod`,
+`ton:testnet`) are `memoAnchoring: true` (transport wired client-side and
+in the hosted worker) but `status: "planned"` /
+`integrationStatus: "tested-locally"`: no anchor has been observed on any
+of these live networks, so none is open for uploads or listed as active.
+To open a family's testnet, fund its signer, run the QA credits upload,
+and merge the `status: "active"` /
+`integrationStatus: "webapp-integrated"` flip together with the recorded
+result (runbook at `docs/deploy/memo-families.md`). The **mainnet**
+entries remain `status: "planned"` / `integrationStatus: "implemented"` /
+`memoAnchoring: false`; after that family's testnet QA, change the
+mainnet entry from `...MEMO_MAINNET_ROLLOUT.pendingQa` to
 `...MEMO_MAINNET_ROLLOUT.live`. The one-line registry diff atomically sets
 `status: "active"`, `memoAnchoring: true`, and
 `integrationStatus: "webapp-integrated"`; the SDKs are testnet-integrated
@@ -141,7 +143,7 @@ may be described as live.
 | Aptos (`aptos:mainnet`) | Settlement (Move module) | `@fileonchain/sdk-aptos` | `implemented` | — |
 | Aptos Testnet (`aptos:testnet`) | Settlement (testnet) | `@fileonchain/sdk-aptos` | `implemented` | — |
 | Cosmos Hub (`cosmos:cosmoshub-4`) | Settlement (tx memo) | `@fileonchain/sdk-cosmos` | `implemented` | — |
-| Cosmos Hub Testnet (`cosmos:theta-testnet-001`) | Settlement (tx memo, testnet) | `@fileonchain/sdk-cosmos` | `implemented` | — |
+| Cosmos Hub Testnet (`cosmos:theta-testnet-001`) | Settlement (tx memo, testnet) | `@fileonchain/sdk-cosmos` | `tested-locally` (live QA upload pending) | — |
 | Sui (`sui:mainnet`) | Settlement (Move module, PTB-batched) | `@fileonchain/sdk-sui` | `implemented` | — |
 | Sui Testnet (`sui:testnet`) | Settlement (testnet) | `@fileonchain/sdk-sui` | `implemented` | — |
 | Starknet (`starknet:mainnet`) | Settlement (Cairo contract, multicall) | `@fileonchain/sdk-starknet` | `implemented` | — |
@@ -149,11 +151,11 @@ may be described as live.
 | NEAR (`near:mainnet`) | Settlement (contract account) | `@fileonchain/sdk-near` | `implemented` | — |
 | NEAR Testnet (`near:testnet`) | Settlement (testnet) | `@fileonchain/sdk-near` | `implemented` | — |
 | TRON (`tron:mainnet`) | Settlement (memo) | `@fileonchain/sdk-tron` | `implemented` | — |
-| TRON Nile (`tron:nile`) | Settlement (memo, testnet) | `@fileonchain/sdk-tron` | `implemented` | — |
+| TRON Nile (`tron:nile`) | Settlement (memo, testnet) | `@fileonchain/sdk-tron` | `tested-locally` (live QA upload pending) | — |
 | Cardano (`cardano:mainnet`) | Settlement (tx metadata) | `@fileonchain/sdk-cardano` | `implemented` | — |
-| Cardano Preprod (`cardano:preprod`) | Settlement (tx metadata, testnet) | `@fileonchain/sdk-cardano` | `implemented` | — |
+| Cardano Preprod (`cardano:preprod`) | Settlement (tx metadata, testnet) | `@fileonchain/sdk-cardano` | `tested-locally` (live QA upload pending) | — |
 | TON (`ton:mainnet`) | Settlement (transfer comment) | `@fileonchain/sdk-ton` | `implemented` | — |
-| TON Testnet (`ton:testnet`) | Settlement (transfer comment, testnet) | `@fileonchain/sdk-ton` | `implemented` | — |
+| TON Testnet (`ton:testnet`) | Settlement (transfer comment, testnet) | `@fileonchain/sdk-ton` | `tested-locally` (live QA upload pending) | — |
 | Hedera (`hedera:mainnet`) | Settlement (HCS topic) | `@fileonchain/sdk-hedera` | `implemented` | — |
 | Hedera Testnet (`hedera:testnet`) | Settlement (testnet) | `@fileonchain/sdk-hedera` | `implemented` | — |
 

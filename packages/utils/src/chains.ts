@@ -76,7 +76,10 @@ export interface ChainConfig {
    * Anchors ride the chain's native memo / metadata / comment channel — no
    * deployment of ours needed (Cosmos tx memo, TRON memo, Cardano tx
    * metadata, TON transfer comment). Setting this true is the deliberate
-   * provisioning switch for those families; flip it per chain after QA.
+   * provisioning switch for those families: the transport can send. It is
+   * independent of `status` — a memo testnet stays provisioned but
+   * `"planned"` (closed to uploads) until its live QA upload is recorded
+   * (`docs/deploy/memo-families.md`).
    */
   memoAnchoring?: boolean;
   /** Bech32 address prefix — Cosmos-family chains only. */
@@ -966,17 +969,16 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    // The carrier is wired (`lib/anchor/cosmos` builds the memo payload,
+    // the hosted worker signs via `ANCHOR_COSMOS_MNEMONIC`), but no anchor
+    // has been observed on the live network yet — the QA credits upload of
+    // `docs/deploy/memo-families.md` is still pending. Until it is
+    // recorded, the chain stays closed to uploads and is described no
+    // further than local testing.
     memoAnchoring: true,
     bech32Prefix: "cosmos",
-    // v1 memo-family QA on the testnet is wired end-to-end:
-    // `lib/anchor/cosmos` builds the memo payload, the SDK signs via
-    // `ANCHOR_COSMOS_MNEMONIC`, and the explorer renders the carrier.
-    // Mainnet promotion (`MEMO_MAINNET_ROLLOUT.live` on
-    // `cosmos:cosmoshub-4`) is gated on a funded testnet signer and a
-    // credits upload observed on the live explorer — see
-    // `docs/deploy/memo-families.md`.
-    status: "active",
-    integrationStatus: "webapp-integrated",
+    status: "planned",
+    integrationStatus: "tested-locally",
     testnet: true,
   },
   // Sui — provisioned once the Move module address lands
@@ -1143,15 +1145,12 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    // Carrier wired (`lib/anchor/tron` + `ANCHOR_TRON_PRIVATE_KEY` hosted
+    // path), but no live anchor recorded yet — QA per
+    // `docs/deploy/memo-families.md` pending, so the chain stays closed.
     memoAnchoring: true,
-    // v1 memo-family QA on the testnet is wired end-to-end:
-    // `lib/anchor/tron` builds the `extra_data` payload, the SDK
-    // signs via `ANCHOR_TRON_PRIVATE_KEY`, and the explorer renders
-    // the carrier. Mainnet flip is gated on testnet signers being
-    // funded + a credits upload observed on the live TronGrid
-    // explorer — see `docs/deploy/memo-families.md`.
-    status: "active",
-    integrationStatus: "webapp-integrated",
+    status: "planned",
+    integrationStatus: "tested-locally",
     testnet: true,
   },
   // Cardano — metadata-only MVP (no Plutus); rpcUrl expects a Blockfrost-compatible API
@@ -1192,16 +1191,13 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    // Carrier wired (`lib/anchor/cardano` CIP-20 metadata +
+    // `ANCHOR_CARDANO_SIGNING_KEY`/`ANCHOR_CARDANO_BLOCKFROST_KEY` hosted
+    // path), but no live anchor recorded yet — QA per
+    // `docs/deploy/memo-families.md` pending, so the chain stays closed.
     memoAnchoring: true,
-    // v1 memo-family QA on the testnet is wired end-to-end:
-    // `lib/anchor/cardano` builds the CIP-20 label 674 metadata,
-    // the SDK signs via `ANCHOR_CARDANO_SIGNING_KEY` and submits
-    // through `ANCHOR_CARDANO_BLOCKFROST_KEY`. Mainnet flip is
-    // gated on testnet signers being funded + a credits upload
-    // observed on the live Blockfrost explorer — see
-    // `docs/deploy/memo-families.md`.
-    status: "active",
-    integrationStatus: "webapp-integrated",
+    status: "planned",
+    integrationStatus: "tested-locally",
     testnet: true,
   },
   // TON — anchors ride transfer comments via TON Connect
@@ -1242,15 +1238,13 @@ export const CHAINS: readonly ChainConfig[] = [
     programId: null,
     moduleAddress: null,
     palletContract: null,
+    // Carrier wired (`lib/anchor/ton` wallet-v4 transfer comment +
+    // `ANCHOR_TON_MNEMONIC` hosted path), but no live anchor recorded
+    // yet — QA per `docs/deploy/memo-families.md` pending, so the chain
+    // stays closed.
     memoAnchoring: true,
-    // v1 memo-family QA on the testnet is wired end-to-end:
-    // `lib/anchor/ton` builds the wallet-v4 transfer comment, the
-    // SDK signs via `ANCHOR_TON_MNEMONIC` (and optionally
-    // `ANCHOR_TON_API_KEY`). Mainnet flip is gated on testnet
-    // signers being funded + a credits upload observed on the live
-    // TON viewer — see `docs/deploy/memo-families.md`.
-    status: "active",
-    integrationStatus: "webapp-integrated",
+    status: "planned",
+    integrationStatus: "tested-locally",
     testnet: true,
   },
   // Hedera — anchors are HCS messages; hcsTopicId is the provisioning switch
@@ -1334,6 +1328,22 @@ export const CHAIN_STATUS_LABELS: Record<ChainStatus, string> = {
   planned: "Roadmap adapter",
   deprecated: "Deprecated",
 };
+
+/**
+ * The integration ladder in ascending order — each rung implies the ones
+ * before it. For UIs that sort or plot progress; the labels below share
+ * the same vocabulary.
+ */
+export const INTEGRATION_STATUS_ORDER: readonly IntegrationStatus[] = [
+  "designed",
+  "implemented",
+  "tested-locally",
+  "testnet-deployed",
+  "mainnet-deployed",
+  "webapp-integrated",
+  "production-ready",
+  "audited",
+];
 
 /** Display labels for each integration-status rung. */
 export const INTEGRATION_STATUS_LABELS: Record<IntegrationStatus, string> = {

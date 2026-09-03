@@ -6,20 +6,28 @@ is a registry flip: `isChainProvisioned` returns true for them when
 `memoAnchoring: true` is set on the chain entry (see
 `packages/utils/src/anchor.ts`).
 
-Every family's **testnet entry is live** in
+Every family's **testnet entry is provisioned but closed** in
 `packages/utils/src/chains.ts` (`cosmos:theta-testnet-001`, `tron:nile`,
-`cardano:preprod`, `ton:testnet`): `memoAnchoring: true`,
-`status: "active"`, and `integrationStatus: "webapp-integrated"`. The
+`cardano:preprod`, `ton:testnet`): `memoAnchoring: true` (the transport is
+wired, client-side and in the hosted worker) with `status: "planned"` and
+`integrationStatus: "tested-locally"` — no anchor has been observed on any
+of these live networks yet, so none of them is open for uploads. The
 runbook per family is:
 
 1. Set the family's signer env vars (below) and fund the account on testnet.
-2. QA on the testnet: run a credits upload, confirm the anchor payload is
-   readable on the explorer and the dashboard links resolve.
-3. Promote only that family's mainnet entry using the atomic registry flip
+2. QA on the testnet: in the QA branch, flip the testnet entry to
+   `status: "active"` (the anchoring API rejects `"planned"` chains), run a
+   credits upload, and confirm the anchor payload is readable on the
+   explorer and the dashboard links resolve.
+3. Merge that flip only together with the recorded QA result, bumping the
+   testnet entry to `integrationStatus: "webapp-integrated"` and stamping
+   the date in `docs/integrations/status.md`.
+4. Promote only that family's mainnet entry using the atomic registry flip
    described in "Record the result" below.
 
-The hosted `/api/v1/anchor` path is fail-closed for these provisioned testnets:
-without the listed signer env vars it returns `503` and automatically refunds
+The hosted `/api/v1/anchor` path rejects the testnets outright while they
+are `"planned"`, and stays fail-closed once one is opened for QA: without
+the listed signer env vars it returns `503` and automatically refunds
 credits; it never records the deterministic browser/demo mock as a hosted
 transaction. Fund the signer before running the credits upload in step 2.
 
