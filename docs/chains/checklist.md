@@ -17,8 +17,9 @@ when every box is checked.
   uploads).
 - [ ] **Icon** — the SVG referenced by the entry's `icon` field exists in
   `apps/web/public/chains/`.
-- [ ] **Cost row** — the chain has a per-anchor cost row in
-  `apps/web/src/lib/mock/costs.ts` so the upload estimator prices it.
+- [ ] **Cost row** — the chain has a seed cost row in
+  `apps/web/src/lib/costs.ts` so the upload estimator prices it before the
+  live quote path (`apps/web/src/lib/server/costs.ts`) covers the family.
 - [ ] **Provisioned** — `isChainProvisioned` (see
   `packages/utils/src/anchor.ts`) returns true via the **right field for the
   family**: `registryContract` (EVM, Starknet), `moduleAddress` (Aptos, Sui,

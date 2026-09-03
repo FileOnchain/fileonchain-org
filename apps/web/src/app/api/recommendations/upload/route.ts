@@ -11,6 +11,7 @@ import { db, byokKeys } from "@/lib/db";
 import { getCreditBalance } from "@/lib/server/queries";
 import { computeUploadRecommendation } from "@/lib/recommendations/engine";
 import { polishRecommendationCopy } from "@/lib/recommendations/llm";
+import { getCostEstimates } from "@/lib/server/costs";
 import type {
   RecommendationSessionContext,
   UploadIntent,
@@ -205,7 +206,10 @@ export async function POST(request: Request) {
       intent: parsed.intent ?? ("balanced" as const),
       session,
     };
-    const recommendation = computeUploadRecommendation(input);
+    const recommendation = computeUploadRecommendation(
+      input,
+      await getCostEstimates(),
+    );
 
     // Optional copy polish — suggested.* stays rule-engine authoritative.
     const copy = await polishRecommendationCopy(input, recommendation);

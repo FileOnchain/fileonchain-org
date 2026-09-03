@@ -2,12 +2,8 @@
 
 import * as React from "react";
 import type { ChainConfig } from "@fileonchain/sdk";
-import {
-  formatCostUsd,
-  getChainCostEstimates,
-  perChunkCost,
-  totalCostFor,
-} from "@/lib/mock/costs";
+import { formatCostUsd, perChunkCost, totalCostFor } from "@/lib/costs";
+import { useCostEstimates } from "@/hooks/useCostEstimates";
 import type {
   AnchorStatus,
   StorageMode,
@@ -92,8 +88,8 @@ const UploadManifest = ({
   // Estimated total: proof anchors on the settlement chain, plus the storage
   // pass when the bytes go to a different chain. Same rough model as the
   // cost panel — the panel remains the place to inspect it per chain.
+  const estimates = useCostEstimates();
   const estimate = React.useMemo(() => {
-    const estimates = getChainCostEstimates();
     const anchorEst = estimates.find((e) => e.chainId === anchorChain.id);
     let usd = anchorEst ? totalCostFor(anchorEst, chunkCount).usd : 0;
     if (twoPass && storageChain) {
@@ -101,7 +97,7 @@ const UploadManifest = ({
       if (storageEst) usd += perChunkCost(storageEst).usd * chunkCount;
     }
     return usd;
-  }, [anchorChain.id, storageChain, twoPass, chunkCount]);
+  }, [estimates, anchorChain.id, storageChain, twoPass, chunkCount]);
 
   const bytesValue =
     storageMode === "onchain" && storageChain

@@ -10,11 +10,8 @@ import {
   type ChainConfig,
   type ChainId,
 } from "@fileonchain/sdk";
-import {
-  formatCostUsd,
-  getChainCostEstimates,
-  perChunkCost,
-} from "@/lib/mock/costs";
+import { formatCostUsd, perChunkCost } from "@/lib/costs";
+import { useCostEstimates } from "@/hooks/useCostEstimates";
 import type { StorageMode, UploadPaymentMethod } from "@/hooks/useFileUploader";
 import { useVisibleChains } from "@/hooks/useVisibleChains";
 import { cn } from "@/lib/cn";
@@ -96,13 +93,14 @@ const StorageSelector = ({
     });
   }, [visibleChains, storageChain, activeChain.id]);
 
+  const estimates = useCostEstimates();
   const costByChain = React.useMemo(() => {
     const map = new Map<string, number>();
-    for (const est of getChainCostEstimates()) {
+    for (const est of estimates) {
       map.set(est.chainId, perChunkCost(est).usd);
     }
     return map;
-  }, []);
+  }, [estimates]);
 
   const storageTxs = storageChain ? storageChunkCount(storageChain, fileSize) : null;
   const storageCost =
