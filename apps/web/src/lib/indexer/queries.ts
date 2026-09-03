@@ -467,9 +467,19 @@ export interface ChunkPayloadRow {
 
 /** The indexed anchor payload for one chunk CID — the read behind the
  *  explorer's chunk-content view. Among the rows that anchored this
- *  chunk (multiple chains, or repeat anchors on one chain), a
- *  data-carrying payload wins over an anchor-only one; ties go to the
- *  earliest anchor. Null when the chunk was never indexed. */
+ *  chunk (multiple chains, or repeat anchors on one chain), the pick
+ *  prefers a row belonging to `fileCid`, then a data-carrying payload
+ *  over an anchor-only one; ties go to the earliest anchor.
+ *
+ *  `fileCid` is a preference hint, never a gate: the explorer feed
+ *  lists chunk anchors under their own chunk CID, so the detail page
+ *  a visitor lands on may pass the chunk CID itself as the "file" —
+ *  filtering on it would 404 a chunk that is plainly indexed. The
+ *  content is safe to serve regardless of which file it belongs to:
+ *  the API re-verifies the bytes against the chunk CID either way, and
+ *  the response names the payload's real `fileCid`.
+ *
+ *  Null only when the chunk CID was never indexed at all. */
 export const getChunkPayload = async (
   chunkCid: string,
   fileCid?: string,
@@ -489,13 +499,11 @@ export const getChunkPayload = async (
         and(
           eq(indexedAnchorEvents.cid, chunkCid),
           sql`${indexedAnchorEvents.payload}->>'op' = 'chunk'`,
-          fileCid
-            ? sql`${indexedAnchorEvents.payload}->>'fileCid' = ${fileCid}`
-            : undefined,
         ),
       )
       .orderBy(indexedAnchorEvents.blockTimestamp);
     let best: ChunkPayloadRow | null = null;
+    let bestScore = -1;
     for (const r of rows) {
       const p = r.payload as {
         op?: string;
@@ -528,10 +536,13 @@ export const getChunkPayload = async (
         submitter: r.submitter,
         dataBase64: typeof p.d === "string" ? p.d : null,
       };
-      if (!best) best = row;
-      if (row.dataBase64 && !best.dataBase64) {
+      // file match outranks data, data outranks earliest; rows arrive
+      // earliest-first so a strict > keeps the first row per tier.
+      const score =
+        (fileCid && row.fileCid === fileCid ? 2 : 0) + (row.dataBase64 ? 1 : 0);
+      if (score > bestScore) {
         best = row;
-        break;
+        bestScore = score;
       }
     }
     return best;

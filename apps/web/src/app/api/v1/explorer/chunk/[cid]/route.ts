@@ -20,6 +20,12 @@ const CID_VERSION = 1;
  * payload whose data does not hash back to the CID it claims is
  * reported as unverified rather than rendered as authentic content.
  *
+ * `?file=` is a preference hint (rows belonging to that file win when
+ * the chunk was anchored for several), never a filter — a visitor can
+ * land on /explorer/<chunkCid> straight from the feed, where the page
+ * CID *is* the chunk CID; the response's `fileCid` names the payload's
+ * real file.
+ *
  * Response shape (200):
  *   { chunkCid, fileCid, index, total, nextCid, chainId, txHash,
  *     blockNumber, timestamp, submitter, hasData, sizeBytes,
@@ -27,7 +33,7 @@ const CID_VERSION = 1;
  *
  * Errors:
  *   400  malformed CID
- *   404  chunk never indexed (or not part of ?file=)
+ *   404  chunk never indexed
  *
  * Cache: only verified content is immutable by construction (the CID
  * pins the bytes), so only that case gets the long edge cache.
