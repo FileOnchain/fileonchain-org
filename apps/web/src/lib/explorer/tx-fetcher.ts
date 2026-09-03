@@ -56,16 +56,29 @@ const fetchEvmTx = async (
   const chain = getChain(chainId);
   if (!chain || chain.family !== "evm") return null;
 
-  const { createPublicClient, http, parseEventLogs } = await import("viem");
+  const { createPublicClient, http, parseEventLogs, TransactionReceiptNotFoundError } =
+    await import("viem");
   const { toViemChain } = await import("@fileonchain/sdk/evm");
   const client = createPublicClient({
     chain: toViemChain(chain),
     transport: http(chain.rpcUrl, RPC_TRANSPORT_OPTS),
   });
 
-  const receipt = await client
-    .getTransactionReceipt({ hash: txHash as `0x${string}` })
-    .catch(() => null);
+  // Public RPCs are load-balanced and individual backends can miss a tx
+  // the chain definitely has (observed on Sepolia's publicnode pool) —
+  // a couple of short retries turn that persistent-looking "not found"
+  // into a hit. Real transport failures bubble up to the caller's
+  // rpc-error mapping instead of masquerading as tx-not-found.
+  let receipt = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      receipt = await client.getTransactionReceipt({ hash: txHash as `0x${string}` });
+      break;
+    } catch (error) {
+      if (!(error instanceof TransactionReceiptNotFoundError)) throw error;
+      if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
   if (!receipt) return null;
 
   // Filter to logs emitted by the deployed FileRegistry. The events
