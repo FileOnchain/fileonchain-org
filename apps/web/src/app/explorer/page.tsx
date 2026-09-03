@@ -6,8 +6,11 @@ import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import LiveLedgerTicker, { StatCounter } from "@/components/LiveLedgerTicker";
-import { truncateCID } from "@/lib/cid/format";
+import LiveLedgerTicker, {
+  StatCounter,
+  type LedgerTickerEvent,
+} from "@/components/LiveLedgerTicker";
+import { formatRelativeTime, truncateCID } from "@/lib/cid/format";
 import {
   ACTIVE_CHAINS,
   ACTIVE_FAMILIES,
@@ -71,6 +74,21 @@ export default async function ExplorerPage({ searchParams }: PageProps) {
   ]);
   const rows = allRows.slice(0, 12);
 
+  // Everything decorative on this page is fed by the same indexed rows
+  // as the table — no fabricated CIDs, ages, or counts anywhere.
+  const now = Date.now();
+  const tickerEvents: LedgerTickerEvent[] = allRows.slice(0, 14).map((row) => ({
+    cid: row.cid,
+    chain: (
+      row.hits[0]?.chainShortName ??
+      row.hits[0]?.chainName ??
+      ""
+    ).toUpperCase(),
+    time: formatRelativeTime(row.anchoredAt, now),
+  }));
+  const seedCids = allRows.slice(0, 3).map((r) => r.cid);
+  const latestAnchoredAt = allRows[0]?.anchoredAt ?? null;
+
   return (
     <PageShell size="wide" padding="lg" atmosphere>
       {/* Header ----------------------------------------------- */}
@@ -92,7 +110,7 @@ export default async function ExplorerPage({ searchParams }: PageProps) {
           <Input
             name="cid"
             aria-label="CID to search"
-            placeholder="bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
+            placeholder="Paste a CIDv1 — bafy…"
             leftAddon={<FiSearch size={14} />}
             className="font-mono"
             fullWidth
@@ -100,23 +118,22 @@ export default async function ExplorerPage({ searchParams }: PageProps) {
           <Button type="submit">Search chains</Button>
         </form>
 
-        {/* Quick chip seeds */}
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-          <span className="uppercase tracking-wider text-muted">Try:</span>
-          {[
-            "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
-            "bafybeibv3zaicqsdwfmq5dym6ipxzl5qxksirv3d3uyzjqhs2dtx3w3c3q",
-            "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
-          ].map((seed) => (
-            <Link
-              key={seed}
-              href={`/explorer/${seed}`}
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 font-mono text-muted transition-colors hover:border-primary/40 hover:text-foreground"
-            >
-              {truncateCID(seed, 8, 6)}
-            </Link>
-          ))}
-        </div>
+        {/* Quick chips — the newest genuinely indexed CIDs, so every
+            chip resolves. Hidden while the index is empty. */}
+        {seedCids.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+            <span className="uppercase tracking-wider text-muted">Recent:</span>
+            {seedCids.map((seed) => (
+              <Link
+                key={seed}
+                href={`/explorer/${seed}`}
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 font-mono text-muted transition-colors hover:border-primary/40 hover:text-foreground"
+              >
+                {truncateCID(seed, 8, 6)}
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Stats strip ----------------------------------------- */}
@@ -125,10 +142,13 @@ export default async function ExplorerPage({ searchParams }: PageProps) {
           {/* format must be a named variant here — this is a Server
               Component, and function props can't cross into the client
               StatCounter (they aren't serializable and crash the render). */}
+          {/* Real indexed counts only — a chain "reports" when the
+              indexer has observed an anchor on it, never because the
+              registry lists it as active. */}
           <StatCounter
-            value={stats.totalChains || ACTIVE_CHAINS.length}
+            value={stats.totalChains}
             label="Chains reporting"
-            hint={ACTIVE_FAMILIES.map((f) => CHAIN_FAMILY_LABELS[f]).join(" · ")}
+            hint="With indexed anchors"
             format="integer"
           />
           <StatCounter
@@ -152,19 +172,28 @@ export default async function ExplorerPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      {/* Live ticker ----------------------------------------- */}
-      <section className="mt-8">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">
-            Live ledger activity
-          </h2>
-          <span className="inline-flex items-center gap-1.5 text-[11px] text-muted">
-            <span className="h-1.5 w-1.5 animate-orbit-pulse rounded-full bg-success" />
-            streaming
-          </span>
-        </div>
-        <LiveLedgerTicker />
-      </section>
+      {/* Ledger ticker — real indexed anchors, newest first; each item
+          links to its CID. The pulse only appears while the latest
+          anchor is under an hour old, and the section disappears
+          entirely on an empty index instead of faking motion. */}
+      {tickerEvents.length > 0 && (
+        <section className="mt-8">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground">
+              Ledger activity
+            </h2>
+            {latestAnchoredAt !== null && (
+              <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-muted">
+                {now / 1000 - latestAnchoredAt < 3600 && (
+                  <span className="h-1.5 w-1.5 animate-orbit-pulse rounded-full bg-success" />
+                )}
+                latest {formatRelativeTime(latestAnchoredAt, now)}
+              </span>
+            )}
+          </div>
+          <LiveLedgerTicker events={tickerEvents} />
+        </section>
+      )}
 
       {/* Browse by chain ------------------------------------- */}
       <section className="mt-12 space-y-4">
@@ -238,16 +267,20 @@ export default async function ExplorerPage({ searchParams }: PageProps) {
         )}
       </section>
 
-      {/* Chain coverage footer note --------------------------- */}
+      {/* Chain coverage footer note — states the indexer's real
+          coverage, not the registry's ambitions. */}
       <section className="mt-16 rounded-2xl border border-dashed border-border bg-surface/60 p-5 text-sm text-muted">
         <p>
-          The explorer indexes every CID that has been publicly anchored on the
-          registry contracts across{" "}
+          The explorer lists every publicly anchored CID its indexer has
+          observed —{" "}
           <span className="font-semibold text-foreground">
-            {ACTIVE_CHAINS.length} active chains
+            {stats.totalChains === 0
+              ? "no chains reporting yet"
+              : `${stats.totalChains} chain${stats.totalChains === 1 ? "" : "s"} reporting`}
           </span>
-          . One chain is enough to retrieve a file — adding more chains is
-          optional and each chain charges its own gas.
+          {" "}so far, with coverage growing chain by chain. One chain is
+          enough to retrieve a file — adding more is optional and each chain
+          charges its own gas.
         </p>
       </section>
     </PageShell>
