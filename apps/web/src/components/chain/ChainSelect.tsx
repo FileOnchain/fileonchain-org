@@ -24,8 +24,8 @@ export interface ChainSelectProps {
   onValueChange: (chainId: ChainId) => void;
   /**
    * `field` — full-width form control (modals, settings forms);
-   * `header` / `header-compact` — the Nav switcher's h-9 trigger, with or
-   * without the chain name next to the badge.
+   * `header` / `header-compact` — a compact h-9 trigger (formerly the Nav
+   * switcher), with or without the chain name next to the badge.
    */
   variant?: "field" | "header" | "header-compact";
   disabled?: boolean;
@@ -35,6 +35,13 @@ export interface ChainSelectProps {
    * that feed the upload flow.
    */
   restrictToActive?: boolean;
+  /**
+   * List testnets after every mainnet, under one "Testnets" group at the
+   * bottom of the dropdown — still searchable. Pass a chain list that
+   * includes testnets (e.g. `CHAINS`) for pickers that must offer them
+   * regardless of the show-testnets preference.
+   */
+  testnetsLast?: boolean;
   id?: string;
   ariaLabel?: string;
 }
@@ -47,9 +54,9 @@ const testnetBadge = (
 
 /**
  * ChainSelect — searchable network picker over a `ChainConfig` list, grouped
- * by runtime in registry order. The single dropdown behind the header
- * ChainSwitcher and every chain-picking form field (RPC endpoints, deposits,
- * donations). Chain data comes from the callers — never hardcode chains here.
+ * by runtime in registry order. The single dropdown behind every
+ * chain-picking form field (RPC endpoints, deposits, donations). Chain data
+ * comes from the callers — never hardcode chains here.
  */
 export const ChainSelect = ({
   chains,
@@ -58,51 +65,69 @@ export const ChainSelect = ({
   variant = "field",
   disabled,
   restrictToActive,
+  testnetsLast,
   id,
   ariaLabel = "Select a chain",
 }: ChainSelectProps) => {
-  const options = React.useMemo<SearchSelectOption[]>(
-    () =>
-      CHAIN_FAMILIES.flatMap((family) => {
-        const familyChains = chains.filter((chain) => chain.family === family);
-        // Selectable chains first — with dozens of planned entries, active
-        // ones (and their testnets) must not hide below the fold.
-        if (restrictToActive) {
-          familyChains.sort(
-            (a, b) =>
-              Number(b.status === "active") - Number(a.status === "active"),
-          );
-        }
-        return familyChains.map((chain) => ({
-          value: chain.id,
-          label: chain.name,
-          group: CHAIN_FAMILY_LABELS[family],
-          keywords: [
-            chain.shortName,
-            chain.family,
-            chain.id,
-            chain.status,
-            ...(chain.testnet ? ["testnet"] : []),
-          ],
-          leading: (
-            <ChainBadge
-              chainId={chain.id}
-              chainName={chain.name}
-              shortName={chain.shortName}
-              size="sm"
-            />
-          ),
-          trailing: (
-            <span className="flex items-center gap-1">
-              <ChainStatusBadge status={chain.status} />
-              {chain.testnet && testnetBadge}
-            </span>
-          ),
-          disabled: restrictToActive ? chain.status !== "active" : false,
-        }));
-      }),
-    [chains, restrictToActive],
-  );
+  const options = React.useMemo<SearchSelectOption[]>(() => {
+    // Selectable chains first — with dozens of planned entries, active
+    // ones must not hide below the fold.
+    const activeFirst = (list: ChainConfig[]) => {
+      if (restrictToActive) {
+        list.sort(
+          (a, b) => Number(b.status === "active") - Number(a.status === "active"),
+        );
+      }
+      return list;
+    };
+
+    const toOption = (chain: ChainConfig, group: string): SearchSelectOption => ({
+      value: chain.id,
+      label: chain.name,
+      group,
+      keywords: [
+        chain.shortName,
+        chain.family,
+        CHAIN_FAMILY_LABELS[chain.family],
+        chain.id,
+        chain.status,
+        ...(chain.testnet ? ["testnet"] : []),
+      ],
+      leading: (
+        <ChainBadge
+          chainId={chain.id}
+          chainName={chain.name}
+          shortName={chain.shortName}
+          size="sm"
+        />
+      ),
+      trailing: (
+        <span className="flex items-center gap-1">
+          <ChainStatusBadge status={chain.status} />
+          {chain.testnet && testnetBadge}
+        </span>
+      ),
+      disabled: restrictToActive ? chain.status !== "active" : false,
+    });
+
+    const byFamily = (pool: readonly ChainConfig[]) =>
+      CHAIN_FAMILIES.flatMap((family) =>
+        activeFirst(pool.filter((chain) => chain.family === family)).map(
+          (chain) => toOption(chain, CHAIN_FAMILY_LABELS[family]),
+        ),
+      );
+
+    if (!testnetsLast) return byFamily(chains);
+    return [
+      ...byFamily(chains.filter((chain) => !chain.testnet)),
+      // One "Testnets" group at the bottom, family registry order within.
+      ...activeFirst(
+        CHAIN_FAMILIES.flatMap((family) =>
+          chains.filter((chain) => chain.testnet && chain.family === family),
+        ),
+      ).map((chain) => toOption(chain, "Testnets")),
+    ];
+  }, [chains, restrictToActive, testnetsLast]);
 
   // Render the trigger from the registry even when the selected chain isn't
   // in `chains` (e.g. a testnet is active while testnets are hidden).

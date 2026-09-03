@@ -62,7 +62,7 @@ const CostEstimatePanel = ({ chunkCount }: CostEstimatePanelProps) => {
   const [selected, setSelected] = React.useState<Set<string>>(
     () => new Set([activeChain.id]),
   );
-  // Keep the active chain selected if it changes (e.g. via the nav switcher).
+  // Keep the active chain selected if it changes (e.g. via the networks grid).
   React.useEffect(() => {
     setSelected((prev) => {
       if (prev.has(activeChain.id)) return prev;

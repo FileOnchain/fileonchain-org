@@ -33,7 +33,7 @@ const STEPS: Step[] = [
     body: (
       <>
         FileOnChain anchors CIDs on <strong className="text-foreground">10 chains</strong> across
-        four runtimes — EVM-compatible, Substrate-based, Solana, and Aptos. Switch any time from the chain selector at the top of the page.
+        four runtimes — EVM-compatible, Substrate-based, Solana, and Aptos. Switch any time from the networks grid on the home page.
       </>
     ),
     Icon: FiLayers,
