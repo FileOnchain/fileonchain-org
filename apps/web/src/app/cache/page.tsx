@@ -12,7 +12,7 @@ import CacheAccessModal from "@/components/cache/CacheAccessModal";
 import ChainSelect from "@/components/chain/ChainSelect";
 import { useCachePayment } from "@/hooks/useCachePayment";
 import { useChain } from "@/hooks/useChain";
-import { useVisibleChains } from "@/hooks/useVisibleChains";
+import { CHAINS } from "@fileonchain/sdk";
 import type { CacheTier } from "@/lib/mock/cache";
 
 export default function CachePage() {
@@ -21,7 +21,6 @@ export default function CachePage() {
   const [minting, setMinting] = React.useState(false);
   const { pay, mintTestUsdc, onchainReady, activeChain } = useCachePayment();
   const { setActiveChainId } = useChain();
-  const visibleChains = useVisibleChains();
   const { toast } = useToast();
 
   const handleChoose = async (tier: CacheTier) => {
@@ -88,11 +87,12 @@ export default function CachePage() {
                 <span className="sr-only">Payment network</span>
                 <ChainSelect
                   id="cache-payment-chain"
-                  chains={visibleChains}
+                  chains={CHAINS}
                   value={activeChain.id}
                   onValueChange={setActiveChainId}
                   variant="header"
                   restrictToActive
+                  testnetsLast
                   ariaLabel="Payment network"
                 />
               </label>

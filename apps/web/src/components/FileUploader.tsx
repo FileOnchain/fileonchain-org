@@ -17,7 +17,7 @@ import UploadManifest from "@/components/upload/UploadManifest";
 import UploadAdvisor, { type AdvisorApplyPayload } from "@/components/upload/UploadAdvisor";
 import ChainSelect from "@/components/chain/ChainSelect";
 import { useChain } from "@/hooks/useChain";
-import { useVisibleChains } from "@/hooks/useVisibleChains";
+import { CHAINS } from "@fileonchain/sdk";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -103,7 +103,6 @@ const FileUploader = () => {
   } = useFileUploader();
 
   const { activeChain, setActiveChainId } = useChain();
-  const visibleChains = useVisibleChains();
   const chainNotActive = activeChain.status !== "active";
   // Address of the wallet connected for the active chain's family — the one
   // that will actually sign the pay-as-you-go transactions.
@@ -288,10 +287,11 @@ const FileUploader = () => {
                 <span className="sr-only">Anchor network</span>
                 <ChainSelect
                   id="anchor-chain"
-                  chains={visibleChains}
+                  chains={CHAINS}
                   value={activeChain.id}
                   onValueChange={setActiveChainId}
                   restrictToActive
+                  testnetsLast
                   disabled={anchorBusy || anchorStatus === "done"}
                   ariaLabel="Anchor network"
                 />
