@@ -9,7 +9,10 @@ import { useToast } from "@/components/ui/Toast";
 import CachePricingTable from "@/components/cache/CachePricingTable";
 import CacheMyList from "@/components/cache/CacheMyList";
 import CacheAccessModal from "@/components/cache/CacheAccessModal";
+import ChainSelect from "@/components/chain/ChainSelect";
 import { useCachePayment } from "@/hooks/useCachePayment";
+import { useChain } from "@/hooks/useChain";
+import { useVisibleChains } from "@/hooks/useVisibleChains";
 import type { CacheTier } from "@/lib/mock/cache";
 
 export default function CachePage() {
@@ -17,6 +20,8 @@ export default function CachePage() {
   const [accessEntryId, setAccessEntryId] = React.useState<`0x${string}` | null>(null);
   const [minting, setMinting] = React.useState(false);
   const { pay, mintTestUsdc, onchainReady, activeChain } = useCachePayment();
+  const { setActiveChainId } = useChain();
+  const visibleChains = useVisibleChains();
   const { toast } = useToast();
 
   const handleChoose = async (tier: CacheTier) => {
@@ -77,19 +82,43 @@ export default function CachePage() {
         </TabsList>
 
         <TabsContent value="pricing">
-          {onchainReady && (
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="block" htmlFor="cache-payment-chain">
+                <span className="sr-only">Payment network</span>
+                <ChainSelect
+                  id="cache-payment-chain"
+                  chains={visibleChains}
+                  value={activeChain.id}
+                  onValueChange={setActiveChainId}
+                  variant="header"
+                  restrictToActive
+                  ariaLabel="Payment network"
+                />
+              </label>
               <p className="text-xs text-muted">
-                Payments on <span className="font-semibold text-foreground">{activeChain.name}</span> settle
-                on-chain through CachePayments (USDC approve + pay).
+                {onchainReady ? (
+                  <>
+                    Payments on{" "}
+                    <span className="font-semibold text-foreground">{activeChain.name}</span> settle
+                    on-chain through CachePayments (USDC approve + pay).
+                  </>
+                ) : (
+                  <>
+                    CachePayments isn&apos;t deployed on{" "}
+                    <span className="font-semibold text-foreground">{activeChain.name}</span> —
+                    purchases here are simulated. Pick a network with the cache contract
+                    deployed to pay on-chain.
+                  </>
+                )}
               </p>
-              {activeChain.testnet && (
-                <Button size="sm" variant="secondary" onClick={handleMint} disabled={minting}>
-                  {minting ? "Minting…" : "Mint 100 test USDC"}
-                </Button>
-              )}
             </div>
-          )}
+            {onchainReady && activeChain.testnet && (
+              <Button size="sm" variant="secondary" onClick={handleMint} disabled={minting}>
+                {minting ? "Minting…" : "Mint 100 test USDC"}
+              </Button>
+            )}
+          </div>
           <CachePricingTable onChoose={handleChoose} />
         </TabsContent>
 

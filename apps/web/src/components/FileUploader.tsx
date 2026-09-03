@@ -15,7 +15,9 @@ import StorageSelector from "@/components/upload/StorageSelector";
 import PaymentMethodSelector from "@/components/upload/PaymentMethodSelector";
 import UploadManifest from "@/components/upload/UploadManifest";
 import UploadAdvisor, { type AdvisorApplyPayload } from "@/components/upload/UploadAdvisor";
+import ChainSelect from "@/components/chain/ChainSelect";
 import { useChain } from "@/hooks/useChain";
+import { useVisibleChains } from "@/hooks/useVisibleChains";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -44,10 +46,10 @@ const UPLOAD_STEPS: Step[] = [
 
 /**
  * StepHeader — ledger-style group rule for the upload decisions. The flow
- * really is a sequence (what you're uploading → where bytes live → who pays
- * → what it costs → sign), so the numbering carries information: the
- * manifest at the end is signable only once the numbered choices above it
- * are made.
+ * really is a sequence (what you're uploading → where it anchors → where
+ * bytes live → who pays → what it costs → sign), so the numbering carries
+ * information: the manifest at the end is signable only once the numbered
+ * choices above it are made.
  */
 const StepHeader = ({
   n,
@@ -101,6 +103,7 @@ const FileUploader = () => {
   } = useFileUploader();
 
   const { activeChain, setActiveChainId } = useChain();
+  const visibleChains = useVisibleChains();
   const chainNotActive = activeChain.status !== "active";
   // Address of the wallet connected for the active chain's family — the one
   // that will actually sign the pay-as-you-go transactions.
@@ -278,9 +281,30 @@ const FileUploader = () => {
               onApply={applyRecommendation}
             />
 
-            {/* 02 · STORAGE --------------------------------------------- */}
+            {/* 02 · NETWORK --------------------------------------------- */}
             <section>
-              <StepHeader n="02" label="Where the bytes live" />
+              <StepHeader n="02" label="Where it anchors" />
+              <label className="block max-w-md" htmlFor="anchor-chain">
+                <span className="sr-only">Anchor network</span>
+                <ChainSelect
+                  id="anchor-chain"
+                  chains={visibleChains}
+                  value={activeChain.id}
+                  onValueChange={setActiveChainId}
+                  restrictToActive
+                  disabled={anchorBusy || anchorStatus === "done"}
+                  ariaLabel="Anchor network"
+                />
+              </label>
+              <p className="mt-2 text-xs text-muted">
+                One anchor transaction per chunk lands on this network; the manifest
+                below signs against it.
+              </p>
+            </section>
+
+            {/* 03 · STORAGE --------------------------------------------- */}
+            <section>
+              <StepHeader n="03" label="Where the bytes live" />
               <StorageSelector
                 fileSize={file.size}
                 mode={storageMode}
@@ -295,9 +319,9 @@ const FileUploader = () => {
               />
             </section>
 
-            {/* 03 · PAYMENT --------------------------------------------- */}
+            {/* 04 · PAYMENT --------------------------------------------- */}
             <section>
-              <StepHeader n="03" label="Who pays" />
+              <StepHeader n="04" label="Who pays" />
               <PaymentMethodSelector
                 value={paymentMethod}
                 byokKeyId={byokKeyId}
@@ -307,9 +331,9 @@ const FileUploader = () => {
               />
             </section>
 
-            {/* 04 · COST ------------------------------------------------ */}
+            {/* 05 · COST ------------------------------------------------ */}
             <section>
-              <StepHeader n="04" label="Cost & extra chains" />
+              <StepHeader n="05" label="Cost & extra chains" />
               <CostEstimatePanel chunkCount={estimatedChunkCount} />
             </section>
 
@@ -324,7 +348,7 @@ const FileUploader = () => {
               {chainNotActive && (
                 <p role="alert" className="mb-3 text-sm text-warning">
                   {activeChain.name} is {activeChain.status} — anchoring isn&apos;t open
-                  on it yet. Pick an active network from the networks grid below.
+                  on it yet. Pick an active network in step 02 above.
                 </p>
               )}
               {pendingResume && anchorStatus !== "done" && !anchorBusy && (
