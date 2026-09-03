@@ -16,6 +16,7 @@ import { PageShell } from "@/components/layout/PageShell";
 import { ChainBadge } from "@/components/ui/ChainBadge";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { Button } from "@/components/ui/Button";
+import { InlineLoader } from "@/components/ui/InlineLoader";
 import { compactNumber } from "@/components/LiveLedgerTicker";
 import StatusPill from "@/components/explorer/StatusPill";
 import {
@@ -576,7 +577,7 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
                   {isExpanded && (
                     <div className="border-t border-border bg-surface-elevated px-4 py-3">
                       {!anchorState || anchorState.status === "loading" ? (
-                        <div className="h-16 animate-pulse rounded-lg border border-border bg-surface" />
+                        <InlineLoader label="Reading the tx receipt…" />
                       ) : anchorState.status === "error" ? (
                         <p className="text-xs text-muted">
                           Could not decode this transaction&rsquo;s payload (
@@ -934,7 +935,7 @@ interface ChunkContentPanelProps {
 
 const ChunkContentPanel = ({ state, chunk }: ChunkContentPanelProps) => {
   if (!state || state.status === "loading") {
-    return <div className="h-20 animate-pulse rounded-lg border border-border bg-surface" />;
+    return <InlineLoader label="Fetching on-chain bytes…" className="py-8" />;
   }
   if (state.status === "error") {
     return (
