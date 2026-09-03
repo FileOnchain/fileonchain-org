@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { motion } from "motion/react";
-import { MAINNET_CHAINS, isChainActive } from "@fileonchain/sdk";
 import { formatBytes } from "@/lib/cid/format";
 
 /**
@@ -116,12 +115,11 @@ export const compactNumber = (n: number) => {
  * LiveLedgerTicker — scrolling feed of recent on-chain anchor events.
  * CSS marquee, pause-on-hover.
  *
- * With `events` (the explorer passes the indexer's real recent rows),
- * every item is a genuine anchor linking to its CID page. Without
- * `events` the marketing hero's decorative loop renders instead —
- * obviously-elided placeholder rows cycling the chains that are truly
- * open for uploads; it must never dress fabricated CIDs up as data,
- * which is why the real feed is the only one that renders links.
+ * `events` is always the indexer's real recent rows (the explorer page
+ * fetches them server-side, the homepage hero via `/api/indexer/recent`),
+ * so every item is a genuine anchor linking to its CID page. An empty
+ * feed renders nothing — this component must never dress fabricated
+ * CIDs up as data.
  */
 
 export interface LedgerTickerEvent {
@@ -131,73 +129,36 @@ export interface LedgerTickerEvent {
   time: string;
 }
 
-const DECOR_SEEDS = [
-  { cid: "bafy…z3q1", time: "now" },
-  { cid: "bafy…71fv", time: "2s" },
-  { cid: "bafy…kk8d", time: "5s" },
-  { cid: "bafy…lp2c", time: "9s" },
-  { cid: "bafy…mn5w", time: "13s" },
-  { cid: "bafy…rr7u", time: "18s" },
-  { cid: "bafy…xs9b", time: "24s" },
-  { cid: "bafy…dj4h", time: "31s" },
-] as const;
-
-const ACTIVE_NAMES = MAINNET_CHAINS.filter(isChainActive).map((c) =>
-  c.name.toUpperCase(),
-);
-
 const truncateTickerCid = (cid: string): string =>
   cid.length <= 12 ? cid : `${cid.slice(0, 6)}…${cid.slice(-4)}`;
 
 interface LiveLedgerTickerProps {
-  /** Real indexed anchor events, newest first. Omit for the hero's
-   *  decorative loop; an explicitly empty array renders nothing. */
-  events?: LedgerTickerEvent[];
+  /** Real indexed anchor events, newest first. Empty renders nothing. */
+  events: LedgerTickerEvent[];
 }
 
 const LiveLedgerTicker = ({ events }: LiveLedgerTickerProps) => {
-  if (events && events.length === 0) return null;
-  const real = events ?? null;
-  const feed =
-    real ??
-    DECOR_SEEDS.map((seed, i) => ({
-      ...seed,
-      chain: ACTIVE_NAMES[i % ACTIVE_NAMES.length],
-    }));
-  const loop = [...feed, ...feed];
+  if (events.length === 0) return null;
+  const loop = [...events, ...events];
   return (
     <div className="group relative w-full overflow-hidden rounded-md border border-border bg-surface/60">
       <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-linear-to-r from-surface to-transparent" />
       <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-linear-to-l from-surface to-transparent" />
       <div className="flex w-max animate-marquee items-center gap-6 py-2 will-change-transform group-hover:[animation-play-state:paused]">
-        {loop.map((e, i) => {
-          const body = (
-            <>
-              <span className="flex h-1.5 w-1.5 animate-orbit-pulse rounded-full bg-success" />
-              <span className="text-foreground">{truncateTickerCid(e.cid)}</span>
-              <span>·</span>
-              <span>{e.chain}</span>
-              <span className="text-muted">·</span>
-              <span className="text-muted/70">{e.time}</span>
-            </>
-          );
-          return real ? (
-            <a
-              key={`${e.cid}-${i}`}
-              href={`/explorer/${e.cid}`}
-              className="flex shrink-0 items-center gap-2 font-mono text-[11px] text-muted transition-colors hover:text-foreground"
-            >
-              {body}
-            </a>
-          ) : (
-            <div
-              key={`${e.cid}-${i}`}
-              className="flex shrink-0 items-center gap-2 font-mono text-[11px] text-muted"
-            >
-              {body}
-            </div>
-          );
-        })}
+        {loop.map((e, i) => (
+          <a
+            key={`${e.cid}-${i}`}
+            href={`/explorer/${e.cid}`}
+            className="flex shrink-0 items-center gap-2 font-mono text-[11px] text-muted transition-colors hover:text-foreground"
+          >
+            <span className="flex h-1.5 w-1.5 animate-orbit-pulse rounded-full bg-success" />
+            <span className="text-foreground">{truncateTickerCid(e.cid)}</span>
+            <span>·</span>
+            <span>{e.chain}</span>
+            <span className="text-muted">·</span>
+            <span className="text-muted/70">{e.time}</span>
+          </a>
+        ))}
       </div>
     </div>
   );
