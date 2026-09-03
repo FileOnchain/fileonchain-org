@@ -216,7 +216,7 @@ const FileUploader = () => {
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       {!file && <DropZone onFiles={handleFiles} />}
 
       <AnimatePresence>
