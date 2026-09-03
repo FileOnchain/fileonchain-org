@@ -330,8 +330,12 @@ describe("computeUploadRecommendation — secondary chain picks", () => {
   });
 
   it("returns up to 2 secondary chains for a large document file", () => {
+    // Testnet intent: the active mainnet set (Autonomys + Solana) is too
+    // small and too spread in cost for a sibling to fit under the
+    // redundancy cost cap, so mainnet picks legitimately return none.
     const rec = computeUploadRecommendation(
       input({
+        intent: "testnet",
         file: {
           name: "report.pdf",
           sizeBytes: 12 * 1024 * 1024, // 12 MB > 10 MB threshold
