@@ -1,19 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  CHAINS,
-  CHAIN_FAMILY_LABELS,
-  CHAIN_STATUS_LABELS,
-  INTEGRATION_STATUS_LABELS,
-  getIntegrationStatus,
-  isStorageCapable,
-  isChainActive,
-  type ChainConfig,
-} from "@fileonchain/sdk";
+import { CHAINS, isStorageCapable } from "@fileonchain/sdk";
 import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
+import NetworkTable from "@/components/integrations/NetworkTable";
 import { siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -71,57 +63,6 @@ const PLANNED_OBSERVABILITY = [
   },
 ] as const;
 
-const integrationBadgeVariant = (chain: ChainConfig) => {
-  const status = getIntegrationStatus(chain);
-  return status === "webapp-integrated" || status === "production-ready" || status === "audited"
-    ? ("success" as const)
-    : status === "testnet-deployed" || status === "mainnet-deployed"
-      ? ("info" as const)
-      : ("warning" as const);
-};
-
-const NetworkTable = ({ chains }: { chains: readonly ChainConfig[] }) => (
-  <div className="mt-4 overflow-x-auto rounded-lg border border-border">
-    <table className="w-full min-w-[720px] text-left text-sm">
-      <thead>
-        <tr className="border-b border-border bg-surface-elevated/60">
-          {["Network", "Family", "Availability", "Integration status"].map((h) => (
-            <th
-              key={h}
-              className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted"
-            >
-              {h}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {chains.map((chain) => (
-          <tr key={chain.id} className="border-b border-border last:border-b-0">
-            <td className="px-4 py-2.5 font-medium text-foreground">
-              {chain.name}
-              {chain.testnet && (
-                <span className="ml-2 font-mono text-[10px] uppercase text-muted">testnet</span>
-              )}
-            </td>
-            <td className="px-4 py-2.5 text-muted">{CHAIN_FAMILY_LABELS[chain.family]}</td>
-            <td className="whitespace-nowrap px-4 py-2.5">
-              <Badge variant={isChainActive(chain) ? "success" : "outline"} size="sm">
-                {CHAIN_STATUS_LABELS[chain.status]}
-              </Badge>
-            </td>
-            <td className="whitespace-nowrap px-4 py-2.5">
-              <Badge variant={integrationBadgeVariant(chain)} size="sm">
-                {INTEGRATION_STATUS_LABELS[getIntegrationStatus(chain)]}
-              </Badge>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-);
-
 /**
  * /integrations — the honest status page, generated from the chain registry
  * (packages/utils/src/chains.ts), never from marketing copy. Storage systems
@@ -145,7 +86,7 @@ const IntegrationsPage = () => (
         optionally live on-chain. Storage is always an explicit opt-in; hash-only evidence is the
         default.
       </p>
-      <NetworkTable chains={STORAGE_SYSTEMS} />
+      <NetworkTable chains={STORAGE_SYSTEMS} label="Storage systems" />
     </section>
 
     <section className="mt-10">
@@ -155,7 +96,7 @@ const IntegrationsPage = () => (
         transaction fee. Each settlement receipt is an independent, system-native attestation —
         several of them make the evidence portable, not &ldquo;more proven.&rdquo;
       </p>
-      <NetworkTable chains={SETTLEMENT_SYSTEMS} />
+      <NetworkTable chains={SETTLEMENT_SYSTEMS} label="Settlement systems" />
     </section>
 
     <section className="mt-10">

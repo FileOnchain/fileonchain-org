@@ -1329,6 +1329,22 @@ export const CHAIN_STATUS_LABELS: Record<ChainStatus, string> = {
   deprecated: "Deprecated",
 };
 
+/**
+ * The integration ladder in ascending order — each rung implies the ones
+ * before it. For UIs that sort or plot progress; the labels below share
+ * the same vocabulary.
+ */
+export const INTEGRATION_STATUS_ORDER: readonly IntegrationStatus[] = [
+  "designed",
+  "implemented",
+  "tested-locally",
+  "testnet-deployed",
+  "mainnet-deployed",
+  "webapp-integrated",
+  "production-ready",
+  "audited",
+];
+
 /** Display labels for each integration-status rung. */
 export const INTEGRATION_STATUS_LABELS: Record<IntegrationStatus, string> = {
   designed: "Designed",
