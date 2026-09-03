@@ -113,20 +113,25 @@ export const compactNumber = (n: number) => {
 };
 
 /**
- * LiveLedgerTicker — small scrolling feed of mock "recent onchain anchor"
- * events that drifts under the hero kicker. Uses CSS marquee + a pause-
- * on-hover interaction. Purely decorative — drives the "alive" feel.
+ * LiveLedgerTicker — scrolling feed of recent on-chain anchor events.
+ * CSS marquee, pause-on-hover.
+ *
+ * With `events` (the explorer passes the indexer's real recent rows),
+ * every item is a genuine anchor linking to its CID page. Without
+ * `events` the marketing hero's decorative loop renders instead —
+ * obviously-elided placeholder rows cycling the chains that are truly
+ * open for uploads; it must never dress fabricated CIDs up as data,
+ * which is why the real feed is the only one that renders links.
  */
 
-interface LedgerEvent {
+export interface LedgerTickerEvent {
+  /** Full CID — items link to /explorer/<cid>; display is truncated. */
   cid: string;
   chain: string;
   time: string;
 }
 
-// Mock CIDs/ages cycling through the networks that are actually open for
-// uploads — the ticker must never show activity on a planned chain.
-const TICKER_SEEDS = [
+const DECOR_SEEDS = [
   { cid: "bafy…z3q1", time: "now" },
   { cid: "bafy…71fv", time: "2s" },
   { cid: "bafy…kk8d", time: "5s" },
@@ -141,31 +146,58 @@ const ACTIVE_NAMES = MAINNET_CHAINS.filter(isChainActive).map((c) =>
   c.name.toUpperCase(),
 );
 
-const LEDGER_FEED: LedgerEvent[] = TICKER_SEEDS.map((seed, i) => ({
-  ...seed,
-  chain: ACTIVE_NAMES[i % ACTIVE_NAMES.length],
-}));
+const truncateTickerCid = (cid: string): string =>
+  cid.length <= 12 ? cid : `${cid.slice(0, 6)}…${cid.slice(-4)}`;
 
-const LiveLedgerTicker = () => {
-  const loop = [...LEDGER_FEED, ...LEDGER_FEED];
+interface LiveLedgerTickerProps {
+  /** Real indexed anchor events, newest first. Omit for the hero's
+   *  decorative loop; an explicitly empty array renders nothing. */
+  events?: LedgerTickerEvent[];
+}
+
+const LiveLedgerTicker = ({ events }: LiveLedgerTickerProps) => {
+  if (events && events.length === 0) return null;
+  const real = events ?? null;
+  const feed =
+    real ??
+    DECOR_SEEDS.map((seed, i) => ({
+      ...seed,
+      chain: ACTIVE_NAMES[i % ACTIVE_NAMES.length],
+    }));
+  const loop = [...feed, ...feed];
   return (
     <div className="group relative w-full overflow-hidden rounded-md border border-border bg-surface/60">
       <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-linear-to-r from-surface to-transparent" />
       <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-linear-to-l from-surface to-transparent" />
       <div className="flex w-max animate-marquee items-center gap-6 py-2 will-change-transform group-hover:[animation-play-state:paused]">
-        {loop.map((e, i) => (
-          <div
-            key={`${e.cid}-${i}`}
-            className="flex shrink-0 items-center gap-2 font-mono text-[11px] text-muted"
-          >
-            <span className="flex h-1.5 w-1.5 animate-orbit-pulse rounded-full bg-success" />
-            <span className="text-foreground">{e.cid}</span>
-            <span>·</span>
-            <span>{e.chain}</span>
-            <span className="text-muted">·</span>
-            <span className="text-muted/70">{e.time}</span>
-          </div>
-        ))}
+        {loop.map((e, i) => {
+          const body = (
+            <>
+              <span className="flex h-1.5 w-1.5 animate-orbit-pulse rounded-full bg-success" />
+              <span className="text-foreground">{truncateTickerCid(e.cid)}</span>
+              <span>·</span>
+              <span>{e.chain}</span>
+              <span className="text-muted">·</span>
+              <span className="text-muted/70">{e.time}</span>
+            </>
+          );
+          return real ? (
+            <a
+              key={`${e.cid}-${i}`}
+              href={`/explorer/${e.cid}`}
+              className="flex shrink-0 items-center gap-2 font-mono text-[11px] text-muted transition-colors hover:text-foreground"
+            >
+              {body}
+            </a>
+          ) : (
+            <div
+              key={`${e.cid}-${i}`}
+              className="flex shrink-0 items-center gap-2 font-mono text-[11px] text-muted"
+            >
+              {body}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
