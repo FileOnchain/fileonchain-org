@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/Badge";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { StatusStepper, Step } from "@/components/ui/StatusStepper";
 import CIDPreviewPanel from "@/components/registry/CIDPreviewPanel";
-import { cn } from "@/lib/cn";
+import JsonCode from "@/components/ui/JsonCode";
 
 // Same unified connect modal as the nav — loaded with `ssr: false` so the
 // heavy chain SDK bundles never execute during SSR (see NavAccount).
@@ -187,9 +187,10 @@ const FileUploader = () => {
           SNIPPET_PREVIEW_CHARS,
         );
         return (
-          <pre className="bg-surface text-foreground p-4 rounded-md border border-border overflow-auto max-h-64 text-xs font-mono whitespace-pre-wrap break-all">
-            {jsonSnippet}…
-          </pre>
+          <JsonCode
+            className="bg-surface text-foreground p-4 rounded-md border border-border overflow-auto max-h-64 text-xs font-mono whitespace-pre-wrap break-all"
+            code={`${jsonSnippet}…`}
+          />
         );
       } catch {
         return <p className="text-danger text-sm">Invalid JSON file</p>;
@@ -392,9 +393,10 @@ const FileUploader = () => {
                       <p className="mb-2 text-xs uppercase tracking-wide text-muted">
                         Chunk detail
                       </p>
-                      <pre className={cn("bg-surface text-foreground p-3 rounded-md border border-border overflow-auto max-h-72 text-xs font-mono whitespace-pre-wrap break-all")}>
-                        {JSON.stringify(selectedCidData, null, 2)}
-                      </pre>
+                      <JsonCode
+                        className="bg-surface text-foreground p-3 rounded-md border border-border overflow-auto max-h-72 text-xs font-mono whitespace-pre-wrap break-all"
+                        code={JSON.stringify(selectedCidData, null, 2)}
+                      />
                       <div className="mt-3 flex justify-end">
                         <CopyButton
                           value={JSON.stringify(selectedCidData, null, 2)}

@@ -17,6 +17,7 @@ import { ChainBadge } from "@/components/ui/ChainBadge";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { Button } from "@/components/ui/Button";
 import { InlineLoader } from "@/components/ui/InlineLoader";
+import JsonCode from "@/components/ui/JsonCode";
 import { compactNumber } from "@/components/LiveLedgerTicker";
 import StatusPill from "@/components/explorer/StatusPill";
 import {
@@ -596,11 +597,10 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
                               : "Decoded anchor payload — from the FileOnChain indexer (the chain RPC could not serve the receipt just now)"}
                           </p>
                           {anchorState.anchors.map((payload, idx) => (
-                            <pre
+                            <JsonCode
                               key={idx}
                               className="max-h-64 overflow-auto rounded-lg border border-border bg-surface p-3 font-mono text-[11px] leading-relaxed text-foreground"
-                            >
-                              {JSON.stringify(
+                              code={JSON.stringify(
                                 typeof payload.d === "string"
                                   ? {
                                       ...payload,
@@ -610,7 +610,7 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
                                 null,
                                 2,
                               )}
-                            </pre>
+                            />
                           ))}
                         </div>
                       )}
