@@ -67,6 +67,14 @@
 
   /* Grid line color for hero — slightly warmer than border. */
   --grid-line: rgba(11, 13, 18, 0.05);
+
+  /* Code-token colors for the lightweight runtime JSON highlighter
+   * (JsonCode). Matched to Shiki's github-light so static and runtime
+   * blocks read as one system. */
+  --code-key: #0550ae;
+  --code-string: #0a3069;
+  --code-number: #116329;
+  --code-literal: #cf222e;
 }
 
 :root.dark {
@@ -97,6 +105,12 @@
   --mesh-d: #f59e0b;
 
   --grid-line: rgba(255, 255, 255, 0.04);
+
+  /* github-dark counterparts of the JsonCode token colors. */
+  --code-key: #79c0ff;
+  --code-string: #a5d6ff;
+  --code-number: #7ee787;
+  --code-literal: #ff7b72;
 }
 
 /* Both rules must live in the `base` layer: Tailwind v4 uses native cascade
@@ -113,6 +127,21 @@
 
   * {
     border-color: var(--border);
+  }
+
+  /* Shiki dual-theme output (CodeBlock): every token carries both palettes
+   * as `--shiki-light`/`--shiki-dark` CSS variables; the root `.dark` class
+   * decides which one paints. Backgrounds stay transparent so the block's
+   * `bg-surface` container shows through in both themes. */
+  .shiki,
+  .shiki span {
+    color: var(--shiki-light, var(--foreground));
+    background-color: transparent;
+  }
+
+  :root.dark .shiki,
+  :root.dark .shiki span {
+    color: var(--shiki-dark, var(--foreground));
   }
 }
 

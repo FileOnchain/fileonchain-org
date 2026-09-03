@@ -32,6 +32,13 @@ export default {
           foreground: "var(--muted-foreground)",
         },
         border: "var(--border)",
+        // Code-token colors for the runtime JSON highlighter (JsonCode).
+        code: {
+          key: "var(--code-key)",
+          string: "var(--code-string)",
+          number: "var(--code-number)",
+          literal: "var(--code-literal)",
+        },
         // Semantic states
         success: "var(--success)",
         warning: "var(--warning)",

@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/ButtonLink";
+import CodeBlock from "@/components/docs/CodeBlock";
 import { siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -174,11 +175,7 @@ const AgentEvidencePage = () => (
         from bytes, stamps the profile, collects artifact signatures, and returns a finalized
         envelope ready for receipts.
       </p>
-      <Card className="mt-4 overflow-x-auto p-0">
-        <pre className="p-5 font-mono text-xs leading-relaxed text-foreground">
-          <code>{CODE_SAMPLE}</code>
-        </pre>
-      </Card>
+      <CodeBlock className="mt-4" title="seal-run.ts" code={CODE_SAMPLE} />
     </section>
 
     {/* Manifests -------------------------------------------------------- */}
