@@ -164,13 +164,21 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
   const related = initialRelated;
   const chunksLoaded = true;
 
-  const anchoredHits = hits.filter((h) => h.status === "anchored");
   const pendingHits = hits.filter((h) => h.status === "pending");
   const chunksWithData = chunks.filter((c) => c.hasData).length;
   const embeddedBytes = chunks.reduce((n, c) => n + c.sizeBytes, 0);
+  const allChunksEmbedBytes = chunks.length > 0 && chunksWithData === chunks.length;
   const runtimeSet = new Set(hits.map((h) => h.family));
   const uniqueSubmitters = new Set(hits.map((h) => h.submitter));
   const submitter = hits[0]?.submitter;
+  // Distinct chains ≠ anchor rows: re-anchoring on the same chain adds
+  // a row, not a chain. Every count below derives from the hits alone.
+  const chainIdSet = new Set(hits.map((h) => h.chainId));
+  const chainShortNames = Array.from(new Set(hits.map((h) => h.chainShortName)));
+  const firstAnchoredAt =
+    hits.length > 0 ? Math.min(...hits.map((h) => h.timestamp)) : null;
+  const latestAnchoredAt =
+    hits.length > 0 ? Math.max(...hits.map((h) => h.timestamp)) : null;
 
   // Chunk-content view: which chunk row is expanded, and the fetched
   // payload per chunk CID. Content is fetched once per chunk on first
@@ -274,7 +282,7 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
     if (!allChunksCarryData) {
       const blob = new Blob(
         [
-          `CID: ${cid}\nAnchored on ${anchoredHits.length} chains.\n\nThis file's anchors attest to existence + integrity only — the chunk bytes were not embedded on-chain, so the explorer cannot reassemble the content. Re-upload with on-chain storage enabled to make the file rebuildable.`,
+          `CID: ${cid}\nAnchors: ${hits.length} across ${chainIdSet.size} chain(s).\n\nThis file's anchors attest to existence + integrity only — the chunk bytes were not embedded on-chain, so the explorer cannot reassemble the content. Re-upload with on-chain storage enabled to make the file rebuildable.`,
         ],
         { type: "text/plain" },
       );
@@ -388,8 +396,8 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
         <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border pt-5 sm:grid-cols-3">
           <DetailStat
             label="Chains"
-            value={compactNumber(hits.length)}
-            hint={`${runtimeSet.size} runtime${runtimeSet.size === 1 ? "" : "s"} · ${anchoredHits.length} anchored, ${pendingHits.length} pending`}
+            value={compactNumber(chainIdSet.size)}
+            hint={`${hits.length} anchor${hits.length === 1 ? "" : "s"} · ${runtimeSet.size} runtime${runtimeSet.size === 1 ? "" : "s"}${pendingHits.length > 0 ? ` · ${pendingHits.length} pending` : ""}`}
           />
           <DetailStat
             label="Submitters"
@@ -402,9 +410,23 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
             mono
           />
           <DetailStat
-            label="Chunks"
-            value={compactNumber(chunks.length)}
-            hint="From on-chain chunk events"
+            label="Content bytes"
+            value={
+              chunks.length === 0
+                ? "anchor-only"
+                : allChunksEmbedBytes
+                  ? formatBytes(embeddedBytes)
+                  : `${chunksWithData} / ${chunks.length}`
+            }
+            hint={
+              chunks.length === 0
+                ? "No chunk records indexed"
+                : allChunksEmbedBytes
+                  ? `On-chain across ${chunks.length} chunk${chunks.length === 1 ? "" : "s"} · rebuildable`
+                  : chunksWithData === 0
+                    ? `${chunks.length} chunk${chunks.length === 1 ? "" : "s"}, bytes not embedded`
+                    : "Chunks carrying on-chain bytes"
+            }
           />
         </div>
       </motion.section>
@@ -835,46 +857,65 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
         </motion.section>
       )}
 
-      {/* Related meta footer ---------------------------------- */}
-      <section className="mt-12 grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-border bg-surface p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-            Content hash
-          </p>
-          <p className="mt-1 break-all font-mono text-xs text-foreground">
-            {truncateCID(cid, 14, 12)}
-          </p>
-          <p className="mt-2 text-[11px] text-muted">
-            SHA-256 of the original byte payload, recorded on every supported
-            registry contract.
-          </p>
-        </div>
-        <div className="rounded-2xl border border-border bg-surface p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-            Reconstructable from
-          </p>
-          <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-foreground">
-            {anchoredHits.length}
-            <span className="ml-1 text-xs font-normal text-muted">
-              / {hits.length} chains
-            </span>
-          </p>
-          <p className="mt-2 text-[11px] text-muted">
-            One chain is enough to retrieve; more chains mean higher availability.
-          </p>
-        </div>
-        <div className="rounded-2xl border border-border bg-surface p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-            Verified integrity
-          </p>
-          <p className="mt-1 inline-flex items-center gap-1.5 font-mono text-sm font-semibold text-success">
-            <FiCheck size={14} /> Pass
-          </p>
-          <p className="mt-2 text-[11px] text-muted">
-            Each chain&rsquo;s anchor tx carries the CID hash and SHA-256
-            content hash on chain. Re-deriving either reproduces the
-            registry record.
-          </p>
+      {/* Provenance footer ------------------------------------
+          One honest panel instead of three cards. Everything here is
+          derived from the indexed hits — no synthesized counts, no
+          unconditional "Pass" badge. The claims follow the language
+          policy: anchors attest existence, integrity of the
+          identifier, submitters, and timing — never truth. */}
+      <section className="mt-12 rounded-2xl border border-border bg-surface p-5 md:p-7">
+        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between md:gap-10">
+          <div className="max-w-lg">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+              What these anchors attest
+            </p>
+            <p className="mt-2.5 text-sm leading-relaxed text-foreground">
+              That this content identifier existed
+              {firstAnchoredAt !== null && (
+                <> by <span className="font-mono text-[13px]">{formatTimestamp(firstAnchoredAt)}</span></>
+              )}
+              , that its bytes hash back to it, and which address
+              {uniqueSubmitters.size === 1 ? "" : "es"} committed it — on{" "}
+              {chainIdSet.size} chain{chainIdSet.size === 1 ? "" : "s"}, each
+              independently.
+            </p>
+            <p className="mt-2 text-xs leading-relaxed text-muted">
+              Anchors don&rsquo;t make the content true, lawful, or authored by
+              the submitter — they are the submitter&rsquo;s signed assertion,
+              locally verifiable by anyone.{" "}
+              {allChunksEmbedBytes
+                ? "The bytes themselves ride the chunk anchors, so this file is rebuildable from chain data alone."
+                : "The bytes are not embedded on-chain; retrieval depends on the underlying storage system staying available."}
+            </p>
+          </div>
+          <dl className="grid shrink-0 grid-cols-2 gap-x-8 gap-y-4 md:grid-cols-1 md:gap-y-4">
+            <div>
+              <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+                First anchored
+              </dt>
+              <dd className="mt-0.5 font-mono text-xs tabular-nums text-foreground">
+                {firstAnchoredAt !== null ? formatTimestamp(firstAnchoredAt) : "—"}
+              </dd>
+            </div>
+            {latestAnchoredAt !== null && latestAnchoredAt !== firstAnchoredAt && (
+              <div>
+                <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+                  Latest anchor
+                </dt>
+                <dd className="mt-0.5 font-mono text-xs tabular-nums text-foreground">
+                  {formatTimestamp(latestAnchoredAt)}
+                </dd>
+              </div>
+            )}
+            <div>
+              <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+                Anchored on
+              </dt>
+              <dd className="mt-0.5 font-mono text-xs text-foreground">
+                {chainShortNames.length > 0 ? chainShortNames.join(" · ") : "—"}
+              </dd>
+            </div>
+          </dl>
         </div>
       </section>
     </PageShell>
