@@ -284,7 +284,7 @@ const FileUploader = () => {
             {/* 02 · NETWORK --------------------------------------------- */}
             <section>
               <StepHeader n="02" label="Where it anchors" />
-              <label className="block max-w-md" htmlFor="anchor-chain">
+              <label className="block" htmlFor="anchor-chain">
                 <span className="sr-only">Anchor network</span>
                 <ChainSelect
                   id="anchor-chain"
