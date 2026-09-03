@@ -324,7 +324,7 @@ const FileUploader = () => {
               {chainNotActive && (
                 <p role="alert" className="mb-3 text-sm text-warning">
                   {activeChain.name} is {activeChain.status} — anchoring isn&apos;t open
-                  on it yet. Pick an active chain from the network switcher.
+                  on it yet. Pick an active network from the networks grid below.
                 </p>
               )}
               {pendingResume && anchorStatus !== "done" && !anchorBusy && (

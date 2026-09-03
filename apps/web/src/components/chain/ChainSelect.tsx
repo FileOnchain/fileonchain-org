@@ -24,8 +24,8 @@ export interface ChainSelectProps {
   onValueChange: (chainId: ChainId) => void;
   /**
    * `field` — full-width form control (modals, settings forms);
-   * `header` / `header-compact` — the Nav switcher's h-9 trigger, with or
-   * without the chain name next to the badge.
+   * `header` / `header-compact` — a compact h-9 trigger (formerly the Nav
+   * switcher), with or without the chain name next to the badge.
    */
   variant?: "field" | "header" | "header-compact";
   disabled?: boolean;
@@ -47,9 +47,9 @@ const testnetBadge = (
 
 /**
  * ChainSelect — searchable network picker over a `ChainConfig` list, grouped
- * by runtime in registry order. The single dropdown behind the header
- * ChainSwitcher and every chain-picking form field (RPC endpoints, deposits,
- * donations). Chain data comes from the callers — never hardcode chains here.
+ * by runtime in registry order. The single dropdown behind every
+ * chain-picking form field (RPC endpoints, deposits, donations). Chain data
+ * comes from the callers — never hardcode chains here.
  */
 export const ChainSelect = ({
   chains,

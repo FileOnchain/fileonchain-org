@@ -197,7 +197,7 @@ export const PreferencesForm = ({ initialPreferences }: PreferencesFormProps) =>
         <div className="mt-2 divide-y divide-border">
           <ToggleRow
             label="Show testnets"
-            description="List test networks (Sepolia, Taurus, Solana Devnet, …) in the chain switcher, upload, deposit, and donation flows."
+            description="List test networks (Sepolia, Taurus, Solana Devnet, …) in the upload, deposit, and donation flows."
             checked={prefs.showTestnets}
             onChange={(checked) => save({ showTestnets: checked })}
           />

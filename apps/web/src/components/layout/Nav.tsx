@@ -8,7 +8,6 @@ import { FiMenu, FiX } from "react-icons/fi";
 import { motion, LayoutGroup } from "motion/react";
 import { cn } from "@/lib/cn";
 import ThemeSwitch from "@/components/ThemeSwitch";
-import ChainSwitcher from "@/components/chain/ChainSwitcher";
 import NavAccount from "@/components/layout/NavAccount";
 
 interface NavLink {
@@ -17,6 +16,7 @@ interface NavLink {
 }
 
 const PRIMARY_LINKS: NavLink[] = [
+  { href: "/#dropzone", label: "Upload file" },
   { href: "/agent-evidence", label: "Agent Evidence" },
   { href: "/protocol", label: "Protocol" },
   { href: "/verify", label: "Verify" },
@@ -27,9 +27,8 @@ const PRIMARY_LINKS: NavLink[] = [
 ];
 
 /**
- * Nav — sticky top navigation. Renders primary links, the chain switcher,
- * the identity button (session + wallet), and the theme toggle. Collapses
- * to a hamburger menu
+ * Nav — sticky top navigation. Renders primary links, the identity button
+ * (session + wallet), and the theme toggle. Collapses to a hamburger menu
  * below the `md` breakpoint. Uses a LayoutGroup with a shared `layoutId`
  * on the active-link pill so the highlight slides between routes instead
  * of appearing/disappearing abruptly.
@@ -37,8 +36,13 @@ const PRIMARY_LINKS: NavLink[] = [
 const Nav = () => {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = React.useState(false);
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+  // Hash links (e.g. /#dropzone) count as active on their base route.
+  const isActive = (href: string) => {
+    const route = href.split("#")[0] || "/";
+    return route === "/"
+      ? pathname === "/"
+      : pathname === route || pathname.startsWith(`${route}/`);
+  };
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-surface/70 backdrop-blur-md supports-[backdrop-filter]:bg-surface/60">
@@ -94,9 +98,6 @@ const Nav = () => {
         </LayoutGroup>
 
         <div className="ml-auto flex items-center gap-2">
-          <div className="hidden md:block">
-            <ChainSwitcher />
-          </div>
           <NavAccount />
           <ThemeSwitch />
 
@@ -115,11 +116,6 @@ const Nav = () => {
       {mobileOpen && (
         <nav aria-label="Primary mobile" className="md:hidden border-t border-border bg-surface">
           <ul className="mx-auto flex max-w-7xl flex-col gap-1 p-2">
-            <li>
-              <div className="px-3 py-2">
-                <ChainSwitcher />
-              </div>
-            </li>
             {PRIMARY_LINKS.map((link) => {
               const active = isActive(link.href);
               return (
