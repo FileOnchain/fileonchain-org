@@ -214,7 +214,11 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
   type AnchorFetchState =
     | { status: "loading" }
     | { status: "error"; message: string }
-    | { status: "ready"; anchors: Array<Record<string, unknown>> };
+    | {
+        status: "ready";
+        anchors: Array<Record<string, unknown>>;
+        source: "receipt" | "indexer";
+      };
   const [expandedAnchor, setExpandedAnchor] = React.useState<string | null>(null);
   const [anchorStates, setAnchorStates] = React.useState<Record<string, AnchorFetchState>>({});
 
@@ -232,10 +236,17 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
           const body = (await res.json().catch(() => null)) as { error?: string } | null;
           throw new Error(body?.error ?? `request failed (${res.status})`);
         }
-        const tx = (await res.json()) as { anchors?: Array<Record<string, unknown>> };
+        const tx = (await res.json()) as {
+          anchors?: Array<Record<string, unknown>>;
+          source?: "receipt" | "indexer";
+        };
         setAnchorStates((prev) => ({
           ...prev,
-          [key]: { status: "ready", anchors: tx.anchors ?? [] },
+          [key]: {
+            status: "ready",
+            anchors: tx.anchors ?? [],
+            source: tx.source === "indexer" ? "indexer" : "receipt",
+          },
         }));
       })
       .catch((error: unknown) =>
@@ -557,8 +568,9 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
                       ) : (
                         <div className="space-y-2">
                           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-                            Decoded anchor payload — read back from the tx
-                            receipt, not the database
+                            {anchorState.source === "receipt"
+                              ? "Decoded anchor payload — read back from the tx receipt, not the database"
+                              : "Decoded anchor payload — from the FileOnChain indexer (the chain RPC could not serve the receipt just now)"}
                           </p>
                           {anchorState.anchors.map((payload, idx) => (
                             <pre

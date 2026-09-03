@@ -7,6 +7,10 @@ import {
   type ChainId,
 } from "@fileonchain/sdk";
 import { RPC_TRANSPORT_OPTS } from "@/lib/scan-window";
+import type {
+  ParsedInstruction,
+  PartiallyDecodedInstruction,
+} from "@solana/web3.js";
 
 /**
  * Cross-family tx→payload RPC fetch layer for explorer detail pages.
@@ -127,44 +131,42 @@ const fetchSolanaTx = async (
 ): Promise<FetchedTx | null> => {
   const chain = getChain(chainId);
   if (!chain || chain.family !== "solana") return null;
-  const { Connection, PublicKey } = await import("@solana/web3.js");
+  const { Connection } = await import("@solana/web3.js");
 
-  // SPL Memo program — the canonical memo ix we look for in every tx.
-  const MEMO_PROGRAM = new PublicKey(
-    "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr",
-  );
   const connection = new Connection(chain.rpcUrl, "confirmed");
+  // The PARSED form, for two reasons: raw getTransaction THROWS on any
+  // versioned (v0) transaction unless maxSupportedTransactionVersion is
+  // set (the old swallow-all catch rendered that as a bogus
+  // "tx-not-found"), and raw compiled-instruction data is base58 — the
+  // old path decoded it as base64, so memos never parsed. Parsed
+  // transactions hand SPL Memo instructions back as their decoded text
+  // for legacy and v0 alike.
   const tx = await connection
-    .getTransaction(txHash, { commitment: "confirmed" })
+    .getParsedTransaction(txHash, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    })
     .catch(() => null);
   if (!tx) return null;
 
   const memos: string[] = [];
-  // The message may come back as legacy or v0; both expose `instructions`
-  // / `innerInstructions`. Account keys resolve the SPL Memo program.
-  const keys = tx.transaction.message.getAccountKeys
-    ? tx.transaction.message.getAccountKeys().keySegments().flat()
-    : tx.transaction.message.accountKeys;
-  for (const ix of tx.transaction.message.instructions) {
-    const programId = keys[ix.programIdIndex];
-    if (!programId || !programId.equals(MEMO_PROGRAM)) continue;
-    // Memo data is base64 on Solana — decode to utf8.
-    const data = Buffer.from(ix.data, "base64").toString("utf8");
-    if (data) memos.push(data);
-  }
-  for (const inner of tx.meta?.innerInstructions ?? []) {
-    for (const ix of inner.instructions) {
-      const programId = keys[ix.programIdIndex];
-      if (!programId || !programId.equals(MEMO_PROGRAM)) continue;
-      const data = Buffer.from(ix.data, "base64").toString("utf8");
-      if (data) memos.push(data);
+  const collect = (
+    ixs: ReadonlyArray<ParsedInstruction | PartiallyDecodedInstruction>,
+  ): void => {
+    for (const ix of ixs) {
+      if ("parsed" in ix && ix.program === "spl-memo" && typeof ix.parsed === "string") {
+        memos.push(ix.parsed);
+      }
     }
+  };
+  collect(tx.transaction.message.instructions);
+  for (const inner of tx.meta?.innerInstructions ?? []) {
+    collect(inner.instructions);
   }
 
-  const submitter = (tx.transaction.message.getAccountKeys
-    ? tx.transaction.message.getAccountKeys().keySegments().flat()
-    : tx.transaction.message.accountKeys
-  )[0]?.toBase58() ?? null;
+  const accounts = tx.transaction.message.accountKeys;
+  const submitter =
+    (accounts.find((a) => a.signer) ?? accounts[0])?.pubkey.toBase58() ?? null;
 
   return {
     chainId,

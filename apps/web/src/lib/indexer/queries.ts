@@ -548,3 +548,54 @@ export const getChunkPayload = async (
     return best;
   });
 };
+
+export interface IndexedTxPayloads {
+  chainId: ChainId;
+  txHash: string;
+  blockNumber: number;
+  /** Seconds since the epoch (latest row's block timestamp). */
+  timestamp: number;
+  submitter: string;
+  /** One decoded anchor payload per indexed event log, log order. */
+  anchors: object[];
+}
+
+/** Every anchor payload the indexer holds for one transaction — the
+ *  fallback source for the explorer's anchor-content view when the
+ *  chain RPC cannot serve the receipt (flaky public pools, or a family
+ *  whose tx fetcher isn't wired). The payloads were decoded from the
+ *  on-chain event at index time; serving them is honest as long as the
+ *  response says the indexer — not the live receipt — is the source. */
+export const getIndexedTxPayloads = async (
+  chainId: ChainId,
+  txHash: string,
+): Promise<IndexedTxPayloads | null> => {
+  return safeRead("getIndexedTxPayloads", null, async () => {
+    const rows = await db
+      .select({
+        blockNumber: indexedAnchorEvents.blockNumber,
+        blockTimestamp: indexedAnchorEvents.blockTimestamp,
+        submitter: indexedAnchorEvents.submitter,
+        logIndex: indexedAnchorEvents.logIndex,
+        payload: indexedAnchorEvents.payload,
+      })
+      .from(indexedAnchorEvents)
+      .where(
+        and(
+          eq(indexedAnchorEvents.chainId, chainId),
+          eq(indexedAnchorEvents.txHash, txHash),
+        ),
+      )
+      .orderBy(indexedAnchorEvents.logIndex);
+    const first = rows[0];
+    if (!first) return null;
+    return {
+      chainId,
+      txHash,
+      blockNumber: first.blockNumber,
+      timestamp: Math.floor(first.blockTimestamp.getTime() / 1000),
+      submitter: first.submitter,
+      anchors: rows.map((r) => r.payload as object),
+    };
+  });
+};
