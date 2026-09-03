@@ -371,7 +371,7 @@ const DocsPage = () => (
           </Card>
         </div>
 
-        <CodeBlock title="terminal" code={INSTALL_SNIPPET} />
+        <CodeBlock title="terminal" language="sh" code={INSTALL_SNIPPET} />
       </section>
 
       {/* ------------------------------------------------------------ */}
@@ -626,11 +626,11 @@ const DocsPage = () => (
           <code className="font-mono text-xs">get_credits</code>) spend account
           credits through the hosted API — the server never holds private keys.
         </p>
-        <CodeBlock title="mcp-config.json" code={MCP_SNIPPET} />
+        <CodeBlock title="mcp-config.json" language="json" code={MCP_SNIPPET} />
         <p className="max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
           Or with the Claude Code CLI:
         </p>
-        <CodeBlock title="terminal" code={MCP_CLAUDE_SNIPPET} />
+        <CodeBlock title="terminal" language="sh" code={MCP_CLAUDE_SNIPPET} />
         <p className="max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
           <code className="font-mono text-xs">FILEONCHAIN_API_KEY</code> is required
           only for the anchoring tools;{" "}
