@@ -4,8 +4,10 @@ import { notFound } from "next/navigation";
 import {
   lookupFile,
   getChunksForFile,
+  getChunkPayload,
   getFilesByUploader,
 } from "@/lib/indexer/queries";
+import type { RelatedEntry } from "./ExplorerDetailClient";
 import { truncateCID } from "@/lib/cid/format";
 import { siteConfig } from "@/lib/site";
 import ExplorerDetailClient from "./ExplorerDetailClient";
@@ -58,14 +60,34 @@ export default async function ExplorerCIDPage({ params }: PageProps) {
   // Pull the submitter off the first hit so the related-files query can
   // run in parallel with the chunks query — both depend on data we
   // already have server-side. The client component takes the resolved
-  // arrays as props; no client-side DB shim needed.
+  // arrays as props; no client-side DB shim needed. The chunk-payload
+  // probe tells us whether the visited CID is itself a chunk of some
+  // file — the feed lists chunk anchors under their own CID, so this is
+  // a common landing spot and the parent file is its strongest relation.
   const submitter = result.hits[0]?.submitter;
-  const [chunks, related] = await Promise.all([
+  const [chunks, sameSubmitter, ownPayload] = await Promise.all([
     getChunksForFile(result.cid),
     submitter
-      ? getFilesByUploader(submitter, result.cid, 4)
+      ? getFilesByUploader(submitter, result.cid, 5)
       : Promise.resolve([]),
+    getChunkPayload(result.cid),
   ]);
+
+  const related: RelatedEntry[] = [];
+  const parentCid =
+    ownPayload && ownPayload.fileCid !== result.cid ? ownPayload.fileCid : null;
+  if (parentCid) {
+    const parent = await lookupFile(parentCid);
+    related.push({
+      cid: parentCid,
+      relation: "parent-file",
+      hits: parent?.hits ?? [],
+    });
+  }
+  for (const r of sameSubmitter) {
+    if (r.cid === parentCid) continue;
+    related.push({ cid: r.cid, relation: "same-submitter", hits: r.hits });
+  }
 
   // Breadcrumb structured data — lets Google render "Home › Explorer › CID"
   // instead of the raw URL in search results.

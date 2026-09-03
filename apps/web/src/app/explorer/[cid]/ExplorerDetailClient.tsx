@@ -29,12 +29,26 @@ import { base64ToBytes, buildTxUrl, getChain } from "@fileonchain/sdk";
 import type { SearchHit } from "@/lib/mock/cid-indexer";
 import type { ChunkPayloadRow, ChunkRow } from "@/lib/indexer/queries";
 
+/** How a related CID connects to the one on this page. */
+export type RelationKind = "parent-file" | "same-submitter";
+
+export interface RelatedEntry {
+  cid: string;
+  relation: RelationKind;
+  hits: SearchHit[];
+}
+
 interface DetailProps {
   cid: string;
   hits: SearchHit[];
   initialChunks: ChunkRow[];
-  initialRelated: Array<{ cid: string; hits: SearchHit[] }>;
+  initialRelated: RelatedEntry[];
 }
+
+const RELATION_LABEL: Record<RelationKind, string> = {
+  "parent-file": "parent file",
+  "same-submitter": "same submitter",
+};
 
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 
@@ -152,6 +166,8 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
 
   const anchoredHits = hits.filter((h) => h.status === "anchored");
   const pendingHits = hits.filter((h) => h.status === "pending");
+  const chunksWithData = chunks.filter((c) => c.hasData).length;
+  const embeddedBytes = chunks.reduce((n, c) => n + c.sizeBytes, 0);
   const runtimeSet = new Set(hits.map((h) => h.family));
   const uniqueSubmitters = new Set(hits.map((h) => h.submitter));
   const submitter = hits[0]?.submitter;
@@ -424,11 +440,12 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
           transition={{ duration: 0.3, ease: EASE_OUT }}
           className="mt-6 overflow-hidden rounded-2xl border border-border bg-surface"
         >
-          <div className="hidden border-b border-border bg-surface-elevated px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted md:grid md:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_90px] md:gap-4">
+          <div className="hidden border-b border-border bg-surface-elevated px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted md:grid md:grid-cols-[minmax(0,1.7fr)_minmax(0,1.5fr)_minmax(0,0.8fr)_minmax(0,1.2fr)_minmax(0,1.1fr)_90px] md:gap-4">
             <span>Chain</span>
             <span>Tx hash</span>
             <span>Block</span>
             <span>Age</span>
+            <span>Submitter</span>
             <span className="text-right">Link</span>
           </div>
           <ul role="list" className="divide-y divide-border">
@@ -456,7 +473,7 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
                         toggleAnchor(hit);
                       }
                     }}
-                    className="group grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4 py-3 transition-colors hover:bg-surface-elevated md:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_110px] md:gap-4"
+                    className="group grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4 py-3 transition-colors hover:bg-surface-elevated md:grid-cols-[minmax(0,1.7fr)_minmax(0,1.5fr)_minmax(0,0.8fr)_minmax(0,1.2fr)_minmax(0,1.1fr)_90px] md:gap-4"
                   >
                     <div className="flex min-w-0 items-center gap-2">
                       {isExpanded ? (
@@ -493,10 +510,23 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
                         {formatTimestamp(hit.timestamp)}
                       </span>
                     </div>
+                    <div
+                      className="hidden min-w-0 md:block"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Link
+                        href={`/profile/${hit.submitter}`}
+                        className="truncate font-mono text-xs text-foreground hover:text-primary"
+                        title={hit.submitter}
+                      >
+                        {truncateAddress(hit.submitter, 5)}
+                      </Link>
+                    </div>
                     <div className="col-span-2 mt-2 flex items-center justify-between gap-2 md:col-span-1 md:mt-0 md:justify-end">
                       <span className="font-mono text-[10px] text-muted md:hidden">
                         block {formatBlockNumber(hit.blockNumber)} ·{" "}
-                        {formatRelativeTime(hit.timestamp)}
+                        {formatRelativeTime(hit.timestamp)} ·{" "}
+                        {truncateAddress(hit.submitter, 4)}
                       </span>
                       <Link
                         href={realUrl}
@@ -584,6 +614,24 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
             </div>
           ) : (
             <div className="overflow-hidden rounded-2xl border border-border bg-surface">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-border px-4 py-2.5 text-xs text-muted">
+                <span className="font-semibold text-foreground">
+                  {chunks.length} chunk{chunks.length === 1 ? "" : "s"}
+                </span>
+                <span aria-hidden>·</span>
+                {chunksWithData === chunks.length ? (
+                  <span className="text-success">
+                    all bytes on-chain ({formatBytes(embeddedBytes)}) — rebuildable
+                  </span>
+                ) : chunksWithData === 0 ? (
+                  <span>anchor-only — existence + integrity attested, bytes not embedded</span>
+                ) : (
+                  <span>
+                    {chunksWithData} of {chunks.length} carry on-chain bytes
+                    ({formatBytes(embeddedBytes)}) — rebuild needs all of them
+                  </span>
+                )}
+              </div>
               <div className="hidden border-b border-border bg-surface-elevated px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted md:grid md:grid-cols-[60px_minmax(0,1fr)_90px_90px_60px] md:gap-3">
                 <span>#</span>
                 <span>Chunk CID</span>
@@ -623,8 +671,17 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
                           )}
                           {chunk.index + 1}
                         </span>
-                        <span className="truncate text-foreground" title={chunk.cid}>
-                          {chunk.cid}
+                        <span
+                          className="min-w-0 truncate"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Link
+                            href={`/explorer/${chunk.cid}`}
+                            className="text-foreground hover:text-primary"
+                            title={chunk.cid}
+                          >
+                            {chunk.cid}
+                          </Link>
                         </span>
                         <span className="hidden text-right tabular-nums text-muted md:block">
                           {chunk.hasData ? formatBytes(chunk.sizeBytes) : "—"}
@@ -672,31 +729,95 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
         >
           {related.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border bg-surface p-8 text-center text-sm text-muted">
-              No other public CIDs from this submitter yet.
+              Nothing related yet. Other CIDs from the same submitter — and,
+              for a chunk, its parent file — appear here as they are indexed.
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {related.map((r) => (
-                <Link
-                  key={r.cid}
-                  href={`/explorer/${r.cid}`}
-                  className="group flex items-start gap-3 rounded-2xl border border-border bg-surface p-4 transition-colors hover:border-primary/40 hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-mono font-semibold text-foreground">
-                      {truncateCID(r.cid, 10, 8)}
-                    </p>
-                    <p className="mt-1 text-[11px] text-muted">
-                      Anchored on {r.hits.length} chain
-                      {r.hits.length === 1 ? "" : "s"}
-                    </p>
-                  </div>
-                  <FiArrowRight
-                    size={14}
-                    className="self-center text-muted transition-transform duration-base group-hover:translate-x-0.5 group-hover:text-primary"
-                  />
-                </Link>
-              ))}
+            <div className="overflow-hidden rounded-2xl border border-border bg-surface">
+              <div className="hidden border-b border-border bg-surface-elevated px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted md:grid md:grid-cols-[minmax(0,2fr)_130px_minmax(0,1fr)_minmax(0,1.3fr)_40px] md:gap-4">
+                <span>CID</span>
+                <span>Relation</span>
+                <span>Chains</span>
+                <span>Last anchored</span>
+                <span aria-hidden />
+              </div>
+              <ul role="list" className="divide-y divide-border">
+                {related.map((r, i) => {
+                  const lastAnchored =
+                    r.hits.length > 0
+                      ? Math.max(...r.hits.map((h) => h.timestamp))
+                      : null;
+                  const chainNames = Array.from(
+                    new Set(r.hits.map((h) => h.chainShortName)),
+                  );
+                  return (
+                    <motion.li
+                      key={r.cid}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2, delay: i * 0.02, ease: EASE_OUT }}
+                    >
+                      <Link
+                        href={`/explorer/${r.cid}`}
+                        className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4 py-3 transition-colors hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary md:grid-cols-[minmax(0,2fr)_130px_minmax(0,1fr)_minmax(0,1.3fr)_40px] md:gap-4"
+                      >
+                        <span
+                          className="truncate font-mono text-xs text-foreground"
+                          title={r.cid}
+                        >
+                          {truncateCID(r.cid, 12, 10)}
+                        </span>
+                        <span className="justify-self-end md:justify-self-start">
+                          {r.relation === "parent-file" ? (
+                            <span className="rounded-full border border-primary/40 px-2 py-0.5 text-[10px] font-medium text-primary">
+                              {RELATION_LABEL[r.relation]}
+                            </span>
+                          ) : (
+                            <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted">
+                              {RELATION_LABEL[r.relation]}
+                            </span>
+                          )}
+                        </span>
+                        <span className="hidden min-w-0 truncate font-mono text-xs text-foreground md:block">
+                          {r.hits.length === 0 ? (
+                            <span className="text-muted">not indexed yet</span>
+                          ) : (
+                            <>
+                              {chainNames.slice(0, 2).join(" · ")}
+                              {chainNames.length > 2 && (
+                                <span className="text-muted"> +{chainNames.length - 2}</span>
+                              )}
+                            </>
+                          )}
+                        </span>
+                        <span className="hidden font-mono text-xs tabular-nums text-foreground md:block">
+                          {lastAnchored === null ? (
+                            <span className="text-muted">—</span>
+                          ) : (
+                            <>
+                              {formatRelativeTime(lastAnchored)}
+                              <span className="ml-2 text-[10px] text-muted">
+                                {formatTimestamp(lastAnchored)}
+                              </span>
+                            </>
+                          )}
+                        </span>
+                        <span className="col-span-2 mt-1 flex items-center justify-between md:col-span-1 md:mt-0 md:justify-end">
+                          <span className="font-mono text-[10px] text-muted md:hidden">
+                            {r.hits.length} anchor{r.hits.length === 1 ? "" : "s"}
+                            {lastAnchored !== null &&
+                              ` · ${formatRelativeTime(lastAnchored)}`}
+                          </span>
+                          <FiArrowRight
+                            size={13}
+                            className="text-muted transition-transform duration-base group-hover:translate-x-0.5 group-hover:text-primary"
+                          />
+                        </span>
+                      </Link>
+                    </motion.li>
+                  );
+                })}
+              </ul>
             </div>
           )}
         </motion.section>
