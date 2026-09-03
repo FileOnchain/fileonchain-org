@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import Link from "next/link";
-import FileUploader from "@/components/FileUploaderClient";
 import Hero from "@/components/Hero";
+import UploadFileSection from "@/components/upload/UploadFileSection";
 import BackgroundMesh from "@/components/BackgroundMesh";
 import ChainTicker from "@/components/ChainTicker";
 import HowItWorks from "@/components/HowItWorks";
@@ -39,21 +39,7 @@ export default function Home() {
 
         {/* 2 · UPLOADER --------------------------------------------- */}
         <div id="dropzone" className="scroll-mt-24">
-          <header className="mx-auto mb-6 w-full max-w-3xl space-y-2">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
-              Try it
-            </p>
-            <h2 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-              Put a file onchain
-            </h2>
-            <p className="text-sm text-muted">
-              Drop any file — a document, a photo, a dataset, an agent output.
-              It&apos;s hashed in your browser and sealed into an evidence
-              package; storing the bytes onchain is an optional choice — by
-              default nothing but the hash leaves your machine.
-            </p>
-          </header>
-          <FileUploader />
+          <UploadFileSection />
         </div>
 
         {/* 3 · HOW IT WORKS ----------------------------------------- */}
