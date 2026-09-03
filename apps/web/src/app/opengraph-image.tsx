@@ -60,7 +60,7 @@ export default function OpengraphImage() {
               maxWidth: "1000px",
             }}
           >
-            Tamper-evident audit trails for AI agents.
+            Put any file onchain. Prove any agent run.
           </div>
           <div style={{ fontSize: "32px", color: "#9aa3b2", maxWidth: "820px" }}>
             Portable evidence packages. Open protocol. Independently

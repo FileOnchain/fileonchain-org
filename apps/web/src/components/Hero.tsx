@@ -65,7 +65,7 @@ const Hero = ({
         {/* Headline — word-by-word reveal, no italic, no gradient */}
         <WordReveal
           as="h1"
-          text={`Tamper-evident audit trails\nfor AI agents.`}
+          text={`Put any file onchain.\nProve any agent run.`}
           className="text-balance whitespace-pre-line text-[44px] font-bold leading-[0.98] tracking-tight md:text-6xl lg:text-[72px] text-foreground"
         />
 
@@ -76,10 +76,17 @@ const Hero = ({
           transition={{ duration: 0.5, delay: 0.9, ease: EASE_OUT }}
           className="max-w-xl text-pretty text-base leading-relaxed text-muted md:text-lg"
         >
-          Seal agent runs, outputs, approvals, and tool activity into{" "}
-          <span className="font-semibold text-foreground">portable evidence packages</span>{" "}
-          that anyone can independently verify — with an open protocol and a
-          local verifier, no FileOnChain account required.
+          Drop a document, a dataset, a release — or a full{" "}
+          <Link
+            href="/agent-evidence"
+            className="font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline"
+          >
+            AI-agent run
+          </Link>{" "}
+          — and seal it into a{" "}
+          <span className="font-semibold text-foreground">portable evidence package</span>{" "}
+          anyone can independently verify. Store the bytes onchain if you want
+          to; by default only the hash leaves your machine.
         </motion.p>
 
         {/* CTAs — magnetic primary + ghost outline */}
@@ -90,7 +97,7 @@ const Hero = ({
           className="mt-1 flex flex-wrap items-center gap-3"
         >
           <MagneticButton href="#dropzone" rightIcon={<FiArrowRight size={16} />}>
-            Create evidence
+            Upload a file
           </MagneticButton>
           <Link
             href="/verify"

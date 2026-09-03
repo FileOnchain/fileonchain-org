@@ -44,13 +44,13 @@ export default function Home() {
               Try it
             </p>
             <h2 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-              Create evidence for an artifact
+              Put a file onchain
             </h2>
             <p className="text-sm text-muted">
-              Drop an agent output, a log, or any file. It&apos;s hashed in your
-              browser and sealed into an evidence package — storage is an
-              optional, advanced choice; by default nothing but the hash
-              leaves your machine.
+              Drop any file — a document, a photo, a dataset, an agent output.
+              It&apos;s hashed in your browser and sealed into an evidence
+              package; storing the bytes onchain is an optional choice — by
+              default nothing but the hash leaves your machine.
             </p>
           </header>
           <FileUploader />
