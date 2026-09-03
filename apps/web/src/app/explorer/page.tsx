@@ -1,5 +1,6 @@
 import * as React from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { FiArrowRight, FiSearch } from "react-icons/fi";
 import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -47,6 +48,18 @@ interface PageProps {
 const isFamily = (v: string | undefined): v is ChainFamily =>
   !!v && ACTIVE_FAMILIES.includes(v as ChainFamily);
 
+/**
+ * Server action for the search form. A plain string `action` can't
+ * target the dynamic `/explorer/[cid]` route (the literal "[cid]" path
+ * would 404), so the redirect happens server-side — which also keeps
+ * the form working without client JS.
+ */
+async function searchCid(formData: FormData) {
+  "use server";
+  const cid = String(formData.get("cid") ?? "").trim();
+  redirect(cid ? `/explorer/${encodeURIComponent(cid)}` : "/explorer");
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function ExplorerPage({ searchParams }: PageProps) {
@@ -69,10 +82,9 @@ export default async function ExplorerPage({ searchParams }: PageProps) {
           lede="Every CID that has been publicly anchored on FileOnChain. Search a CID to see which chains committed it, the on-chain tx hash, block number, and submitter. Or browse recent anchors below."
         />
 
-        {/* Search bar — submits to the detail page route */}
+        {/* Search bar — server action redirects to the detail page */}
         <form
-          action="/explorer/[cid]"
-          method="get"
+          action={searchCid}
           className="flex flex-col gap-2 sm:flex-row"
           role="search"
           aria-label="Search a CID"
