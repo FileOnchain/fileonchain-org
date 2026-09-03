@@ -7,9 +7,13 @@ import ChunkFlowVisual from "@/components/ChunkFlowVisual";
 import ChainBadge from "@/components/ui/ChainBadge";
 import MagneticButton from "@/components/MagneticButton";
 import WordReveal from "@/components/WordReveal";
-import LiveLedgerTicker, { StatCounter } from "@/components/LiveLedgerTicker";
+import LiveLedgerTicker, {
+  StatCounter,
+  type LedgerTickerEvent,
+} from "@/components/LiveLedgerTicker";
 import Link from "next/link";
 import { ACTIVE_CHAINS } from "@fileonchain/sdk";
+import { formatRelativeTime } from "@/lib/cid/format";
 
 interface HeroProps {
   activeChain?: {
@@ -22,6 +26,46 @@ interface HeroProps {
 }
 
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
+
+/**
+ * Recent-anchor feed for the hero ticker — the same DB-backed indexer
+ * rows the explorer renders, fetched through `/api/indexer/recent`
+ * because the homepage is a Client Component. Until rows arrive (or
+ * when the indexer has none) the ticker renders nothing — the hero
+ * never shows fabricated CIDs.
+ */
+const useRecentAnchorEvents = (): LedgerTickerEvent[] => {
+  const [events, setEvents] = React.useState<LedgerTickerEvent[]>([]);
+  React.useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/indexer/recent", { signal: controller.signal })
+      .then((res) =>
+        res.ok ? (res.json() as Promise<{ events?: RecentAnchorEvent[] }>) : { events: [] },
+      )
+      .then((data) => {
+        const now = Date.now();
+        setEvents(
+          (data.events ?? []).map((e) => ({
+            cid: e.cid,
+            chain: e.chain,
+            time: formatRelativeTime(e.anchoredAt, now),
+          })),
+        );
+      })
+      .catch(() => {
+        // Fail open — an unreachable indexer just means no ticker.
+      });
+    return () => controller.abort();
+  }, []);
+  return events;
+};
+
+interface RecentAnchorEvent {
+  cid: string;
+  chain: string;
+  /** Unix timestamp in seconds. */
+  anchoredAt: number;
+}
 
 /**
  * Hero — top-of-page pitch block.
@@ -39,153 +83,159 @@ const Hero = ({
   activeChain,
   // "Networks live" means open for anchoring — roadmap adapters don't count.
   chainCount = ACTIVE_CHAINS.length,
-}: HeroProps) => (
-  <section className="relative w-full">
-    <div className="grid w-full items-center gap-10 md:gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
-      {/* Text column ----------------------------------------------------- */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4 }}
-        className="flex flex-col items-start gap-6"
-      >
-        {/* Kicker */}
+}: HeroProps) => {
+  const tickerEvents = useRecentAnchorEvents();
+  return (
+    <section className="relative w-full">
+      <div className="grid w-full items-center gap-10 md:gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+        {/* Text column ----------------------------------------------------- */}
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: EASE_OUT }}
-          className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted backdrop-blur"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4 }}
+          className="flex flex-col items-start gap-6"
         >
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success">
-            <span className="absolute inset-0 animate-orbit-pulse rounded-full bg-success" />
-          </span>
-          <span>VOL. 01 · ONCHAIN LEDGER</span>
-        </motion.div>
-
-        {/* Headline — word-by-word reveal, no italic, no gradient */}
-        <WordReveal
-          as="h1"
-          text={`Put any file onchain.\nProve any agent run.`}
-          className="text-balance whitespace-pre-line text-[44px] font-bold leading-[0.98] tracking-tight md:text-6xl lg:text-[72px] text-foreground"
-        />
-
-        {/* Subhead */}
-        <motion.p
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.9, ease: EASE_OUT }}
-          className="max-w-xl text-pretty text-base leading-relaxed text-muted md:text-lg"
-        >
-          Drop a document, a dataset, a release — or a full{" "}
-          <Link
-            href="/agent-evidence"
-            className="font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline"
+          {/* Kicker */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: EASE_OUT }}
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted backdrop-blur"
           >
-            AI-agent run
-          </Link>{" "}
-          — and seal it into a{" "}
-          <span className="font-semibold text-foreground">portable evidence package</span>{" "}
-          anyone can independently verify. Store the bytes onchain if you want
-          to; by default only the hash leaves your machine.
-        </motion.p>
-
-        {/* CTAs — magnetic primary + ghost outline */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 1.0, ease: EASE_OUT }}
-          className="mt-1 flex flex-wrap items-center gap-3"
-        >
-          <MagneticButton href="#dropzone" rightIcon={<FiArrowRight size={16} />}>
-            Upload a file
-          </MagneticButton>
-          <Link
-            href="/verify"
-            className="group inline-flex h-11 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium text-foreground transition-all hover:gap-2 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            Verify a package
-            <span
-              aria-hidden
-              className="transition-transform duration-base group-hover:translate-x-0.5"
-            >
-              ›
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success">
+              <span className="absolute inset-0 animate-orbit-pulse rounded-full bg-success" />
             </span>
-          </Link>
-        </motion.div>
+            <span>VOL. 01 · ONCHAIN LEDGER</span>
+          </motion.div>
 
-        {/* Live ledger ticker */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, delay: 1.15, ease: EASE_OUT }}
-          className="w-full max-w-xl"
-        >
-          <LiveLedgerTicker />
-        </motion.div>
+          {/* Headline — word-by-word reveal, no italic, no gradient */}
+          <WordReveal
+            as="h1"
+            text={`Put any file onchain.\nProve any agent run.`}
+            className="text-balance whitespace-pre-line text-[44px] font-bold leading-[0.98] tracking-tight md:text-6xl lg:text-[72px] text-foreground"
+          />
 
-        {/* Animated stat counter row — each value compact-formatted so wide */}
-        {/* numbers never collide with neighbours. */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.4 }}
-          transition={{ duration: 0.5, delay: 1.25, ease: EASE_OUT }}
-          className="mt-2 grid w-full max-w-xl grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-8"
-        >
-          <StatCounter
-            value={chainCount}
-            label="Networks live"
-            hint="Autonomys · Solana · EVM testnets"
-          />
-          <StatCounter
-            value={1}
-            label="Open protocol"
-            hint="Independently implementable"
-          />
-          <StatCounter
-            value={3}
-            label="Storage modes"
-            hint="Hash-only by default"
-          />
-        </motion.div>
+          {/* Subhead */}
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.9, ease: EASE_OUT }}
+            className="max-w-xl text-pretty text-base leading-relaxed text-muted md:text-lg"
+          >
+            Drop a document, a dataset, a release — or a full{" "}
+            <Link
+              href="/agent-evidence"
+              className="font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline"
+            >
+              AI-agent run
+            </Link>{" "}
+            — and seal it into a{" "}
+            <span className="font-semibold text-foreground">portable evidence package</span>{" "}
+            anyone can independently verify. Store the bytes onchain if you want
+            to; by default only the hash leaves your machine.
+          </motion.p>
 
-        {/* Active chain indicator */}
-        {activeChain && (
+          {/* CTAs — magnetic primary + ghost outline */}
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 1.4, ease: EASE_OUT }}
-            className="mt-1 flex items-center gap-2 text-xs text-muted"
+            transition={{ duration: 0.5, delay: 1.0, ease: EASE_OUT }}
+            className="mt-1 flex flex-wrap items-center gap-3"
           >
-            <span className="uppercase tracking-wider">Anchoring on</span>
-            <ChainBadge
-              chainId={activeChain.id}
-              chainName={activeChain.name}
-              shortName={activeChain.shortName}
-              size="sm"
+            <MagneticButton href="#dropzone" rightIcon={<FiArrowRight size={16} />}>
+              Upload a file
+            </MagneticButton>
+            <Link
+              href="/verify"
+              className="group inline-flex h-11 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium text-foreground transition-all hover:gap-2 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              Verify a package
+              <span
+                aria-hidden
+                className="transition-transform duration-base group-hover:translate-x-0.5"
+              >
+                ›
+              </span>
+            </Link>
+          </motion.div>
+
+          {/* Live ledger ticker — real indexed anchors only; hidden while
+              the feed loads or when the indexer has no rows. */}
+          {tickerEvents.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, ease: EASE_OUT }}
+              className="w-full max-w-xl"
+            >
+              <LiveLedgerTicker events={tickerEvents} />
+            </motion.div>
+          )}
+
+          {/* Animated stat counter row — each value compact-formatted so wide */}
+          {/* numbers never collide with neighbours. */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.4 }}
+            transition={{ duration: 0.5, delay: 1.25, ease: EASE_OUT }}
+            className="mt-2 grid w-full max-w-xl grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-8"
+          >
+            <StatCounter
+              value={chainCount}
+              label="Networks live"
+              hint="Autonomys · Solana · EVM testnets"
+            />
+            <StatCounter
+              value={1}
+              label="Open protocol"
+              hint="Independently implementable"
+            />
+            <StatCounter
+              value={3}
+              label="Storage modes"
+              hint="Hash-only by default"
             />
           </motion.div>
-        )}
-      </motion.div>
 
-      {/* Visual column ---------------------------------------------------- */}
-      <motion.div
-        initial={{ opacity: 0, y: 16, rotateX: 6 }}
-        animate={{ opacity: 1, y: 0, rotateX: 0 }}
-        transition={{ duration: 0.75, delay: 0.25, ease: EASE_OUT }}
-        className="relative perspective-[1400px]"
-      >
-        <div className="transition-transform duration-slow ease-out-soft will-change-transform hover:transform-[rotateX(2deg)_rotateY(-2deg)]">
-          <ChunkFlowVisual />
-        </div>
-        {/* Backing plate behind the visual */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-2 -z-10 rounded-3xl border border-border bg-surface-elevated/60"
-        />
-      </motion.div>
-    </div>
-  </section>
-);
+          {/* Active chain indicator */}
+          {activeChain && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 1.4, ease: EASE_OUT }}
+              className="mt-1 flex items-center gap-2 text-xs text-muted"
+            >
+              <span className="uppercase tracking-wider">Anchoring on</span>
+              <ChainBadge
+                chainId={activeChain.id}
+                chainName={activeChain.name}
+                shortName={activeChain.shortName}
+                size="sm"
+              />
+            </motion.div>
+          )}
+        </motion.div>
+
+        {/* Visual column ---------------------------------------------------- */}
+        <motion.div
+          initial={{ opacity: 0, y: 16, rotateX: 6 }}
+          animate={{ opacity: 1, y: 0, rotateX: 0 }}
+          transition={{ duration: 0.75, delay: 0.25, ease: EASE_OUT }}
+          className="relative perspective-[1400px]"
+        >
+          <div className="transition-transform duration-slow ease-out-soft will-change-transform hover:transform-[rotateX(2deg)_rotateY(-2deg)]">
+            <ChunkFlowVisual />
+          </div>
+          {/* Backing plate behind the visual */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-2 -z-10 rounded-3xl border border-border bg-surface-elevated/60"
+          />
+        </motion.div>
+      </div>
+    </section>
+  );
+};
 
 export default Hero;
