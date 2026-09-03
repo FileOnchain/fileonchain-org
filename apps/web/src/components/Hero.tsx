@@ -4,7 +4,6 @@ import * as React from "react";
 import { motion } from "motion/react";
 import { FiArrowRight } from "react-icons/fi";
 import ChunkFlowVisual from "@/components/ChunkFlowVisual";
-import ChainBadge from "@/components/ui/ChainBadge";
 import MagneticButton from "@/components/MagneticButton";
 import WordReveal from "@/components/WordReveal";
 import LiveLedgerTicker, {
@@ -16,11 +15,6 @@ import { ACTIVE_CHAINS } from "@fileonchain/sdk";
 import { formatRelativeTime } from "@/lib/cid/format";
 
 interface HeroProps {
-  activeChain?: {
-    id: string;
-    name: string;
-    shortName: string;
-  };
   /** Number of chains supported, used in the kicker line. */
   chainCount?: number;
 }
@@ -80,7 +74,6 @@ interface RecentAnchorEvent {
  *   7. Right side: animated ChunkFlowVisual SVG
  */
 const Hero = ({
-  activeChain,
   // "Networks live" means open for anchoring — roadmap adapters don't count.
   chainCount = ACTIVE_CHAINS.length,
 }: HeroProps) => {
@@ -198,23 +191,6 @@ const Hero = ({
             />
           </motion.div>
 
-          {/* Active chain indicator */}
-          {activeChain && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 1.4, ease: EASE_OUT }}
-              className="mt-1 flex items-center gap-2 text-xs text-muted"
-            >
-              <span className="uppercase tracking-wider">Anchoring on</span>
-              <ChainBadge
-                chainId={activeChain.id}
-                chainName={activeChain.name}
-                shortName={activeChain.shortName}
-                size="sm"
-              />
-            </motion.div>
-          )}
         </motion.div>
 
         {/* Visual column ---------------------------------------------------- */}
