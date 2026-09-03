@@ -5,12 +5,32 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { FiArrowRight } from "react-icons/fi";
 import StatusPill from "@/components/explorer/StatusPill";
-import type { RecentAnchorRow } from "@/lib/mock/cid-indexer";
+import { ChainBadge } from "@/components/ui/ChainBadge";
+import type { RecentAnchorRow, SearchHit } from "@/lib/mock/cid-indexer";
 import {
   formatRelativeTime,
   truncateCID,
 } from "@/lib/cid/format";
 import { buildTxUrl, getChain } from "@fileonchain/sdk";
+
+/**
+ * Collapse a CID's per-event hits into one representative hit per chain.
+ * The indexer writes one event per log, so a CID anchored twice on the
+ * same chain produces two hits with the same `chainId` — the explorer
+ * "Anchored on" strip should show each chain once. We keep the first hit
+ * per chain (its metadata — name / shortName / status — is identical for
+ * every hit of the same chainId).
+ */
+const dedupeHitsByChain = (hits: SearchHit[]): SearchHit[] => {
+  const seen = new Set<string>();
+  const out: SearchHit[] = [];
+  for (const hit of hits) {
+    if (seen.has(hit.chainId)) continue;
+    seen.add(hit.chainId);
+    out.push(hit);
+  }
+  return out;
+};
 
 interface RecentAnchorsTableProps {
   rows: RecentAnchorRow[];
@@ -53,6 +73,7 @@ const RecentAnchorsTable = ({ rows }: RecentAnchorsTableProps) => {
             ? buildTxUrl(anchoredChain, latest.txHash)
             : "#";
           const anchoredAgo = formatRelativeTime(row.anchoredAt);
+          const dedupedChains = dedupeHitsByChain(sortedHits);
           return (
             <motion.li
               key={cid}
@@ -85,20 +106,20 @@ const RecentAnchorsTable = ({ rows }: RecentAnchorsTableProps) => {
                 </div>
               </div>
 
-              {/* Anchored on — chain strip */}
-              <div className="hidden flex-wrap items-center gap-1 md:flex">
-                {sortedHits.slice(0, 6).map((h) => (
-                  <span
-                    key={`${h.chainId}-${h.logIndex}`}
-                    title={`${h.chainName} · block ${h.blockNumber.toLocaleString()}`}
-                    className="rounded border border-border bg-surface-elevated px-1.5 py-0.5 font-mono text-[10px] text-foreground"
-                  >
-                    {h.chainShortName}
-                  </span>
+              {/* Anchored on — chain strip (one badge per distinct chain) */}
+              <div className="hidden flex-wrap items-center gap-1.5 md:flex">
+                {dedupedChains.slice(0, 4).map((h) => (
+                  <ChainBadge
+                    key={h.chainId}
+                    chainId={h.chainId}
+                    chainName={h.chainName}
+                    shortName={h.chainShortName}
+                    size="sm"
+                  />
                 ))}
-                {sortedHits.length > 6 && (
+                {dedupedChains.length > 4 && (
                   <span className="font-mono text-[10px] text-muted">
-                    +{sortedHits.length - 6}
+                    +{dedupedChains.length - 4}
                   </span>
                 )}
               </div>
