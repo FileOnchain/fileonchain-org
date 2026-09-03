@@ -4,8 +4,11 @@ import * as React from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
 import {
+  FiAlertTriangle,
   FiArrowRight,
   FiCheck,
+  FiChevronDown,
+  FiChevronRight,
   FiDownload,
   FiExternalLink,
 } from "react-icons/fi";
@@ -22,19 +25,113 @@ import {
   truncateAddress,
   truncateCID,
 } from "@/lib/cid/format";
-import { buildTxUrl, getChain } from "@fileonchain/sdk";
+import { base64ToBytes, buildTxUrl, getChain } from "@fileonchain/sdk";
 import type { SearchHit } from "@/lib/mock/cid-indexer";
+import type { ChunkPayloadRow, ChunkRow } from "@/lib/indexer/queries";
 
 interface DetailProps {
   cid: string;
   hits: SearchHit[];
-  initialChunks: Array<{ index: number; cid: string; sizeBytes: number }>;
+  initialChunks: ChunkRow[];
   initialRelated: Array<{ cid: string; hits: SearchHit[] }>;
 }
 
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 
 type Tab = "anchors" | "chunks" | "related";
+
+/* ----------------------------------------------------------------------------
+ * Chunk content — fetch state + preview helpers.
+ * --------------------------------------------------------------------------- */
+
+type ChunkContent = ChunkPayloadRow & {
+  hasData: boolean;
+  sizeBytes: number;
+  verified: boolean;
+};
+
+type ChunkFetchState =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "ready"; content: ChunkContent };
+
+const utf8OrNull = (bytes: Uint8Array): string | null => {
+  try {
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    // Control characters (besides whitespace) mean "render as hex, not text".
+    // eslint-disable-next-line no-control-regex
+    return /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(text) ? null : text;
+  } catch {
+    return null;
+  }
+};
+
+const looksLikeSvg = (text: string): boolean =>
+  /^\s*(<\?xml[^>]*\?>\s*)?(<!--[\s\S]*?-->\s*)*(<!DOCTYPE[^>]*>\s*)?<svg[\s>]/i.test(text);
+
+const HEX_DUMP_MAX = 512;
+
+const hexDump = (bytes: Uint8Array): string => {
+  const shown = bytes.slice(0, HEX_DUMP_MAX);
+  const lines: string[] = [];
+  for (let offset = 0; offset < shown.length; offset += 16) {
+    const row = shown.slice(offset, offset + 16);
+    const hex = Array.from(row, (b) => b.toString(16).padStart(2, "0")).join(" ");
+    const ascii = Array.from(row, (b) =>
+      b >= 0x20 && b < 0x7f ? String.fromCharCode(b) : ".",
+    ).join("");
+    lines.push(
+      `${offset.toString(16).padStart(6, "0")}  ${hex.padEnd(47)}  ${ascii}`,
+    );
+  }
+  if (bytes.length > HEX_DUMP_MAX) {
+    lines.push(`… ${bytes.length - HEX_DUMP_MAX} more bytes`);
+  }
+  return lines.join("\n");
+};
+
+const formatBytes = (n: number): string => {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+};
+
+const concatBytes = (parts: Uint8Array[]): Uint8Array => {
+  const total = parts.reduce((n, p) => n + p.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const p of parts) {
+    out.set(p, offset);
+    offset += p.length;
+  }
+  return out;
+};
+
+const triggerDownload = (blob: Blob, filename: string): void => {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+const fetchChunkContent = async (
+  chunkCid: string,
+  fileCid: string,
+): Promise<ChunkContent> => {
+  const res = await fetch(
+    `/api/v1/explorer/chunk/${encodeURIComponent(chunkCid)}?file=${encodeURIComponent(fileCid)}`,
+    { cache: "no-store" },
+  );
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? `request failed (${res.status})`);
+  }
+  return (await res.json()) as ChunkContent;
+};
 
 /**
  * ExplorerDetailClient — Etherscan-style transaction-detail page for a
@@ -59,18 +156,131 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
   const uniqueSubmitters = new Set(hits.map((h) => h.submitter));
   const submitter = hits[0]?.submitter;
 
-  // Lazily warm the tx→payload RPC fetcher for the most-recent anchor
-  // hit so the next interaction can render decoded payloads without an
-  // extra roundtrip. Fail soft: a 404 leaves the existing txHash row
-  // visible and falls back to the indexer DB hit.
-  React.useEffect(() => {
-    const first = anchoredHits[0];
-    if (!first) return;
-    void fetch(
-      `/api/v1/explorer/tx/${encodeURIComponent(first.chainId)}/${first.txHash}`,
-      { cache: "no-store" },
-    ).catch(() => undefined);
-  }, [anchoredHits]);
+  // Chunk-content view: which chunk row is expanded, and the fetched
+  // payload per chunk CID. Content is fetched once per chunk on first
+  // expand; the API verifies the bytes against the CID server-side.
+  const [expandedChunk, setExpandedChunk] = React.useState<string | null>(null);
+  const [chunkStates, setChunkStates] = React.useState<Record<string, ChunkFetchState>>({});
+
+  const loadChunk = React.useCallback(
+    (chunkCid: string) => {
+      setChunkStates((prev) =>
+        prev[chunkCid] ? prev : { ...prev, [chunkCid]: { status: "loading" } },
+      );
+      fetchChunkContent(chunkCid, cid)
+        .then((content) =>
+          setChunkStates((prev) => ({
+            ...prev,
+            [chunkCid]: { status: "ready", content },
+          })),
+        )
+        .catch((error: unknown) =>
+          setChunkStates((prev) => ({
+            ...prev,
+            [chunkCid]: {
+              status: "error",
+              message: error instanceof Error ? error.message : "fetch failed",
+            },
+          })),
+        );
+    },
+    [cid],
+  );
+
+  const toggleChunk = (chunkCid: string) => {
+    setExpandedChunk((prev) => (prev === chunkCid ? null : chunkCid));
+    const existing = chunkStates[chunkCid];
+    if (!existing || existing.status === "error") loadChunk(chunkCid);
+  };
+
+  // Anchor-payload view: decoded payload(s) per anchor tx, fetched from
+  // the tx→payload endpoint on first expand.
+  type AnchorFetchState =
+    | { status: "loading" }
+    | { status: "error"; message: string }
+    | { status: "ready"; anchors: Array<Record<string, unknown>> };
+  const [expandedAnchor, setExpandedAnchor] = React.useState<string | null>(null);
+  const [anchorStates, setAnchorStates] = React.useState<Record<string, AnchorFetchState>>({});
+
+  const toggleAnchor = (hit: SearchHit) => {
+    const key = `${hit.chainId}:${hit.txHash}`;
+    setExpandedAnchor((prev) => (prev === key ? null : key));
+    const existing = anchorStates[key];
+    if (existing && existing.status !== "error") return;
+    setAnchorStates((prev) => ({ ...prev, [key]: { status: "loading" } }));
+    fetch(`/api/v1/explorer/tx/${encodeURIComponent(hit.chainId)}/${hit.txHash}`, {
+      cache: "no-store",
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const body = (await res.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(body?.error ?? `request failed (${res.status})`);
+        }
+        const tx = (await res.json()) as { anchors?: Array<Record<string, unknown>> };
+        setAnchorStates((prev) => ({
+          ...prev,
+          [key]: { status: "ready", anchors: tx.anchors ?? [] },
+        }));
+      })
+      .catch((error: unknown) =>
+        setAnchorStates((prev) => ({
+          ...prev,
+          [key]: {
+            status: "error",
+            message: error instanceof Error ? error.message : "fetch failed",
+          },
+        })),
+      );
+  };
+
+  // Real reassembly: every chunk's bytes ride the indexed anchor
+  // payloads, so the file is rebuilt by fetching each verified chunk
+  // and concatenating in index order. Only offered when every chunk
+  // actually embeds data — anchor-only trails keep the explanatory
+  // placeholder download.
+  const allChunksCarryData = chunks.length > 0 && chunks.every((c) => c.hasData);
+  const [rebuildState, setRebuildState] = React.useState<
+    { status: "idle" } | { status: "working" } | { status: "error"; message: string }
+  >({ status: "idle" });
+
+  const rebuildAndDownload = async () => {
+    if (!allChunksCarryData) {
+      const blob = new Blob(
+        [
+          `CID: ${cid}\nAnchored on ${anchoredHits.length} chains.\n\nThis file's anchors attest to existence + integrity only — the chunk bytes were not embedded on-chain, so the explorer cannot reassemble the content. Re-upload with on-chain storage enabled to make the file rebuildable.`,
+        ],
+        { type: "text/plain" },
+      );
+      triggerDownload(blob, `${truncateCID(cid, 8, 6)}.rebuild.txt`);
+      return;
+    }
+    setRebuildState({ status: "working" });
+    try {
+      const parts = await Promise.all(
+        chunks.map((chunk) => fetchChunkContent(chunk.cid, cid)),
+      );
+      const ordered = [...parts].sort((a, b) => a.index - b.index);
+      const failed = ordered.find((p) => !p.dataBase64 || !p.verified);
+      if (failed) {
+        throw new Error(
+          `chunk ${failed.index + 1} ${failed.dataBase64 ? "failed CID verification" : "carries no data"}`,
+        );
+      }
+      const buffers = ordered.map((p) => base64ToBytes(p.dataBase64 as string));
+      const text = utf8OrNull(concatBytes(buffers));
+      const isSvg = text !== null && looksLikeSvg(text);
+      const blob = new Blob(buffers as BlobPart[], {
+        type: isSvg ? "image/svg+xml" : "application/octet-stream",
+      });
+      triggerDownload(blob, `${truncateCID(cid, 8, 6)}${isSvg ? ".svg" : ".bin"}`);
+      setRebuildState({ status: "idle" });
+    } catch (error) {
+      setRebuildState({
+        status: "error",
+        message: error instanceof Error ? error.message : "rebuild failed",
+      });
+    }
+  };
 
   return (
     <PageShell size="wide" padding="lg">
@@ -120,30 +330,23 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
 
           {/* Quick action */}
           <div className="flex shrink-0 items-center gap-2">
-            <Button
-              variant="secondary"
-              leftIcon={<FiDownload size={14} />}
-              onClick={() => {
-                /* The CID-by-CID rebuilder is a future surface; today the
-                 * explorer attests to existence + integrity, not retrieval. */
-                const blob = new Blob(
-                  [
-                    `CID: ${cid}\nAnchored on ${anchoredHits.length} chains.\n\nThis is a placeholder. Real reassembly will rehydrate the file from IPLD chunks across chains.`,
-                  ],
-                  { type: "text/plain" },
-                );
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = `${truncateCID(cid, 8, 6)}.rebuild.txt`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-              }}
-            >
-              Rebuild & download
-            </Button>
+            <div className="flex flex-col items-end gap-1">
+              <Button
+                variant="secondary"
+                leftIcon={<FiDownload size={14} />}
+                disabled={rebuildState.status === "working"}
+                onClick={() => void rebuildAndDownload()}
+              >
+                {rebuildState.status === "working"
+                  ? "Rebuilding…"
+                  : "Rebuild & download"}
+              </Button>
+              {rebuildState.status === "error" && (
+                <span className="max-w-[220px] text-right text-[11px] text-danger">
+                  {rebuildState.message}
+                </span>
+              )}
+            </div>
             <Link
               href="/#dropzone"
               className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -232,56 +435,122 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
             {hits.map((hit, i) => {
               const chainRec = getChain(hit.chainId);
               const realUrl = chainRec ? buildTxUrl(chainRec, hit.txHash) : "#";
+              const anchorKey = `${hit.chainId}:${hit.txHash}`;
+              const isExpanded = expandedAnchor === anchorKey;
+              const anchorState = anchorStates[anchorKey];
               return (
                 <motion.li
                   key={`${hit.txHash}-${hit.logIndex}`}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.28, delay: i * 0.03, ease: EASE_OUT }}
-                  className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4 py-3 transition-colors hover:bg-surface-elevated md:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_90px] md:gap-4"
                 >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <ChainBadge
-                      chainId={hit.chainId}
-                      chainName={hit.chainName}
-                      shortName={hit.chainShortName}
-                      size="md"
-                    />
-                    <StatusPill status={hit.status} />
-                  </div>
-                  <div className="hidden min-w-0 items-center gap-2 md:flex">
-                    <span
-                      className="truncate font-mono text-xs text-foreground"
-                      title={hit.txHash}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={isExpanded}
+                    onClick={() => toggleAnchor(hit)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggleAnchor(hit);
+                      }
+                    }}
+                    className="group grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4 py-3 transition-colors hover:bg-surface-elevated md:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_110px] md:gap-4"
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      {isExpanded ? (
+                        <FiChevronDown size={13} className="shrink-0 text-muted" />
+                      ) : (
+                        <FiChevronRight size={13} className="shrink-0 text-muted" />
+                      )}
+                      <ChainBadge
+                        chainId={hit.chainId}
+                        chainName={hit.chainName}
+                        shortName={hit.chainShortName}
+                        size="md"
+                      />
+                      <StatusPill status={hit.status} />
+                    </div>
+                    <div
+                      className="hidden min-w-0 items-center gap-2 md:flex"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      {truncateCID(hit.txHash, 10, 8)}
-                    </span>
-                    <CopyButton value={hit.txHash} ariaLabel="Copy tx hash" />
-                  </div>
-                  <div className="hidden font-mono text-xs tabular-nums text-foreground md:block">
-                    {formatBlockNumber(hit.blockNumber)}
-                  </div>
-                  <div className="hidden font-mono text-xs tabular-nums text-foreground md:block">
-                    {formatRelativeTime(hit.timestamp)}
-                    <span className="ml-2 text-[10px] text-muted">
-                      {formatTimestamp(hit.timestamp)}
-                    </span>
-                  </div>
-                  <div className="col-span-2 mt-2 flex items-center justify-between gap-2 md:col-span-1 md:mt-0 md:justify-end">
-                    <span className="font-mono text-[10px] text-muted md:hidden">
-                      block {formatBlockNumber(hit.blockNumber)} ·{" "}
+                      <span
+                        className="truncate font-mono text-xs text-foreground"
+                        title={hit.txHash}
+                      >
+                        {truncateCID(hit.txHash, 10, 8)}
+                      </span>
+                      <CopyButton value={hit.txHash} ariaLabel="Copy tx hash" />
+                    </div>
+                    <div className="hidden font-mono text-xs tabular-nums text-foreground md:block">
+                      {formatBlockNumber(hit.blockNumber)}
+                    </div>
+                    <div className="hidden font-mono text-xs tabular-nums text-foreground md:block">
                       {formatRelativeTime(hit.timestamp)}
-                    </span>
-                    <Link
-                      href={realUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-surface px-2 text-[11px] text-foreground transition-colors hover:border-primary/50 hover:text-primary"
-                      aria-label={`View ${hit.chainName} explorer`}
-                    >
-                      Explorer <FiExternalLink size={11} />
-                    </Link>
+                      <span className="ml-2 text-[10px] text-muted">
+                        {formatTimestamp(hit.timestamp)}
+                      </span>
+                    </div>
+                    <div className="col-span-2 mt-2 flex items-center justify-between gap-2 md:col-span-1 md:mt-0 md:justify-end">
+                      <span className="font-mono text-[10px] text-muted md:hidden">
+                        block {formatBlockNumber(hit.blockNumber)} ·{" "}
+                        {formatRelativeTime(hit.timestamp)}
+                      </span>
+                      <Link
+                        href={realUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-surface px-2 text-[11px] text-foreground transition-colors hover:border-primary/50 hover:text-primary"
+                        aria-label={`View ${hit.chainName} explorer`}
+                      >
+                        Explorer <FiExternalLink size={11} />
+                      </Link>
+                    </div>
                   </div>
+                  {isExpanded && (
+                    <div className="border-t border-border bg-surface-elevated px-4 py-3">
+                      {!anchorState || anchorState.status === "loading" ? (
+                        <div className="h-16 animate-pulse rounded-lg border border-border bg-surface" />
+                      ) : anchorState.status === "error" ? (
+                        <p className="text-xs text-muted">
+                          Could not decode this transaction&rsquo;s payload (
+                          {anchorState.message}) — the indexed row above still
+                          attests to the anchor.
+                        </p>
+                      ) : anchorState.anchors.length === 0 ? (
+                        <p className="text-xs text-muted">
+                          No FileOnChain payload decoded from this transaction.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+                            Decoded anchor payload — read back from the tx
+                            receipt, not the database
+                          </p>
+                          {anchorState.anchors.map((payload, idx) => (
+                            <pre
+                              key={idx}
+                              className="max-h-64 overflow-auto rounded-lg border border-border bg-surface p-3 font-mono text-[11px] leading-relaxed text-foreground"
+                            >
+                              {JSON.stringify(
+                                typeof payload.d === "string"
+                                  ? {
+                                      ...payload,
+                                      d: `<${payload.d.length} base64 chars embedded — see the Chunks tab for the decoded content>`,
+                                    }
+                                  : payload,
+                                null,
+                                2,
+                              )}
+                            </pre>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </motion.li>
               );
             })}
@@ -315,31 +584,77 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
             </div>
           ) : (
             <div className="overflow-hidden rounded-2xl border border-border bg-surface">
-              <div className="hidden border-b border-border bg-surface-elevated px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted md:grid md:grid-cols-[60px_minmax(0,1fr)_120px] md:gap-3">
+              <div className="hidden border-b border-border bg-surface-elevated px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted md:grid md:grid-cols-[60px_minmax(0,1fr)_90px_90px_60px] md:gap-3">
                 <span>#</span>
                 <span>Chunk CID</span>
+                <span className="text-right">Size</span>
+                <span className="text-right">Data</span>
                 <span className="text-right">Copy</span>
               </div>
-              <ul role="list" className="max-h-[420px] divide-y divide-border overflow-y-auto">
-                {chunks.map((chunk, i) => (
-                  <motion.li
-                    key={chunk.cid + i}
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2, delay: i * 0.012, ease: EASE_OUT }}
-                    className="grid grid-cols-[60px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2 font-mono text-xs transition-colors hover:bg-surface-elevated md:grid-cols-[60px_minmax(0,1fr)_120px]"
-                  >
-                    <span className="font-semibold tabular-nums text-foreground">
-                      {chunk.index + 1}
-                    </span>
-                    <span className="truncate text-foreground" title={chunk.cid}>
-                      {chunk.cid}
-                    </span>
-                    <span className="col-span-2 flex justify-end md:col-span-1">
-                      <CopyButton value={chunk.cid} ariaLabel="Copy chunk CID" />
-                    </span>
-                  </motion.li>
-                ))}
+              <ul role="list" className="max-h-[560px] divide-y divide-border overflow-y-auto">
+                {chunks.map((chunk, i) => {
+                  const isExpanded = expandedChunk === chunk.cid;
+                  const state = chunkStates[chunk.cid];
+                  return (
+                    <motion.li
+                      key={chunk.cid + i}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2, delay: i * 0.012, ease: EASE_OUT }}
+                    >
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={isExpanded}
+                        onClick={() => toggleChunk(chunk.cid)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            toggleChunk(chunk.cid);
+                          }
+                        }}
+                        className="grid cursor-pointer grid-cols-[60px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2 font-mono text-xs transition-colors hover:bg-surface-elevated md:grid-cols-[60px_minmax(0,1fr)_90px_90px_60px]"
+                      >
+                        <span className="flex items-center gap-1.5 font-semibold tabular-nums text-foreground">
+                          {isExpanded ? (
+                            <FiChevronDown size={12} className="shrink-0 text-muted" />
+                          ) : (
+                            <FiChevronRight size={12} className="shrink-0 text-muted" />
+                          )}
+                          {chunk.index + 1}
+                        </span>
+                        <span className="truncate text-foreground" title={chunk.cid}>
+                          {chunk.cid}
+                        </span>
+                        <span className="hidden text-right tabular-nums text-muted md:block">
+                          {chunk.hasData ? formatBytes(chunk.sizeBytes) : "—"}
+                        </span>
+                        <span className="hidden justify-end md:flex">
+                          {chunk.hasData ? (
+                            <span className="rounded-full border border-success/40 px-2 py-0.5 text-[10px] text-success">
+                              on-chain
+                            </span>
+                          ) : (
+                            <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted">
+                              anchor-only
+                            </span>
+                          )}
+                        </span>
+                        <span
+                          className="col-span-1 flex justify-end"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <CopyButton value={chunk.cid} ariaLabel="Copy chunk CID" />
+                        </span>
+                      </div>
+                      {isExpanded && (
+                        <div className="border-t border-border bg-surface-elevated px-4 py-3">
+                          <ChunkContentPanel state={state} chunk={chunk} />
+                        </div>
+                      )}
+                    </motion.li>
+                  );
+                })}
               </ul>
             </div>
           )}
@@ -430,6 +745,104 @@ const ExplorerDetailClient = ({ cid, hits, initialChunks, initialRelated }: Deta
         </div>
       </section>
     </PageShell>
+  );
+};
+
+/* ----------------------------------------------------------------------------
+ * Chunk content panel — the expanded view under a chunk row: verified
+ * on-chain bytes rendered as an SVG/text/hex preview, or an honest
+ * explanation when the anchor carried no data.
+ * --------------------------------------------------------------------------- */
+interface ChunkContentPanelProps {
+  state: ChunkFetchState | undefined;
+  chunk: ChunkRow;
+}
+
+const ChunkContentPanel = ({ state, chunk }: ChunkContentPanelProps) => {
+  if (!state || state.status === "loading") {
+    return <div className="h-20 animate-pulse rounded-lg border border-border bg-surface" />;
+  }
+  if (state.status === "error") {
+    return (
+      <p className="text-xs text-muted">
+        Could not load this chunk&rsquo;s payload ({state.message}). The row
+        above still attests to the chunk&rsquo;s CID on-chain.
+      </p>
+    );
+  }
+
+  const { content } = state;
+  const chainRec = getChain(content.chainId);
+  const txUrl = chainRec ? buildTxUrl(chainRec, content.txHash) : "#";
+
+  let bytes: Uint8Array | null = null;
+  if (content.dataBase64) {
+    try {
+      bytes = base64ToBytes(content.dataBase64);
+    } catch {
+      bytes = null;
+    }
+  }
+  const text = bytes ? utf8OrNull(bytes) : null;
+  const isSvg = text !== null && looksLikeSvg(text);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+        {content.verified ? (
+          <span className="inline-flex items-center gap-1 rounded-full border border-success/40 px-2 py-0.5 font-semibold text-success">
+            <FiCheck size={11} /> bytes match CID
+          </span>
+        ) : content.hasData ? (
+          <span className="inline-flex items-center gap-1 rounded-full border border-danger/40 px-2 py-0.5 font-semibold text-danger">
+            <FiAlertTriangle size={11} /> bytes do NOT match this CID
+          </span>
+        ) : null}
+        <span className="text-muted">
+          chunk {content.index + 1} of {content.total}
+        </span>
+        {bytes && <span className="text-muted">· {formatBytes(bytes.length)}</span>}
+        <Link
+          href={txUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 font-mono text-foreground hover:text-primary"
+        >
+          {truncateCID(content.txHash, 8, 6)} <FiExternalLink size={10} />
+        </Link>
+      </div>
+
+      {!content.hasData ? (
+        <p className="text-xs leading-relaxed text-muted">
+          This anchor attests to the chunk&rsquo;s existence and integrity
+          only — the bytes themselves were not embedded on-chain, so there
+          is no content to display. Uploads with on-chain storage enabled
+          embed the bytes in the anchor payload.
+        </p>
+      ) : !bytes ? (
+        <p className="text-xs text-muted">
+          The embedded payload could not be decoded as base64.
+        </p>
+      ) : (
+        <>
+          {isSvg && content.verified && (
+            <div className="flex items-center justify-center rounded-lg border border-border bg-surface p-4">
+              {/* Rendered via <img>, which executes no scripts — safe for
+                  untrusted on-chain SVG bytes (verified against the CID). */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`data:image/svg+xml;base64,${content.dataBase64}`}
+                alt={`Chunk ${content.index + 1} SVG preview`}
+                className="max-h-64 max-w-full"
+              />
+            </div>
+          )}
+          <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-lg border border-border bg-surface p-3 font-mono text-[11px] leading-relaxed text-foreground">
+            {text ?? hexDump(bytes)}
+          </pre>
+        </>
+      )}
+    </div>
   );
 };
 

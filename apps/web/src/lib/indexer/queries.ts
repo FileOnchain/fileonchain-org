@@ -374,45 +374,166 @@ export const getFilesByUploader = async (
   });
 };
 
-/** Per-chunk rows for a CID — derived from on-chain `chunk` events
- *  for the supplied chain. The first chain that anchored a chunk for
+export interface ChunkRow {
+  index: number;
+  cid: string;
+  /** Decoded byte length of embedded data; 0 when the anchor carried none. */
+  sizeBytes: number;
+  chainId: ChainId;
+  /** Tx that anchored this chunk on `chainId`. */
+  txHash: string;
+  /** Whether the anchor payload embeds the chunk bytes (`d`). */
+  hasData: boolean;
+}
+
+/** Decoded byte length of a base64 string, without decoding it. */
+const base64ByteLength = (b64: string): number => {
+  const padding = b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0;
+  return Math.floor((b64.length / 4) * 3) - padding;
+};
+
+/** Per-chunk rows for a CID — derived from on-chain `chunk` events.
+ *  Chunk rows are matched on the payload's `fileCid` (the row's own
+ *  `cid` column holds the chunk CID, which only equals the file CID
+ *  for single-chunk files). The first chain that anchored a chunk for
  *  this CID wins; consumers fall back to the next chain if the first
  *  has no chunk events (a file-level-only anchor). */
 export const getChunksForFile = async (
   cid: string,
   chainId?: ChainId,
-): Promise<Array<{ index: number; cid: string; sizeBytes: number }>> => {
+): Promise<ChunkRow[]> => {
   return safeRead("getChunksForFile", [], async () => {
     const rows = await db
       .select({
         chainId: indexedAnchorEvents.chainId,
+        txHash: indexedAnchorEvents.txHash,
+        blockTimestamp: indexedAnchorEvents.blockTimestamp,
         payload: indexedAnchorEvents.payload,
       })
       .from(indexedAnchorEvents)
       .where(
         and(
-          eq(indexedAnchorEvents.cid, cid),
           chainId ? eq(indexedAnchorEvents.chainId, chainId) : undefined,
           sql`${indexedAnchorEvents.payload}->>'op' = 'chunk'`,
+          sql`(${indexedAnchorEvents.payload}->>'fileCid' = ${cid} OR ${indexedAnchorEvents.cid} = ${cid})`,
         ),
-      );
+      )
+      .orderBy(indexedAnchorEvents.blockTimestamp);
     if (rows.length === 0) return [];
-    const chunks: Array<{ index: number; cid: string; sizeBytes: number }> = [];
+    const chunks: ChunkRow[] = [];
     for (const r of rows) {
-      const p = r.payload as { op?: string; idx?: number; cid?: string };
+      const p = r.payload as { op?: string; idx?: number; cid?: string; d?: string };
       if (p.op !== "chunk" || typeof p.idx !== "number" || typeof p.cid !== "string") {
         continue;
       }
-      // sizeBytes has no on-chain source; render 0 so the chunks tab keeps
-      // a single row per chunk with the real CID we attested to.
-      chunks.push({ index: p.idx, cid: p.cid, sizeBytes: 0 });
+      chunks.push({
+        index: p.idx,
+        cid: p.cid,
+        sizeBytes: typeof p.d === "string" ? base64ByteLength(p.d) : 0,
+        chainId: r.chainId,
+        txHash: r.txHash,
+        hasData: typeof p.d === "string",
+      });
     }
-    // Dedupe by (chain, index) — keep the first row per index per chain.
-    const dedup = new Map<string, (typeof chunks)[number]>();
+    if (chunks.length === 0) return [];
+    // First chain wins: the ordering above puts the earliest anchor first.
+    const firstChain = chunks[0].chainId;
+    const dedup = new Map<number, ChunkRow>();
     for (const c of chunks) {
-      const key = `${rows[0]?.chainId ?? ""}:${c.index}`;
-      if (!dedup.has(key)) dedup.set(key, c);
+      if (c.chainId !== firstChain) continue;
+      const existing = dedup.get(c.index);
+      // Prefer a data-carrying row for an index over an anchor-only one.
+      if (!existing || (!existing.hasData && c.hasData)) dedup.set(c.index, c);
     }
     return Array.from(dedup.values()).sort((a, b) => a.index - b.index);
+  });
+};
+
+export interface ChunkPayloadRow {
+  chunkCid: string;
+  fileCid: string;
+  index: number;
+  total: number;
+  nextCid: string | null;
+  chainId: ChainId;
+  txHash: string;
+  blockNumber: number;
+  /** Seconds since the epoch. */
+  timestamp: number;
+  submitter: string;
+  /** Base64 chunk bytes when the anchor embedded them; null when anchor-only. */
+  dataBase64: string | null;
+}
+
+/** The indexed anchor payload for one chunk CID — the read behind the
+ *  explorer's chunk-content view. Among the rows that anchored this
+ *  chunk (multiple chains, or repeat anchors on one chain), a
+ *  data-carrying payload wins over an anchor-only one; ties go to the
+ *  earliest anchor. Null when the chunk was never indexed. */
+export const getChunkPayload = async (
+  chunkCid: string,
+  fileCid?: string,
+): Promise<ChunkPayloadRow | null> => {
+  return safeRead("getChunkPayload", null, async () => {
+    const rows = await db
+      .select({
+        chainId: indexedAnchorEvents.chainId,
+        txHash: indexedAnchorEvents.txHash,
+        blockNumber: indexedAnchorEvents.blockNumber,
+        blockTimestamp: indexedAnchorEvents.blockTimestamp,
+        submitter: indexedAnchorEvents.submitter,
+        payload: indexedAnchorEvents.payload,
+      })
+      .from(indexedAnchorEvents)
+      .where(
+        and(
+          eq(indexedAnchorEvents.cid, chunkCid),
+          sql`${indexedAnchorEvents.payload}->>'op' = 'chunk'`,
+          fileCid
+            ? sql`${indexedAnchorEvents.payload}->>'fileCid' = ${fileCid}`
+            : undefined,
+        ),
+      )
+      .orderBy(indexedAnchorEvents.blockTimestamp);
+    let best: ChunkPayloadRow | null = null;
+    for (const r of rows) {
+      const p = r.payload as {
+        op?: string;
+        cid?: string;
+        fileCid?: string;
+        idx?: number;
+        total?: number;
+        next?: string;
+        d?: string;
+      };
+      if (
+        p.op !== "chunk" ||
+        typeof p.cid !== "string" ||
+        typeof p.fileCid !== "string" ||
+        typeof p.idx !== "number" ||
+        typeof p.total !== "number"
+      ) {
+        continue;
+      }
+      const row: ChunkPayloadRow = {
+        chunkCid: p.cid,
+        fileCid: p.fileCid,
+        index: p.idx,
+        total: p.total,
+        nextCid: typeof p.next === "string" ? p.next : null,
+        chainId: r.chainId,
+        txHash: r.txHash,
+        blockNumber: r.blockNumber,
+        timestamp: Math.floor(r.blockTimestamp.getTime() / 1000),
+        submitter: r.submitter,
+        dataBase64: typeof p.d === "string" ? p.d : null,
+      };
+      if (!best) best = row;
+      if (row.dataBase64 && !best.dataBase64) {
+        best = row;
+        break;
+      }
+    }
+    return best;
   });
 };
