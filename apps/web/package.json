@@ -87,7 +87,7 @@
     "postcss": "^8",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.0",
-    "vitest": "^4.0.0",
+    "vitest": "^5.0.0",
     "webpack": "^5.108.2"
   }
 }
