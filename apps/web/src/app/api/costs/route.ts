@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { COST_ESTIMATE_DISCLAIMER } from "@/lib/costs";
 import { getCostEstimates } from "@/lib/server/costs";
 
 export const dynamic = "force-dynamic";
@@ -16,5 +17,9 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   const estimates = await getCostEstimates();
-  return NextResponse.json({ estimates, updatedAt: new Date().toISOString() });
+  return NextResponse.json({
+    estimates,
+    disclaimer: COST_ESTIMATE_DISCLAIMER,
+    updatedAt: new Date().toISOString(),
+  });
 }

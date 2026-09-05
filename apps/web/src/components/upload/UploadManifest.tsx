@@ -2,7 +2,12 @@
 
 import * as React from "react";
 import type { ChainConfig } from "@fileonchain/sdk";
-import { formatCostUsd, perChunkCost, totalCostFor } from "@/lib/costs";
+import {
+  COST_ESTIMATE_DISCLAIMER,
+  formatCostUsd,
+  perChunkCost,
+  totalCostFor,
+} from "@/lib/costs";
 import { useCostEstimates } from "@/hooks/useCostEstimates";
 import type {
   AnchorStatus,
@@ -148,7 +153,12 @@ const UploadManifest = ({
         </p>
         <span aria-hidden className="hairline min-w-8 flex-1 opacity-60" />
         {!done && (
-          <p className="font-mono text-[10px] text-muted">
+          // The full accuracy disclaimer lives on the cost panel above;
+          // here the tooltip keeps the confirm step qualified too.
+          <p
+            className="font-mono text-[10px] text-muted"
+            title={COST_ESTIMATE_DISCLAIMER}
+          >
             est. {formatCostUsd(estimate)}
           </p>
         )}

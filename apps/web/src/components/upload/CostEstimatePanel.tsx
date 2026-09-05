@@ -4,6 +4,7 @@ import * as React from "react";
 import { motion } from "motion/react";
 import { FiAlertTriangle, FiCheck, FiInfo } from "react-icons/fi";
 import {
+  COST_ESTIMATE_DISCLAIMER,
   formatCostUsd,
   totalCostFor,
   type ChainCostEstimate,
@@ -118,6 +119,10 @@ const CostEstimatePanel = ({ chunkCount }: CostEstimatePanelProps) => {
         One chain is enough to retrieve. Each chain you check below pays its own
         gas — anchoring is free beyond that, and costs scale linearly with the
         number of chains.
+      </p>
+
+      <p className="mt-1.5 text-[10px] leading-relaxed text-muted/80">
+        {COST_ESTIMATE_DISCLAIMER}
       </p>
 
       {/* Chunk anchoring on L1s adds up fast — call it out before signing. */}

@@ -127,6 +127,13 @@ export const totalCostFor = (est: ChainCostEstimate, chunkCount: number) => {
   };
 };
 
+/** Shown wherever dollar figures appear, and returned by `/api/costs` —
+ *  the numbers are planning estimates, never a binding quote. */
+export const COST_ESTIMATE_DISCLAIMER =
+  "Estimates only, not a quote: each chain sets the actual fee at send time, " +
+  "USD conversions use market prices that move constantly, and chains " +
+  "without a live quote show seeded approximations.";
+
 /** Compact USD formatter used by the cost estimate panel. */
 export const formatCostUsd = (usd: number): string => {
   if (usd < 0.01) return `$${usd.toFixed(4)}`;
