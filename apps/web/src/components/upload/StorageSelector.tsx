@@ -11,10 +11,11 @@ import {
   type ChainId,
 } from "@fileonchain/sdk";
 import {
+  COST_ESTIMATE_DISCLAIMER,
   formatCostUsd,
-  getChainCostEstimates,
   perChunkCost,
-} from "@/lib/mock/costs";
+} from "@/lib/costs";
+import { useCostEstimates } from "@/hooks/useCostEstimates";
 import type { StorageMode, UploadPaymentMethod } from "@/hooks/useFileUploader";
 import { useVisibleChains } from "@/hooks/useVisibleChains";
 import { cn } from "@/lib/cn";
@@ -96,13 +97,14 @@ const StorageSelector = ({
     });
   }, [visibleChains, storageChain, activeChain.id]);
 
+  const estimates = useCostEstimates();
   const costByChain = React.useMemo(() => {
     const map = new Map<string, number>();
-    for (const est of getChainCostEstimates()) {
+    for (const est of estimates) {
       map.set(est.chainId, perChunkCost(est).usd);
     }
     return map;
-  }, []);
+  }, [estimates]);
 
   const storageTxs = storageChain ? storageChunkCount(storageChain, fileSize) : null;
   const storageCost =
@@ -116,7 +118,7 @@ const StorageSelector = ({
         <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
           <FiDatabase size={13} className="text-primary" />
           {mode === "onchain" && storageChain
-            ? `Bytes live on ${storageChain.name}`
+            ? "Bytes live on-chain"
             : mode === "external"
               ? "Bytes live at your URI"
               : "No bytes stored — proof only"}
@@ -135,6 +137,12 @@ const StorageSelector = ({
           </div>
         )}
       </header>
+
+      {mode === "onchain" && (
+        <p className="mt-1.5 text-[10px] leading-relaxed text-muted/80">
+          {COST_ESTIMATE_DISCLAIMER}
+        </p>
+      )}
 
       {/* Mode switch */}
       <div className="mt-3 grid gap-1.5 sm:grid-cols-3">

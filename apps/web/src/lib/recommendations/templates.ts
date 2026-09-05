@@ -1,4 +1,4 @@
-import { formatCostUsd } from "@/lib/mock/costs";
+import { formatCostUsd } from "@/lib/costs";
 import type { UploadPaymentMethod } from "@/hooks/useFileUploader";
 
 /**

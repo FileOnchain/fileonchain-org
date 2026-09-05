@@ -6,10 +6,10 @@ import {
   type ChainId,
 } from "@fileonchain/sdk";
 import {
-  getChainCostEstimates,
+  getSeedCostEstimates,
   totalCostFor,
   type ChainCostEstimate,
-} from "@/lib/mock/costs";
+} from "@/lib/costs";
 import { getByokProvider } from "@/lib/byok/providers";
 import { buildHeadline, buildRationale } from "@/lib/recommendations/templates";
 import type {
@@ -84,11 +84,14 @@ const resolveWantsTestnet = (input: RecommendationInput): boolean | null => {
   }
 };
 
-const buildCandidates = (input: RecommendationInput): Candidate[] => {
+const buildCandidates = (
+  input: RecommendationInput,
+  estimates: ChainCostEstimate[],
+): Candidate[] => {
   const chunkCount = Math.max(1, input.file.chunkCount);
   const wantsTestnet = resolveWantsTestnet(input);
 
-  let candidates: Candidate[] = getChainCostEstimates().flatMap((estimate) => {
+  let candidates: Candidate[] = estimates.flatMap((estimate) => {
     const chain = getChain(estimate.chainId);
     // Planned/deprecated chains can't be selected for upload, so the
     // advisor must never suggest one.
@@ -173,9 +176,12 @@ const pickSecondaryChains = (
 
 export const computeUploadRecommendation = (
   input: RecommendationInput,
+  // Callers with live quotes (the server route, the hydrated client store)
+  // pass them in; the pure default keeps the engine deterministic.
+  estimates: ChainCostEstimate[] = getSeedCostEstimates(),
 ): UploadRecommendation => {
   const chunkCount = Math.max(1, input.file.chunkCount);
-  const ranked = buildCandidates(input);
+  const ranked = buildCandidates(input, estimates);
   const primary = ranked[0];
   if (!primary) {
     // Cannot happen while the registry is non-empty, but keep a total function.

@@ -3,7 +3,7 @@ import "server-only";
 import { getChain } from "@fileonchain/sdk";
 import { env } from "@/lib/env";
 import { siteConfig } from "@/lib/site";
-import { formatCostUsd, getChainCostEstimates } from "@/lib/mock/costs";
+import { formatCostUsd, getSeedCostEstimates } from "@/lib/costs";
 import type {
   RecommendationInput,
   UploadRecommendation,
@@ -51,7 +51,9 @@ const buildContext = (
   recommendation: UploadRecommendation,
 ) => {
   const chunkCount = Math.max(1, input.file.chunkCount);
-  const estimates = getChainCostEstimates();
+  // Only static fields (shortName, tier) reach the prompt — the live
+  // dollar figure travels via `recommendation.estimatedCostUsd` below.
+  const estimates = getSeedCostEstimates();
   const eligibleChains = [
     recommendation.suggested.chainId,
     ...recommendation.suggested.secondaryChainIds,

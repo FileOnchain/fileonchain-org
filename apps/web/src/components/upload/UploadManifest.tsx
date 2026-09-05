@@ -3,11 +3,12 @@
 import * as React from "react";
 import type { ChainConfig } from "@fileonchain/sdk";
 import {
+  COST_ESTIMATE_DISCLAIMER,
   formatCostUsd,
-  getChainCostEstimates,
   perChunkCost,
   totalCostFor,
-} from "@/lib/mock/costs";
+} from "@/lib/costs";
+import { useCostEstimates } from "@/hooks/useCostEstimates";
 import type {
   AnchorStatus,
   StorageMode,
@@ -92,8 +93,8 @@ const UploadManifest = ({
   // Estimated total: proof anchors on the settlement chain, plus the storage
   // pass when the bytes go to a different chain. Same rough model as the
   // cost panel — the panel remains the place to inspect it per chain.
+  const estimates = useCostEstimates();
   const estimate = React.useMemo(() => {
-    const estimates = getChainCostEstimates();
     const anchorEst = estimates.find((e) => e.chainId === anchorChain.id);
     let usd = anchorEst ? totalCostFor(anchorEst, chunkCount).usd : 0;
     if (twoPass && storageChain) {
@@ -101,7 +102,7 @@ const UploadManifest = ({
       if (storageEst) usd += perChunkCost(storageEst).usd * chunkCount;
     }
     return usd;
-  }, [anchorChain.id, storageChain, twoPass, chunkCount]);
+  }, [estimates, anchorChain.id, storageChain, twoPass, chunkCount]);
 
   const bytesValue =
     storageMode === "onchain" && storageChain
@@ -152,7 +153,12 @@ const UploadManifest = ({
         </p>
         <span aria-hidden className="hairline min-w-8 flex-1 opacity-60" />
         {!done && (
-          <p className="font-mono text-[10px] text-muted">
+          // The full accuracy disclaimer lives on the cost panel above;
+          // here the tooltip keeps the confirm step qualified too.
+          <p
+            className="font-mono text-[10px] text-muted"
+            title={COST_ESTIMATE_DISCLAIMER}
+          >
             est. {formatCostUsd(estimate)}
           </p>
         )}

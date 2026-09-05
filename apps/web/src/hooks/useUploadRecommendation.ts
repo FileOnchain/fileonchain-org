@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useChain } from "@/hooks/useChain";
 import { useWalletStates } from "@/states/wallet";
 import { hydratePreferences, usePreferencesStates } from "@/states/preferences";
+import { useCostsStates } from "@/states/costs";
 import { computeUploadRecommendation } from "@/lib/recommendations/engine";
 import type {
   RecommendationInput,
@@ -134,7 +135,14 @@ export const useUploadRecommendation = ({
         } catch {
           if (cancelled) return;
           try {
-            setRecommendation(computeUploadRecommendation(fallbackInput));
+            // The client fallback quotes with whatever the costs store
+            // holds — live rows once /api/costs has hydrated, seed before.
+            setRecommendation(
+              computeUploadRecommendation(
+                fallbackInput,
+                useCostsStates.getState().estimates,
+              ),
+            );
             setSource("fallback");
             setStatus("ready");
           } catch {

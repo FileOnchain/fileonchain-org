@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { FiCreditCard, FiEdit3, FiShield } from "react-icons/fi";
 import { useChain } from "@/hooks/useChain";
-import { getChainCostEstimates, totalCostFor, formatCostUsd } from "@/lib/mock/costs";
+import { totalCostFor, formatCostUsd } from "@/lib/costs";
+import { useCostEstimates } from "@/hooks/useCostEstimates";
 import { formatMicroUsdc } from "@/lib/usdc";
 import { getByokProvider } from "@/lib/byok/providers";
 import type { UploadPaymentMethod } from "@/hooks/useFileUploader";
@@ -50,12 +51,11 @@ export const PaymentMethodSelector = ({
   const [balance, setBalance] = React.useState<bigint | null>(null);
   const [byokKeys, setByokKeys] = React.useState<ByokKeyOption[]>([]);
 
+  const estimates = useCostEstimates();
   const costUsd = React.useMemo(() => {
-    const estimate = getChainCostEstimates().find(
-      (e) => e.chainId === activeChain.id,
-    );
+    const estimate = estimates.find((e) => e.chainId === activeChain.id);
     return estimate ? totalCostFor(estimate, chunkCount).usd : 0;
-  }, [activeChain.id, chunkCount]);
+  }, [estimates, activeChain.id, chunkCount]);
 
   React.useEffect(() => {
     if (!authed) {

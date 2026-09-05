@@ -4,13 +4,14 @@ import * as React from "react";
 import { motion } from "motion/react";
 import { FiAlertTriangle, FiCheck, FiInfo } from "react-icons/fi";
 import {
+  COST_ESTIMATE_DISCLAIMER,
   formatCostUsd,
-  getChainCostEstimates,
   totalCostFor,
   type ChainCostEstimate,
-} from "@/lib/mock/costs";
+} from "@/lib/costs";
 import { isChainActive } from "@fileonchain/sdk";
 import { useChain } from "@/hooks/useChain";
+import { useCostEstimates } from "@/hooks/useCostEstimates";
 import { useVisibleChains } from "@/hooks/useVisibleChains";
 import { cn } from "@/lib/cn";
 
@@ -44,6 +45,7 @@ const TIER_LABELS: Record<ChainCostEstimate["tier"], string> = {
 const CostEstimatePanel = ({ chunkCount }: CostEstimatePanelProps) => {
   const { activeChain } = useChain();
   const visibleChains = useVisibleChains();
+  const allEstimates = useCostEstimates();
   // Same testnet-visibility gate as every picker, narrowed to chains that
   // are open for uploads — planned/deprecated chains can't be anchored on,
   // so offering them as redundancy would be noise. The active chain stays
@@ -53,10 +55,10 @@ const CostEstimatePanel = ({ chunkCount }: CostEstimatePanelProps) => {
     const anchorable = new Set(
       visibleChains.filter(isChainActive).map((chain) => chain.id),
     );
-    return getChainCostEstimates().filter(
+    return allEstimates.filter(
       (est) => anchorable.has(est.chainId) || est.chainId === activeChain.id,
     );
-  }, [visibleChains, activeChain.id]);
+  }, [allEstimates, visibleChains, activeChain.id]);
   // Chains the user has selected for redundant anchoring. The active chain
   // is on by default; the user can toggle others.
   const [selected, setSelected] = React.useState<Set<string>>(
@@ -74,14 +76,11 @@ const CostEstimatePanel = ({ chunkCount }: CostEstimatePanelProps) => {
 
   const total = React.useMemo(() => {
     let usd = 0;
-    let platforms = 0;
     for (const est of estimates) {
       if (!selected.has(est.chainId)) continue;
-      const t = totalCostFor(est, chunkCount);
-      usd += t.usd;
-      platforms += est.platformFeePct;
+      usd += totalCostFor(est, chunkCount).usd;
     }
-    return { usd, chains: selected.size, avgPlatformFee: platforms / Math.max(1, selected.size) };
+    return { usd, chains: selected.size };
   }, [estimates, selected, chunkCount]);
 
   const toggle = (id: string) => {
@@ -118,7 +117,12 @@ const CostEstimatePanel = ({ chunkCount }: CostEstimatePanelProps) => {
       <p className="mt-2 inline-flex items-start gap-1.5 text-[11px] text-muted">
         <FiInfo size={11} className="mt-0.5 shrink-0" />
         One chain is enough to retrieve. Each chain you check below pays its own
-        gas and a small platform fee — costs scale linearly with the number of chains.
+        gas — anchoring is free beyond that, and costs scale linearly with the
+        number of chains.
+      </p>
+
+      <p className="mt-1.5 text-[10px] leading-relaxed text-muted/80">
+        {COST_ESTIMATE_DISCLAIMER}
       </p>
 
       {/* Chunk anchoring on L1s adds up fast — call it out before signing. */}

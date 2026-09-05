@@ -2,10 +2,8 @@ import "server-only";
 import { and, eq, isNull } from "drizzle-orm";
 import { getChain, isValidCID, type ChainId } from "@fileonchain/sdk";
 import { db, byokKeys, uploadJobs, organizationMembers } from "@/lib/db";
-import {
-  getChainCostEstimates,
-  totalCostFor,
-} from "@/lib/mock/costs";
+import { totalCostFor } from "@/lib/costs";
+import { getCostEstimates } from "@/lib/server/costs";
 import { getByokProvider } from "@/lib/byok/providers";
 import {
   creditAccount,
@@ -125,12 +123,13 @@ export const parseAnchorPayload = (body: unknown): AnchorPayload => {
   };
 };
 
-/** Server-side cost: the same per-chunk estimates the upload UI shows. */
-export const computeAnchorCostMicroUsdc = (
+/** Server-side cost: the same per-chunk estimates the upload UI shows —
+ *  live gas / fee quotes where quotable, seed rows elsewhere. */
+export const computeAnchorCostMicroUsdc = async (
   chainIds: ChainId[],
   chunkCount: number,
-): bigint => {
-  const estimates = getChainCostEstimates();
+): Promise<bigint> => {
+  const estimates = await getCostEstimates();
   let usd = 0;
   for (const chainId of chainIds) {
     const estimate = estimates.find((e) => e.chainId === chainId);
@@ -202,7 +201,7 @@ export const anchorWithAccount = async (
 
   const cost =
     payload.paymentMethod === "credits"
-      ? computeAnchorCostMicroUsdc(payload.chainIds, payload.chunkCount)
+      ? await computeAnchorCostMicroUsdc(payload.chainIds, payload.chunkCount)
       : 0n; // BYOK spends the user's provider credit, not platform credits.
 
   const [job] = await db

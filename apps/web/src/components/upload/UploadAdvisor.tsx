@@ -14,7 +14,7 @@ import {
   useUploadRecommendation,
   type AdvisorView,
 } from "@/hooks/useUploadRecommendation";
-import { formatCostUsd } from "@/lib/mock/costs";
+import { formatCostUsd } from "@/lib/costs";
 import { formatBytes } from "@/lib/cid/format";
 import { trackEvent } from "@/lib/analytics";
 import { Badge } from "@/components/ui/Badge";
