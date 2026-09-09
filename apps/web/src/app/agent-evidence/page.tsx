@@ -7,6 +7,7 @@ import Badge from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import CodeBlock from "@/components/docs/CodeBlock";
 import { siteConfig } from "@/lib/site";
+import { MCP_CLAUDE_CODE_SNIPPET, MCP_CONFIG_SNIPPET } from "@/lib/snippets/mcp";
 
 export const metadata: Metadata = {
   title: "Agent Evidence",
@@ -176,6 +177,26 @@ const AgentEvidencePage = () => (
         envelope ready for receipts.
       </p>
       <CodeBlock className="mt-4" title="seal-run.ts" code={CODE_SAMPLE} />
+    </section>
+
+    {/* MCP ---------------------------------------------------------------- */}
+    <section className="mt-10">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="text-lg font-semibold">Try it from the tool your agent already uses</h2>
+        <Badge variant="info" size="sm">
+          Cloud + SDK integration
+        </Badge>
+      </div>
+      <p className="mt-1 max-w-[70ch] text-sm text-muted">
+        <code className="font-mono text-xs">@fileonchain/mcp</code> is a stdio MCP server, an
+        integration with FileOnChain Cloud and the reference SDK, not part of the protocol. Its{" "}
+        <code className="font-mono text-xs">verify_evidence</code> tool runs the local verifier
+        in-process with no key; the anchoring tools spend account credits through the hosted
+        API. Add it to Claude Code:
+      </p>
+      <CodeBlock className="mt-4" title="terminal" language="sh" code={MCP_CLAUDE_CODE_SNIPPET} />
+      <p className="mt-3 max-w-[70ch] text-sm text-muted">Or to Cursor and other JSON-configured clients:</p>
+      <CodeBlock className="mt-3" title="mcp.json" language="json" code={MCP_CONFIG_SNIPPET} />
     </section>
 
     {/* Manifests -------------------------------------------------------- */}
