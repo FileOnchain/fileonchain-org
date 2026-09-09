@@ -10,11 +10,11 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { OVERALL, STATUS_ICON, SECTIONS } from "@/components/verify/reportView";
+import { ShareEvidence } from "@/components/verify/ShareEvidence";
 import {
   SAMPLE_SUBJECT_CONTENT,
   SAMPLE_SUBJECT_NAME,
   VERIFY_SAMPLES,
-  buildEnvelopeShareLink,
   decodeEnvelopeParam,
   parseRemoteEnvelopeUrl,
   sampleUrl,
@@ -39,6 +39,8 @@ import {
  * The overall chip wording + the six grouped sections live in
  * `./reportView.tsx` so the hosted `/cloud/verify/[envelopeId]` page can
  * share them — `/verify` and the hosted page must produce the same shape.
+ * The share controls under the chip (report link, status badge, badge
+ * Markdown) live in `./ShareEvidence.tsx`.
  */
 
 /** Where the current envelope came from — shown above the textarea. */
@@ -58,7 +60,6 @@ const VerifyPanel = () => {
   const [loadingSample, setLoadingSample] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [report, setReport] = React.useState<VerificationReport | null>(null);
-  const [copied, setCopied] = React.useState(false);
 
   const onEnvelopeFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -197,25 +198,6 @@ const VerifyPanel = () => {
     };
   }, [verify]);
 
-  const copyShareLink = async () => {
-    const link = buildEnvelopeShareLink(json, window.location.origin);
-    if (!link) return;
-    try {
-      await navigator.clipboard.writeText(link);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setError("Could not copy the link — your browser blocked clipboard access.");
-    }
-  };
-
-  // Small enough for a `?envelope=` link? Memoized — encoding runs per
-  // keystroke otherwise. Origin-independent, so an empty origin will do.
-  const shareable = React.useMemo(
-    () => json.trim().length > 0 && buildEnvelopeShareLink(json, "") !== null,
-    [json],
-  );
-
   const checksFor = (groups: CheckGroup[]): CheckResult[] =>
     report ? report.checks.filter((c) => groups.includes(c.group)) : [];
 
@@ -336,17 +318,13 @@ const VerifyPanel = () => {
           <Button onClick={runVerify} isLoading={busy} disabled={busy || loadingSample !== null}>
             Verify
           </Button>
-          {shareable && (
-            <Button variant="ghost" size="sm" onClick={copyShareLink} disabled={busy}>
-              {copied ? "Link copied" : "Copy link to this envelope"}
-            </Button>
-          )}
           {error && <p className="text-sm text-danger">{error}</p>}
         </div>
         <p className="mt-3 text-[11px] text-muted">
           Nothing is uploaded to FileOnChain. A link carries the envelope itself
           (<code className="font-mono">?envelope=</code>) or points at a URL your browser fetches
-          directly (<code className="font-mono">?url=</code>).
+          directly (<code className="font-mono">?url=</code>). Share controls appear under the
+          report.
         </p>
       </Card>
 
@@ -365,6 +343,14 @@ const VerifyPanel = () => {
               {report.checks.length} checks · status: {report.status}
             </span>
           </div>
+        )}
+
+        {report && (
+          <ShareEvidence
+            json={json}
+            sourceUrl={source?.kind === "url" ? source.url : null}
+            status={report.status}
+          />
         )}
 
         {SECTIONS.map((section) => {
