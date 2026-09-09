@@ -308,9 +308,17 @@ semver ranges. Repo-level Claude Code skills live in `.claude/skills/`
   `lib/server/remote-envelope.ts` and run the offline verifier; their
   wording is the verifier's status, never "verified". `/verify` is a
   server page whose `generateMetadata` points `og:image` at the card
-  when `?url=` / `?envelope=` is present; the share block under a
-  report is `components/verify/ShareEvidence.tsx` (link, badge, badge
-  Markdown from `lib/verify/share.ts`).
+  when `?url=` / `?envelope=` is present. A report is headed by the
+  **receipt** (`components/verify/ReceiptView.tsx`, wording and line-item
+  helpers in `lib/verify/receipt.ts`): a pure rendering of the
+  `VerificationReport` + its `summary`, stamped with the verifier's exact
+  status, artifact and envelope signatures on separate lines, unknown
+  adapters/profiles as UNKNOWN, PNG download + print. The same component
+  serves the hosted `/cloud/verify/[id]` page and the uploader's
+  post-anchor state (`components/upload/EvidenceReceipt.tsx`, which
+  builds and verifies an unsigned envelope from a real anchor). The share
+  block under it is `components/verify/ShareEvidence.tsx` (link, badge,
+  badge Markdown from `lib/verify/share.ts`).
 - **`src/components/`** — `ui/` primitives (Button, Modal, Card, …), `layout/`
   (Nav, Footer, PageShell), and feature folders (`explorer/`, `cache/`,
   `donations/`, `chain/`, `upload/`, `onboarding/`, `registry/`). Bare files in

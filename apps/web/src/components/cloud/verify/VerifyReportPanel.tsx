@@ -10,18 +10,19 @@ import type {
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { OVERALL, SECTIONS, STATUS_ICON } from "@/components/verify/reportView";
+import { SECTIONS, STATUS_ICON } from "@/components/verify/reportView";
+import { ReceiptView } from "@/components/verify/ReceiptView";
 
 /**
  * VerifyReportPanel — the hosted verification page's client half. Receives
  * the canonical `EvidenceEnvelope` JSON from the server component parent
  * (no DB lookup, no API call from the browser), dynamic-imports
- * `@fileonchain/verify`, and renders the report using the same shared
- * constants as `/verify` so the chip wording and grouped sections match
- * verbatim.
+ * `@fileonchain/verify`, and renders the report with the same pieces as
+ * `/verify` — the receipt (`components/verify/ReceiptView.tsx`) followed
+ * by the grouped detail sections — so both surfaces match verbatim.
  *
- * The hosted page is a *convenience* rendering — the disclosure card under
- * the chip explicitly says so, and points at the local verifier as the
+ * The hosted page is a *convenience* rendering — the disclosure card above
+ * the receipt explicitly says so, and points at the local verifier as the
  * ground truth. The verifier is the same code that the open-source CLI
  * uses; there is no separate hosted verifier implementation.
  *
@@ -163,18 +164,7 @@ export const VerifyReportPanel = ({
       </Card>
 
       {report && (
-        <div
-          className={cn(
-            "flex items-center justify-between rounded-lg border px-4 py-3",
-            OVERALL[report.status].className,
-          )}
-          role="status"
-        >
-          <span className="text-base font-semibold">{OVERALL[report.status].label}</span>
-          <span className="font-mono text-xs opacity-80">
-            {report.checks.length} checks · status: {report.status}
-          </span>
-        </div>
+        <ReceiptView report={report} subjectFileName={subjectBytes ? subjectFileName : null} />
       )}
 
       {SECTIONS.map((section) => {

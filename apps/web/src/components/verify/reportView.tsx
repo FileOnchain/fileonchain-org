@@ -14,9 +14,11 @@ import type {
  * a user can compare `/verify` and `/cloud/verify/[id]` output side by
  * side without learning two report shapes.
  *
- * The overall chip always shows the verifier's exact status — "Valid",
+ * `OVERALL` carries the verifier's exact status wording — "Valid",
  * "Valid with warnings", "Incomplete", "Invalid" — never a single green
- * "verified" that would hide uncertainty.
+ * "verified" that would hide uncertainty. The report itself is headed by
+ * the receipt (`./ReceiptView.tsx`, wording in `lib/verify/receipt.ts`);
+ * these sections are the detail view under it.
  */
 
 export const OVERALL: Record<

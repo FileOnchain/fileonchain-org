@@ -14,6 +14,7 @@ import {
 } from "@fileonchain/protocol";
 import { summarize, type CheckGroup, type CheckResult, type VerificationReport } from "./report";
 import { verifySchemeSignature } from "./signatures";
+import { summarizeEnvelope } from "./summary";
 
 /**
  * Deterministic local verification of a protocol evidence envelope.
@@ -387,5 +388,12 @@ export const verifyEnvelope = async (
       : `proof self-consistent; root ${root} not anchored by any settlement receipt in this envelope`;
   }
 
-  return summarize(checks, incomplete);
+  return summarize(
+    checks,
+    incomplete,
+    summarizeEnvelope(envelope, {
+      subjectBytes: options.subjectBytes !== undefined,
+      online: options.checkReceiptsOnline === true,
+    }),
+  );
 };

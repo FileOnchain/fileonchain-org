@@ -107,6 +107,20 @@ export type AnchorStatus =
  */
 export type StorageMode = "onchain" | "external" | "none";
 
+/**
+ * The file-level anchor that landed — what the post-anchor evidence
+ * receipt is built from. `simulated` is carried through so nothing
+ * mocked ever becomes an envelope.
+ */
+export interface LandedAnchor {
+  chainId: ChainId;
+  txHash: string;
+  blockNumber?: number;
+  /** Unix seconds. */
+  timestamp: number;
+  simulated: boolean;
+}
+
 /** Suggested storage fallback when the settlement chain can't carry bytes —
  * Autonomys, the permanent-storage network (testnet mirror for testnets). */
 const fallbackStorageChainId = (anchorChain: ChainConfig): ChainId =>
@@ -160,6 +174,7 @@ export const useFileUploader = () => {
   const [selectedCidData, setSelectedCidData] = useState<SelectedCidData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [landedAnchor, setLandedAnchor] = useState<LandedAnchor | null>(null);
   const [fileFound, setFileFound] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [preview, setPreview] = useState<CIDPreviewData | null>(null);
@@ -277,6 +292,7 @@ export const useFileUploader = () => {
       setCids([]);
       setFileCid(null);
       setTxHash(null);
+      setLandedAnchor(null);
       setStorageTxHash(null);
       setAnchorStatus("idle");
       setAnchorProgress(0);
@@ -663,6 +679,13 @@ export const useFileUploader = () => {
       if (paymentMethod === "payg") {
         const outcome = await anchorPayg();
         setTxHash(outcome.txHash);
+        setLandedAnchor({
+          chainId: activeChain.id,
+          txHash: outcome.txHash,
+          blockNumber: outcome.blockNumber,
+          timestamp: outcome.timestamp,
+          simulated: outcome.simulated,
+        });
         setPreview(
           buildPreview({
             txHash: outcome.txHash,
@@ -698,6 +721,13 @@ export const useFileUploader = () => {
         const firstTx = job.txHashes?.[0];
         if (firstTx) {
           setTxHash(firstTx.txHash);
+          setLandedAnchor({
+            chainId: activeChain.id,
+            txHash: firstTx.txHash,
+            blockNumber: firstTx.blockNumber,
+            timestamp: Math.floor(Date.now() / 1000),
+            simulated: false,
+          });
           setPreview(
             buildPreview({
               txHash: firstTx.txHash,
@@ -804,6 +834,7 @@ export const useFileUploader = () => {
     isOpen,
     selectedCidData,
     txHash,
+    landedAnchor,
     error,
     fileFound,
     isUploading,

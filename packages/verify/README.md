@@ -71,6 +71,11 @@ const report = await verifyEvidenceJson(rawJson, {
 report.status;  // "valid" | "valid-with-warnings" | "incomplete" | "invalid"
 report.ok;      // true unless "invalid"
 report.checks;  // [{ name, group, status, detail }]
+report.summary; // what was verified, copied from the document: subject,
+                // envelope digest, profile, artifact vs envelope signature
+                // counts, receipt line items (system, txHash, block, time),
+                // and the inputs used — enough to render a receipt without
+                // re-reading the envelope. Absent when the JSON fails to parse.
 ```
 
 `verifyEvidenceJson` auto-detects the format; `verifyEnvelope` /

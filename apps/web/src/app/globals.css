@@ -360,3 +360,124 @@
     animation: none !important;
   }
 }
+/* -----------------------------------------------------------------------------
+ * Evidence receipt (components/verify/ReceiptView.tsx).
+ *
+ * The receipt carries its own palette so it renders the same whether it is
+ * on the page, in a PNG, or on paper. It follows the site theme by default;
+ * `data-receipt-theme="light" | "dark"` forces one variant regardless of the
+ * root `.dark` class (the download toolbar uses that so a screenshot can be
+ * taken in either look). Colors are chosen to survive a screenshot: high
+ * contrast, no translucency.
+ * --------------------------------------------------------------------------- */
+@layer components {
+  .evidence-receipt {
+    --receipt-bg: #fbfaf6;
+    --receipt-fg: #0b0d12;
+    --receipt-muted: #5b6270;
+    --receipt-rule: #b9b4a6;
+    --receipt-pass: #0f766e;
+    --receipt-fail: #b91c1c;
+    --receipt-warn: #b45309;
+    --receipt-unknown: #4b5563;
+    --receipt-skip: #8a8f9a;
+    --receipt-info: #1d4ed8;
+    font-family: var(--font-mono);
+    color: var(--receipt-fg);
+    background-color: var(--receipt-bg);
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  :root.dark .evidence-receipt:not([data-receipt-theme="light"]),
+  .evidence-receipt[data-receipt-theme="dark"] {
+    --receipt-bg: #0f1218;
+    --receipt-fg: #f4f2ec;
+    --receipt-muted: #9ca3af;
+    --receipt-rule: #3a404d;
+    --receipt-pass: #2dd4bf;
+    --receipt-fail: #f87171;
+    --receipt-warn: #fbbf24;
+    --receipt-unknown: #c3c8d2;
+    --receipt-skip: #7c8290;
+    --receipt-info: #93c5fd;
+  }
+
+  .evidence-receipt-rule {
+    border: 0;
+    border-top: 1px dashed var(--receipt-rule);
+  }
+
+  /* Dotted leader between a label and its tag, like a till receipt. */
+  .evidence-receipt-leader {
+    flex: 1 1 auto;
+    min-width: 1rem;
+    border-bottom: 1px dotted var(--receipt-rule);
+    transform: translateY(-0.3em);
+  }
+
+  .evidence-receipt-tag {
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+  .evidence-receipt-tag[data-status="pass"] { color: var(--receipt-pass); }
+  .evidence-receipt-tag[data-status="fail"] { color: var(--receipt-fail); }
+  .evidence-receipt-tag[data-status="warning"] { color: var(--receipt-warn); }
+  .evidence-receipt-tag[data-status="unknown"] { color: var(--receipt-unknown); }
+  .evidence-receipt-tag[data-status="skipped"] { color: var(--receipt-skip); }
+
+  /* The stamp: a double-ruled, slightly rotated box in the status color. */
+  .evidence-receipt-stamp {
+    display: inline-block;
+    padding: 0.4rem 0.75rem;
+    border: 2px solid currentColor;
+    border-radius: 6px;
+    box-shadow:
+      inset 0 0 0 2px var(--receipt-bg),
+      inset 0 0 0 3.5px currentColor;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transform: rotate(-6deg);
+    transform-origin: center;
+  }
+  .evidence-receipt-stamp[data-status="valid"] { color: var(--receipt-pass); }
+  .evidence-receipt-stamp[data-status="valid-with-warnings"] { color: var(--receipt-warn); }
+  .evidence-receipt-stamp[data-status="incomplete"] { color: var(--receipt-info); }
+  .evidence-receipt-stamp[data-status="invalid"] { color: var(--receipt-fail); }
+
+  .evidence-receipt-bar {
+    display: inline-block;
+    height: 100%;
+    background-color: var(--receipt-fg);
+  }
+}
+
+/* Print: while the receipt's Print button is active, every element that is
+ * neither the receipt, inside it, nor one of its ancestors is removed from
+ * the flow — so nav, inputs, and the detail cards do not print and no blank
+ * pages follow. */
+@media print {
+  body[data-print-receipt]
+    *:not([data-print-target]):not([data-print-target] *):not(:has([data-print-target])) {
+    display: none !important;
+  }
+  /* Ancestors collapse to plain blocks so a column layout does not leave
+   * the receipt in half the page. */
+  body[data-print-receipt] :has([data-print-target]) {
+    display: block !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  body[data-print-receipt] [data-print-target] {
+    max-width: none;
+    box-shadow: none;
+    border-color: #b9b4a6;
+  }
+  @page {
+    margin: 12mm;
+  }
+}

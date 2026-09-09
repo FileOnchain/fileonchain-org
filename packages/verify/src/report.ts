@@ -37,6 +37,79 @@ export type VerificationStatus =
   | "incomplete"
   | "invalid";
 
+/**
+ * What the verifier was asked to do. Enough to reproduce the report with
+ * the CLI (`fileonchain verify <file> [--artifact <bytes>] [--online]`).
+ */
+export interface VerificationInputs {
+  /** Subject bytes were supplied, so integrity was recomputed locally. */
+  subjectBytes: boolean;
+  /** Receipts were confirmed online through their adapters. */
+  online: boolean;
+}
+
+/** The subject, as the envelope describes it. Every field is copied verbatim. */
+export interface ReportSubject {
+  type: string;
+  name?: string;
+  sha256?: string;
+  cid?: string;
+  uri?: string;
+  mediaType?: string;
+  size?: number;
+}
+
+/**
+ * One receipt, as a line item. `name` is the prefix of every check the
+ * verifier emitted for this receipt (`<type>[<i>]:<adapter>`), so a
+ * renderer can pair the line with its offline/online outcomes. Payload
+ * fields are copied verbatim from the receipt when the adapter's payload
+ * carries them; nothing is derived or reworded.
+ */
+export interface ReportReceiptLine {
+  name: string;
+  type: "storage" | "settlement" | "inclusion";
+  adapter: string;
+  /** False when no adapter is registered — the receipt was preserved, not checked. */
+  adapterKnown: boolean;
+  system?: string;
+  txHash?: string;
+  blockNumber?: number;
+  /** Asserted time carried by the receipt payload (ISO 8601). */
+  timestamp?: string;
+  uri?: string;
+  root?: string;
+}
+
+/**
+ * A compact description of what was verified, built by the verifier from
+ * the document itself. It exists so a report can be rendered on its own,
+ * as a receipt or a card, without re-reading the envelope: every value is
+ * copied from the verified document, never computed by a renderer.
+ * Absent when the document failed to parse.
+ */
+export interface EvidenceSummary {
+  /** `"envelope"` for protocol envelopes, `"legacy-evidence-v1"` for pre-separation packages. */
+  format: "envelope" | "legacy-evidence-v1";
+  protocol: string;
+  version: number;
+  id?: string;
+  profile?: string;
+  /** False when the profile is not registered — its claims were not validated. */
+  profileKnown?: boolean;
+  /** Producer-asserted creation time (ISO 8601). Claimed, not proven. */
+  createdAt?: string;
+  subject: ReportSubject;
+  /** The finalized envelope digest. Absent on drafts and legacy packages. */
+  envelopeDigest?: string;
+  /** Count of artifact signatures — who signed the subject. */
+  artifactSignatures: number;
+  /** Count of envelope signatures — who assembled the envelope. Kept apart from artifact signatures. */
+  envelopeSignatures: number;
+  receipts: ReportReceiptLine[];
+  inputs: VerificationInputs;
+}
+
 export interface VerificationReport {
   status: VerificationStatus;
   /**
@@ -52,6 +125,8 @@ export interface VerificationReport {
    */
   attested: boolean;
   checks: CheckResult[];
+  /** What was verified, copied from the document. See {@link EvidenceSummary}. */
+  summary?: EvidenceSummary;
 }
 
 /**
@@ -64,6 +139,7 @@ export interface VerificationReport {
 export const summarize = (
   checks: CheckResult[],
   incomplete: boolean,
+  summary?: EvidenceSummary,
 ): VerificationReport => {
   const status: VerificationStatus = checks.some((c) => c.status === "fail")
     ? "invalid"
@@ -77,5 +153,11 @@ export const summarize = (
       c.status === "pass" &&
       (c.group === "artifact-signatures" || c.group === "envelope-signatures"),
   );
-  return { status, ok: status !== "invalid", attested, checks };
+  return {
+    status,
+    ok: status !== "invalid",
+    attested,
+    checks,
+    ...(summary ? { summary } : {}),
+  };
 };

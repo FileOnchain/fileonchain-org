@@ -117,9 +117,14 @@ export {
   type CheckGroup,
   type CheckResult,
   type CheckStatus,
+  type EvidenceSummary,
+  type ReportReceiptLine,
+  type ReportSubject,
+  type VerificationInputs,
   type VerificationReport,
   type VerificationStatus,
 } from "./report";
+export { summarizeEnvelope, summarizeLegacyPackage } from "./summary";
 export { verifySchemeSignature } from "./signatures";
 export {
   anchorAdapter,

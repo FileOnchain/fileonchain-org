@@ -12,6 +12,7 @@ import {
 import { confirmEvmAnchorOnline, type AnchorBindingTarget } from "./evm-anchor";
 import { summarize, type CheckResult, type VerificationReport } from "./report";
 import { verifySchemeSignature } from "./signatures";
+import { summarizeLegacyPackage } from "./summary";
 
 /**
  * Verification of `legacy-evidence-v1` packages — the pre-separation
@@ -262,7 +263,14 @@ export const verifyLegacyPackage = async (
     detail: "legacy format has no envelope digest — receipts are not cryptographically bound to the package; migrate to bind them",
   });
 
-  return summarize(checks, false);
+  return summarize(
+    checks,
+    false,
+    summarizeLegacyPackage(pkg, {
+      subjectBytes: options.artifactBytes !== undefined,
+      online: options.checkSettlements === true,
+    }),
+  );
 };
 
 export { parseEvidencePackage as parseLegacyEvidencePackage } from "@fileonchain/utils";

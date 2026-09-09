@@ -58,6 +58,7 @@
     "bech32": "^2.0.0",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
+    "html-to-image": "^1.11.13",
     "motion": "^13.0.0",
     "multiformats": "^14.0.0",
     "near-api-js": "^7.2.0",
