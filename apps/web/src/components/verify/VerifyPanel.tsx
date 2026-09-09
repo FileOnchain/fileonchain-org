@@ -10,32 +10,61 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { OVERALL, STATUS_ICON, SECTIONS } from "@/components/verify/reportView";
+import {
+  SAMPLE_SUBJECT_CONTENT,
+  SAMPLE_SUBJECT_NAME,
+  VERIFY_SAMPLES,
+  buildEnvelopeShareLink,
+  decodeEnvelopeParam,
+  parseRemoteEnvelopeUrl,
+  sampleUrl,
+  type VerifySample,
+} from "@/lib/verify/samples";
 
 /**
  * VerifyPanel — the interactive half of /verify. Collects an envelope
- * (pasted JSON or a .json file), optional subject bytes, and an online
- * toggle, then dynamic-imports `@fileonchain/verify` (it pulls in viem —
- * keep it out of the initial bundle) and renders the grouped report.
+ * (pasted JSON, a .json file, a bundled sample, or a link), optional
+ * subject bytes, and an online toggle, then dynamic-imports
+ * `@fileonchain/verify` (it pulls in viem — keep it out of the initial
+ * bundle) and renders the grouped report.
+ *
+ * Three ways in besides paste/drop, all of them the same code path as a
+ * pasted envelope (no special-cased happy path):
+ *  - "Try a sample" loads a protocol conformance fixture from
+ *    `public/samples/` together with its original subject bytes.
+ *  - `/verify?url=<https://…>` fetches a remote envelope on arrival —
+ *    browser → that origin only; nothing goes to FileOnChain.
+ *  - `/verify?envelope=<base64url>` carries a small envelope inline.
  *
  * The overall chip wording + the six grouped sections live in
  * `./reportView.tsx` so the hosted `/cloud/verify/[envelopeId]` page can
  * share them — `/verify` and the hosted page must produce the same shape.
  */
 
+/** Where the current envelope came from — shown above the textarea. */
+type EnvelopeSource =
+  | { kind: "sample"; sample: VerifySample }
+  | { kind: "url"; url: string }
+  | { kind: "link" };
+
 const VerifyPanel = () => {
   const [json, setJson] = React.useState("");
   const [envelopeFileName, setEnvelopeFileName] = React.useState<string | null>(null);
+  const [source, setSource] = React.useState<EnvelopeSource | null>(null);
   const [subjectBytes, setSubjectBytes] = React.useState<Uint8Array | null>(null);
   const [subjectFileName, setSubjectFileName] = React.useState<string | null>(null);
   const [online, setOnline] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
+  const [loadingSample, setLoadingSample] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [report, setReport] = React.useState<VerificationReport | null>(null);
+  const [copied, setCopied] = React.useState(false);
 
   const onEnvelopeFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setEnvelopeFileName(file.name);
+    setSource(null);
     setJson(await file.text());
     setReport(null);
   };
@@ -52,44 +81,205 @@ const VerifyPanel = () => {
     setReport(null);
   };
 
-  const runVerify = async () => {
-    if (!json.trim()) {
-      setError("Paste an evidence envelope or choose a .json file first.");
-      return;
-    }
-    setBusy(true);
+  /**
+   * The one verification path. Takes its inputs explicitly (not from
+   * state) so a sample or link can load and verify in the same tick.
+   */
+  const verify = React.useCallback(
+    async (input: string, bytes: Uint8Array | null, checkOnline: boolean) => {
+      if (!input.trim()) {
+        setError("Paste an evidence envelope, choose a .json file, or try a sample first.");
+        return;
+      }
+      setBusy(true);
+      setError(null);
+      try {
+        // Dynamic import — the verifier pulls in viem for EIP-191 checks.
+        const { verifyEvidenceJson } = await import("@fileonchain/verify");
+        const result = await verifyEvidenceJson(input, {
+          ...(bytes ? { subjectBytes: bytes } : {}),
+          checkReceiptsOnline: checkOnline,
+        });
+        setReport(result);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Verification failed unexpectedly.");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [],
+  );
+
+  const runVerify = () => verify(json, subjectBytes, online);
+
+  const loadSample = async (sample: VerifySample) => {
+    setLoadingSample(sample.id);
     setError(null);
+    setReport(null);
     try {
-      // Dynamic import — the verifier pulls in viem for EIP-191 checks.
-      const { verifyEvidenceJson } = await import("@fileonchain/verify");
-      const result = await verifyEvidenceJson(json, {
-        ...(subjectBytes ? { subjectBytes } : {}),
-        checkReceiptsOnline: online,
-      });
-      setReport(result);
+      const res = await fetch(sampleUrl(sample));
+      if (!res.ok) throw new Error(`Sample not available (HTTP ${res.status}).`);
+      const text = await res.text();
+      const bytes = new TextEncoder().encode(SAMPLE_SUBJECT_CONTENT);
+      setJson(text);
+      setEnvelopeFileName(null);
+      setSource({ kind: "sample", sample });
+      setSubjectBytes(bytes);
+      setSubjectFileName(`${SAMPLE_SUBJECT_NAME} (sample bytes)`);
+      await verify(text, bytes, online);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Verification failed unexpectedly.");
+      setError(err instanceof Error ? err.message : "Could not load the sample.");
     } finally {
-      setBusy(false);
+      setLoadingSample(null);
     }
   };
 
+  // `?url=` / `?envelope=` — load once on arrival. Read from
+  // `window.location` rather than `useSearchParams` so the static
+  // prerender keeps the whole panel in the HTML (useSearchParams would
+  // bail the client component out to a Suspense fallback). Guarded by a
+  // ref so React strict-mode double effects don't fetch twice.
+  const loadedFromParams = React.useRef(false);
+  React.useEffect(() => {
+    if (loadedFromParams.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const envelopeParam = params.get("envelope");
+    const urlParam = params.get("url");
+    if (!envelopeParam && !urlParam) return;
+    loadedFromParams.current = true;
+
+    let cancelled = false;
+    const run = async () => {
+      setError(null);
+      setReport(null);
+      if (envelopeParam) {
+        let text: string;
+        try {
+          text = decodeEnvelopeParam(envelopeParam);
+        } catch {
+          setError("The envelope in this link could not be decoded — expected base64url JSON.");
+          return;
+        }
+        if (cancelled) return;
+        setJson(text);
+        setSource({ kind: "link" });
+        await verify(text, null, false);
+        return;
+      }
+
+      const remote = parseRemoteEnvelopeUrl(urlParam ?? "");
+      if (!remote) {
+        setError("The url parameter must be an http(s) address of an envelope JSON file.");
+        return;
+      }
+      setBusy(true);
+      try {
+        const res = await fetch(remote.href, { mode: "cors", credentials: "omit" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        if (cancelled) return;
+        setJson(text);
+        setSource({ kind: "url", url: remote.href });
+        await verify(text, null, false);
+      } catch (err) {
+        if (cancelled) return;
+        const reason = err instanceof Error ? err.message : String(err);
+        setError(
+          `Could not fetch ${remote.href} (${reason}). Your browser fetched it directly — the origin must be reachable and allow cross-origin reads (CORS).`,
+        );
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [verify]);
+
+  const copyShareLink = async () => {
+    const link = buildEnvelopeShareLink(json, window.location.origin);
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Could not copy the link — your browser blocked clipboard access.");
+    }
+  };
+
+  // Small enough for a `?envelope=` link? Memoized — encoding runs per
+  // keystroke otherwise. Origin-independent, so an empty origin will do.
+  const shareable = React.useMemo(
+    () => json.trim().length > 0 && buildEnvelopeShareLink(json, "") !== null,
+    [json],
+  );
+
   const checksFor = (groups: CheckGroup[]): CheckResult[] =>
     report ? report.checks.filter((c) => groups.includes(c.group)) : [];
+
+  const activeSample = source?.kind === "sample" ? source.sample : null;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       {/* Input column -------------------------------------------------- */}
       <Card className="p-5">
-        <label htmlFor="verify-json" className="text-sm font-medium text-foreground">
-          Evidence envelope (JSON)
-        </label>
+        {/* Samples ----------------------------------------------------- */}
+        <div>
+          <p className="text-sm font-medium text-foreground">Try a sample</p>
+          <p className="mt-0.5 text-xs text-muted">
+            Protocol conformance fixtures, verified by the same code as anything you paste.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {VERIFY_SAMPLES.map((sample) => {
+              const active = activeSample?.id === sample.id;
+              return (
+                <Button
+                  key={sample.id}
+                  size="sm"
+                  variant={active ? "outline" : "secondary"}
+                  onClick={() => loadSample(sample)}
+                  isLoading={loadingSample === sample.id}
+                  disabled={busy || loadingSample !== null}
+                  aria-pressed={active}
+                >
+                  {sample.label}
+                </Button>
+              );
+            })}
+          </div>
+          {activeSample && (
+            <p className="mt-2 text-xs text-muted">
+              <span className="font-medium text-foreground">Expect: {OVERALL[activeSample.expects].label}.</span>{" "}
+              {activeSample.caption}
+            </p>
+          )}
+        </div>
+
+        <div className="mt-5 flex items-baseline justify-between gap-3">
+          <label htmlFor="verify-json" className="text-sm font-medium text-foreground">
+            Evidence envelope (JSON)
+          </label>
+          {source?.kind === "url" && (
+            <span className="truncate font-mono text-[11px] text-muted" title={source.url}>
+              from {source.url}
+            </span>
+          )}
+          {source?.kind === "link" && (
+            <span className="font-mono text-[11px] text-muted">from this link</span>
+          )}
+          {source?.kind === "sample" && (
+            <span className="font-mono text-[11px] text-muted">{source.sample.file}</span>
+          )}
+        </div>
         <textarea
           id="verify-json"
           value={json}
           onChange={(e) => {
             setJson(e.target.value);
             setEnvelopeFileName(null);
+            setSource(null);
             setReport(null);
           }}
           spellCheck={false}
@@ -142,12 +332,22 @@ const VerifyPanel = () => {
           </span>
         </label>
 
-        <div className="mt-5 flex items-center gap-3">
-          <Button onClick={runVerify} isLoading={busy} disabled={busy}>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <Button onClick={runVerify} isLoading={busy} disabled={busy || loadingSample !== null}>
             Verify
           </Button>
+          {shareable && (
+            <Button variant="ghost" size="sm" onClick={copyShareLink} disabled={busy}>
+              {copied ? "Link copied" : "Copy link to this envelope"}
+            </Button>
+          )}
           {error && <p className="text-sm text-danger">{error}</p>}
         </div>
+        <p className="mt-3 text-[11px] text-muted">
+          Nothing is uploaded to FileOnChain. A link carries the envelope itself
+          (<code className="font-mono">?envelope=</code>) or points at a URL your browser fetches
+          directly (<code className="font-mono">?url=</code>).
+        </p>
       </Card>
 
       {/* Report column ------------------------------------------------- */}

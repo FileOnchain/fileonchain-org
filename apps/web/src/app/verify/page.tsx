@@ -10,6 +10,8 @@ import VerifyPanel from "@/components/verify/VerifyPanel";
  * account, no wallet: the verifier runs locally (dynamic-imported inside
  * the panel so viem stays out of the initial bundle), and the optional
  * online pass talks only to public RPC endpoints.
+ *
+ * `?url=` / `?envelope=` are read by the panel once on mount.
  */
 export default function VerifyPage() {
   return (
@@ -19,7 +21,7 @@ export default function VerifyPage() {
         index="09"
         kicker="Verify"
         title="Verify an evidence package"
-        lede="Paste an envelope — or drop the .json file — and every check runs in your browser: subject integrity, artifact and envelope signatures, receipts, key status. Supply the original bytes to prove integrity end-to-end; tick the online option to confirm settlement receipts against public RPCs. Nothing is uploaded to FileOnChain."
+        lede="Try a sample, paste an envelope, or drop the .json file — every check runs in your browser: subject integrity, artifact and envelope signatures, receipts, key status. Supply the original bytes to prove integrity end-to-end; tick the online option to confirm settlement receipts against public RPCs. Nothing is uploaded to FileOnChain."
       />
       <VerifyPanel />
     </PageShell>
