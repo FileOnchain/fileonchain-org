@@ -4,8 +4,8 @@ import { bundledLanguages } from "shiki/langs";
 import { bundledThemes } from "shiki/themes";
 
 /** Languages the docs/marketing snippets actually use — keeps the server
- * bundle to three grammars instead of Shiki's full set. */
-export type CodeLanguage = "ts" | "json" | "sh";
+ * bundle to a handful of grammars instead of Shiki's full set. */
+export type CodeLanguage = "ts" | "json" | "sh" | "yaml" | "md";
 
 let highlighterPromise: Promise<HighlighterCore> | null = null;
 
@@ -19,6 +19,8 @@ const getHighlighter = (): Promise<HighlighterCore> => {
       bundledLanguages.typescript(),
       bundledLanguages.json(),
       bundledLanguages.shellscript(),
+      bundledLanguages.yaml(),
+      bundledLanguages.markdown(),
     ],
     engine: createJavaScriptRegexEngine(),
   });

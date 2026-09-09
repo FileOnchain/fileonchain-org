@@ -1,0 +1,134 @@
+name: "FileOnChain — seal a release"
+description: >-
+  Hash the release artifacts, seal them into a FileOnChain evidence envelope
+  with the reference SDK, verify it locally, optionally store it in
+  FileOnChain Cloud, attach it to the GitHub Release, and append a status
+  badge to the release notes.
+author: FileOnChain
+
+# Starter composite action. It runs the monorepo's own SDK straight from
+# the workspace (the @fileonchain/* packages are not on npm yet), so the
+# first step installs a filtered slice of this repository. Use it from
+# another repository as
+#   uses: FileOnchain/fileonchain-org/.github/actions/seal-release@main
+# and from this repository as `uses: ./.github/actions/seal-release`.
+
+inputs:
+  files:
+    description: >-
+      Newline-separated list of file globs to seal (relative to the
+      workspace). Every match is hashed into the release manifest, which is
+      the envelope's subject.
+    required: true
+  tag:
+    description: Release tag to attach to. Defaults to the triggering release.
+    required: false
+    default: ${{ github.event.release.tag_name }}
+  signing-key:
+    description: >-
+      Optional ed25519 seed (64 lowercase hex chars). When set, the
+      workflow signs the artifact (the manifest) and the envelope with it.
+      Without a key the envelope proves integrity and time only, and the
+      verifier reports "valid with warnings".
+    required: false
+    default: ""
+  signer-id:
+    description: Stable id recorded on the signature (defaults to github:<owner>/<repo>).
+    required: false
+    default: ""
+  api-key:
+    description: >-
+      Optional FileOnChain Cloud API key (fok_…, org-scoped). When set, the
+      envelope is stored via POST /api/v1/evidence and the Cloud id is
+      printed in the summary.
+    required: false
+    default: ""
+  api-url:
+    description: FileOnChain Cloud origin.
+    required: false
+    default: https://fileonchain.org
+  site-url:
+    description: Origin used for the /verify link and the /api/badge image.
+    required: false
+    default: https://fileonchain.org
+  attach:
+    description: Upload evidence.json and the manifest as release assets.
+    required: false
+    default: "true"
+  append-badge:
+    description: Append the badge + verification instructions to the release notes.
+    required: false
+    default: "true"
+  output:
+    description: File name of the envelope written to the workspace.
+    required: false
+    default: fileonchain-evidence.json
+  github-token:
+    description: Token used by `gh` to upload assets and edit the release notes.
+    required: false
+    default: ${{ github.token }}
+  node-version:
+    description: Node.js version used to run the sealer.
+    required: false
+    default: "24"
+
+outputs:
+  status:
+    description: Local verifier status of the sealed envelope.
+    value: ${{ steps.seal.outputs.status }}
+  envelope-digest:
+    description: SHA-256 envelope digest (the protocol's digest of record).
+    value: ${{ steps.seal.outputs.envelope-digest }}
+  evidence-path:
+    description: Path of the envelope JSON in the workspace.
+    value: ${{ steps.seal.outputs.evidence-path }}
+  manifest-path:
+    description: Path of the release manifest (the subject bytes) in the workspace.
+    value: ${{ steps.seal.outputs.manifest-path }}
+  verify-url:
+    description: /verify?url= link for the attached envelope (empty when not attached).
+    value: ${{ steps.seal.outputs.verify-url }}
+  badge-markdown:
+    description: Markdown for the status badge linking to the report page.
+    value: ${{ steps.seal.outputs.badge-markdown }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        package_json_file: ${{ github.action_path }}/../../../package.json
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install the sealer and the reference SDK
+      shell: bash
+      working-directory: ${{ github.action_path }}/../../..
+      run: pnpm install --frozen-lockfile --filter "@fileonchain/seal-release-action..."
+
+    - name: Seal, verify, attach
+      id: seal
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      env:
+        SEAL_FILES: ${{ inputs.files }}
+        SEAL_TAG: ${{ inputs.tag }}
+        SEAL_SIGNING_KEY: ${{ inputs.signing-key }}
+        SEAL_SIGNER_ID: ${{ inputs.signer-id }}
+        SEAL_API_KEY: ${{ inputs.api-key }}
+        SEAL_API_URL: ${{ inputs.api-url }}
+        SEAL_SITE_URL: ${{ inputs.site-url }}
+        SEAL_ATTACH: ${{ inputs.attach }}
+        SEAL_APPEND_BADGE: ${{ inputs.append-badge }}
+        SEAL_OUTPUT: ${{ inputs.output }}
+        GH_TOKEN: ${{ inputs.github-token }}
+      # Call the tsx bin directly: `pnpm --dir … exec` would move the
+      # working directory into the action folder, and the file globs must
+      # resolve against the caller's workspace.
+      run: >-
+        "${{ github.action_path }}/node_modules/.bin/tsx"
+        "${{ github.action_path }}/src/seal.ts"

@@ -1,6 +1,8 @@
 packages:
   - "apps/*"
   - "packages/*"
+  # The seal-release GitHub Action runs the SDK from the workspace.
+  - ".github/actions/*"
 
 # pnpm 11 no longer reads the `pnpm` field of package.json. All install
 # settings live here. See https://pnpm.io/settings.

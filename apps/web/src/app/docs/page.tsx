@@ -159,6 +159,34 @@ const MCP_SNIPPET = `{
 
 const MCP_CLAUDE_SNIPPET = `claude mcp add fileonchain -- npx -y @fileonchain/mcp`;
 
+const SHARE_LINK_SNIPPET = `# Report page — the reader's browser fetches the envelope and runs every check locally
+https://fileonchain.org/verify?url=https://example.com/releases/v1.2.0/evidence.json
+
+# Status badge — re-runs the offline verifier on the envelope at that URL each time it is fetched
+https://fileonchain.org/api/badge?url=https://example.com/releases/v1.2.0/evidence.json`;
+
+const BADGE_MARKDOWN_SNIPPET = `[![FileOnChain evidence: valid](https://fileonchain.org/api/badge?url=https%3A%2F%2Fexample.com%2Freleases%2Fv1.2.0%2Fevidence.json)](https://fileonchain.org/verify?url=https%3A%2F%2Fexample.com%2Freleases%2Fv1.2.0%2Fevidence.json)`;
+
+const SEAL_ACTION_SNIPPET = `on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  seal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # …build your artifacts…
+      - uses: FileOnchain/fileonchain-org/.github/actions/seal-release@main
+        with:
+          files: |
+            dist/*.tgz
+          signing-key: \${{ secrets.FILEONCHAIN_SIGNING_KEY }}   # optional ed25519 seed
+          api-key: \${{ secrets.FILEONCHAIN_API_KEY }}           # optional: store in FileOnChain Cloud`;
+
 const PROVISIONING_SNIPPET = `import { getChain, isChainProvisioned, ChainNotProvisionedError } from "@fileonchain/sdk";
 
 const chain = getChain("aptos:mainnet")!;
@@ -273,6 +301,7 @@ const TOC = [
   { href: "#families", label: "Family clients" },
   { href: "#api", label: "@fileonchain/api" },
   { href: "#mcp", label: "@fileonchain/mcp" },
+  { href: "#share", label: "Share, badge & CI" },
   { href: "#concepts", label: "Shared concepts" },
 ] as const;
 
@@ -637,6 +666,61 @@ const DocsPage = () => (
           <code className="font-mono text-xs">FILEONCHAIN_API_URL</code> optionally
           overrides the API origin.
         </p>
+      </section>
+
+      {/* ------------------------------------------------------------ */}
+      <section id="share" className="scroll-mt-24 space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <SectionHeading id="share-heading">Share, badge &amp; CI</SectionHeading>
+          <a
+            href="https://github.com/FileOnchain/fileonchain-org/tree/main/.github/actions/seal-release"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Action source &amp; README →
+          </a>
+        </div>
+        <p className="max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
+          Host an envelope at any public URL and two links follow from it. The
+          report page runs every check in the reader&apos;s browser; the badge
+          is an SVG whose colour and text are the offline verifier&apos;s status
+          for the envelope at that URL — <code className="font-mono text-xs">valid</code>,{" "}
+          <code className="font-mono text-xs">valid, warnings</code>,{" "}
+          <code className="font-mono text-xs">incomplete</code>, or{" "}
+          <code className="font-mono text-xs">invalid</code> — and grey{" "}
+          <code className="font-mono text-xs">unreachable</code> /{" "}
+          <code className="font-mono text-xs">unknown</code> when it could not
+          run. Neither ever says &ldquo;verified&rdquo;.
+        </p>
+        <CodeBlock title="links" language="sh" code={SHARE_LINK_SNIPPET} />
+        <p className="max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
+          The Markdown that drops the badge into a README or release note, with
+          the report page as its click-through (the{" "}
+          <Link href="/verify" className="text-primary underline underline-offset-2">
+            /verify
+          </Link>{" "}
+          page offers it under any report loaded from a URL). A{" "}
+          <code className="font-mono text-xs">/verify?url=</code> link also
+          carries a social card painted from the same result: status stamp,
+          receipts, settlement systems, and artifact vs envelope signer counts.
+        </p>
+        <CodeBlock title="README.md" language="md" code={BADGE_MARKDOWN_SNIPPET} />
+        <p className="max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
+          <strong className="text-foreground">Seal a GitHub Release.</strong> A
+          starter composite action hashes the release artifacts into a
+          manifest, seals the manifest with the reference SDK (
+          <code className="font-mono text-xs">@fileonchain/sdk/evidence</code>,
+          no new protocol behaviour), verifies it, attaches{" "}
+          <code className="font-mono text-xs">fileonchain-evidence.json</code>{" "}
+          and the manifest to the release, and appends the badge to the notes.
+          Without a signing key the envelope proves integrity and time only;
+          with an ed25519 seed the workflow signs both the artifact and the
+          envelope. Status: starter — it runs on this repository&apos;s own
+          releases and installs the SDK from the monorepo because the packages
+          are not on npm yet.
+        </p>
+        <CodeBlock title=".github/workflows/release.yml" language="yaml" code={SEAL_ACTION_SNIPPET} />
       </section>
 
       {/* ------------------------------------------------------------ */}

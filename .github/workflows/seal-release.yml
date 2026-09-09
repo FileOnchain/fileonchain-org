@@ -1,0 +1,57 @@
+name: Seal release
+
+# Dogfood of `.github/actions/seal-release`: on every published GitHub
+# Release of this repository, build the reference verifier and seal its
+# CLI bundle into an evidence envelope attached to the release, with the
+# status badge appended to the notes.
+#
+# Secrets are optional. `FILEONCHAIN_SIGNING_KEY` (an ed25519 seed as 64
+# hex chars) makes the workflow sign the manifest and the envelope;
+# without it the envelope is hash-only and verifies as "valid with
+# warnings". `FILEONCHAIN_API_KEY` additionally stores the envelope in
+# FileOnChain Cloud.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: seal-release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  seal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Build the verifier CLI
+        run: |
+          pnpm install --frozen-lockfile --filter "@fileonchain/verify..."
+          pnpm --filter "@fileonchain/verify..." build
+
+      - name: Seal the release
+        id: seal
+        uses: ./.github/actions/seal-release
+        with:
+          files: |
+            packages/verify/dist/cli.js
+            packages/verify/dist/index.js
+          signing-key: ${{ secrets.FILEONCHAIN_SIGNING_KEY }}
+          api-key: ${{ secrets.FILEONCHAIN_API_KEY }}
+
+      - name: Print the result
+        run: |
+          echo "status=${{ steps.seal.outputs.status }}"
+          echo "digest=${{ steps.seal.outputs.envelope-digest }}"
+          echo "verify=${{ steps.seal.outputs.verify-url }}"

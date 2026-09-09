@@ -48,6 +48,23 @@ const PLANNED_AGENT_FRAMEWORKS = [
   },
 ] as const;
 
+const DEVELOPER_TOOLING = [
+  {
+    name: "Share links & status badge",
+    href: "/docs#share",
+    status: "Available",
+    variant: "success",
+    body: "A /verify?url= link reproduces the report in the reader's browser and carries a social card painted from the verifier's result; /api/badge?url= is an SVG whose text is the offline verifier's status for the envelope at that URL. Never a single green \u201cverified\u201d.",
+  },
+  {
+    name: "GitHub Action: seal a release",
+    href: "https://github.com/FileOnchain/fileonchain-org/tree/main/.github/actions/seal-release",
+    status: "Starter",
+    variant: "info",
+    body: "Hashes release artifacts into a manifest, seals it with the reference SDK, attaches the envelope to the GitHub Release, and appends the badge to the notes. Runs on this repository's own releases; not on the Marketplace, and it installs the SDK from the monorepo because the packages are not on npm yet.",
+  },
+] as const;
+
 const PLANNED_OBSERVABILITY = [
   {
     name: "OpenTelemetry",
@@ -115,6 +132,31 @@ const IntegrationsPage = () => (
               <h3 className="font-medium">{item.name}</h3>
               <Badge variant="warning" size="sm">
                 Planned
+              </Badge>
+            </div>
+            <p className="mt-2 text-sm text-muted">{item.body}</p>
+          </Card>
+        ))}
+      </div>
+    </section>
+
+    <section className="mt-10">
+      <h2 className="text-lg font-semibold">Developer tooling</h2>
+      <p className="mt-1 max-w-[70ch] text-sm text-muted">
+        Surfaces that carry an envelope&apos;s verifier result somewhere else — a README, a
+        release note, a timeline. Each one repeats the local verifier&apos;s status word for word.
+      </p>
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        {DEVELOPER_TOOLING.map((item) => (
+          <Card key={item.name} className="p-5">
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="font-medium">
+                <Link href={item.href} className="hover:text-primary hover:underline underline-offset-2">
+                  {item.name}
+                </Link>
+              </h3>
+              <Badge variant={item.variant} size="sm">
+                {item.status}
               </Badge>
             </div>
             <p className="mt-2 text-sm text-muted">{item.body}</p>
