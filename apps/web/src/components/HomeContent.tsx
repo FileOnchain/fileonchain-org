@@ -3,6 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import Hero from "@/components/Hero";
+import TrustStrip from "@/components/TrustStrip";
+import WhoIsItFor from "@/components/WhoIsItFor";
 import UploadFileSection from "@/components/upload/UploadFileSection";
 import BackgroundMesh from "@/components/BackgroundMesh";
 import ChainTicker from "@/components/ChainTicker";
@@ -38,12 +40,18 @@ const HomeContent = ({ quickstartTabs }: HomeContentProps) => {
         {/* 1 · HERO ------------------------------------------------- */}
         <Hero />
 
+        {/* 1b · TRUST STRIP: facts a visitor can check, not adoption claims */}
+        <TrustStrip />
+
         <ChainTicker />
 
         {/* 2 · UPLOADER --------------------------------------------- */}
         <div id="dropzone" className="scroll-mt-24">
           <UploadFileSection />
         </div>
+
+        {/* 2a · WHO IS THIS FOR: three segments, one scenario each ---- */}
+        <WhoIsItFor />
 
         {/* 2b · DEVELOPER QUICKSTART: SDK / CLI / MCP ---------------- */}
         <DeveloperQuickstart tabs={quickstartTabs} />

@@ -803,7 +803,15 @@ const DocsPage = () => (
         >
           explorer
         </Link>{" "}
-        shows what lands onchain.
+        shows what lands onchain. Watching for protocol version or fixture
+        changes? They are called out on the{" "}
+        <Link
+          href="/changelog"
+          className="font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
+        >
+          changelog
+        </Link>
+        , which also has an RSS feed.
       </p>
     </section>
   </PageShell>

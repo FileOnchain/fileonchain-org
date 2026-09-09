@@ -22,6 +22,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/protocol", priority: 0.7, changeFrequency: "weekly" },
     { path: "/whitepaper", priority: 0.7, changeFrequency: "monthly" },
     { path: "/docs", priority: 0.7, changeFrequency: "weekly" },
+    { path: "/changelog", priority: 0.6, changeFrequency: "weekly" },
   ];
 
   // Evaluated at build time, so lastModified tracks the deploy — the

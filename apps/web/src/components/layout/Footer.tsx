@@ -4,8 +4,9 @@ import Image from "next/image";
 import { FaGithub, FaLinkedin, FaTwitter } from "react-icons/fa";
 import { MAINNET_CHAINS, CHAIN_FAMILIES, isChainActive } from "@fileonchain/sdk";
 import { siteConfig } from "@/lib/site";
+import SocialProof from "@/components/layout/SocialProof";
 
-const GITHUB_REPO = "https://github.com/FileOnchain/fileonchain-org";
+const GITHUB_REPO = siteConfig.repo;
 
 /** Networks open for uploads today — planned/deprecated entries stay off the footer. */
 const ACTIVE_MAINNET_CHAINS = MAINNET_CHAINS.filter(isChainActive);
@@ -28,6 +29,7 @@ const RESOURCE_LINKS = [
     label: "Protocol spec",
   },
   { href: GITHUB_REPO, label: "GitHub repository" },
+  { href: "/changelog", label: "Changelog", internal: true },
   { href: "/#faq", label: "FAQ", internal: true },
 ] as const;
 
@@ -59,7 +61,11 @@ const iconLink =
  * never overlaps content.
  *
  * Server component on purpose: pure navigation + brand chrome, no motion, so
- * it ships zero client JS and is always present in static HTML.
+ * it ships zero client JS and is always present in static HTML. The one
+ * client island is `SocialProof` (GitHub stars, npm downloads once the
+ * packages are published), which hydrates its counts from
+ * `/api/social-proof` so the footer's data fetch never makes the static
+ * pages dynamic.
  */
 const Footer = () => (
   <footer className="mt-16 border-t border-border bg-surface/40">
@@ -110,6 +116,7 @@ const Footer = () => (
               </a>
             ))}
           </div>
+          <SocialProof />
         </div>
 
         {/* Link columns ------------------------------------------------ */}

@@ -296,7 +296,9 @@ semver ranges. Repo-level Claude Code skills live in `.claude/skills/`
   statuses), `/protocol` (envelope + layers explainer), `/whitepaper`
   (documents index), `/explorer` (+ `/explorer/[cid]`), `/cache`,
   `/donations`, `/leaderboard` (uploaders only),
-  `/profile/[address]`, `/login`, and the auth-guarded `/dashboard`
+  `/profile/[address]`, `/changelog` (+ `/changelog/feed.xml` RSS; both
+  generated at build time from the root `CHANGELOG.md` via
+  `lib/changelog/`), `/login`, and the auth-guarded `/dashboard`
   (+ `logs`, `credits`, `keys`, `byok`, `preferences` subroutes). API routes
   under `app/api/`: the mock trio (`cid`, `search-file`, `upload-fallback`)
   plus the account backend (`auth`, `wallets`, `credits`, `keys`, `byok`,

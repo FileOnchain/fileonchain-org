@@ -18,6 +18,8 @@ export const siteConfig = {
   ogDescription:
     "Files, releases, agent runs: sealed into portable evidence anyone can verify. Open protocol, local verifier, hash-only by default.",
   twitter: "@fileonchain",
+  /** The monorepo: source, spec, fixtures, changelog, releases. */
+  repo: "https://github.com/FileOnchain/fileonchain-org",
   /** Public profiles — Organization JSON-LD `sameAs` and footer links. */
   socials: {
     twitter: "https://x.com/fileonchain",
