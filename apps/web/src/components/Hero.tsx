@@ -22,19 +22,33 @@ interface HeroProps {
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 
 /**
- * Recent-anchor feed for the hero ticker — the same DB-backed indexer
- * rows the explorer renders, fetched through `/api/indexer/recent`
- * because the homepage is a Client Component. Until rows arrive (or
- * when the indexer has none) the ticker renders nothing — the hero
- * never shows fabricated CIDs.
+ * Live indexer numbers for the stat row — `{ totalAnchors, totalFiles }`
+ * from the same `/api/indexer/recent` read as the ticker. Null until the
+ * feed answers; zero when the indexer has nothing, in which case the
+ * live tiles are dropped rather than padded with filler.
  */
-const useRecentAnchorEvents = (): LedgerTickerEvent[] => {
+interface IndexerStats {
+  totalAnchors: number;
+  totalFiles: number;
+}
+
+/**
+ * Recent-anchor feed + live totals for the hero — the same DB-backed
+ * indexer rows the explorer renders, fetched through
+ * `/api/indexer/recent` because the homepage is a Client Component.
+ * Until rows arrive (or when the indexer has none) the ticker renders
+ * nothing — the hero never shows fabricated CIDs or counts.
+ */
+const useRecentAnchorFeed = (): { events: LedgerTickerEvent[]; stats: IndexerStats | null } => {
   const [events, setEvents] = React.useState<LedgerTickerEvent[]>([]);
+  const [stats, setStats] = React.useState<IndexerStats | null>(null);
   React.useEffect(() => {
     const controller = new AbortController();
     fetch("/api/indexer/recent", { signal: controller.signal })
       .then((res) =>
-        res.ok ? (res.json() as Promise<{ events?: RecentAnchorEvent[] }>) : { events: [] },
+        res.ok
+          ? (res.json() as Promise<{ events?: RecentAnchorEvent[]; stats?: IndexerStats }>)
+          : { events: [], stats: undefined },
       )
       .then((data) => {
         const now = Date.now();
@@ -45,13 +59,14 @@ const useRecentAnchorEvents = (): LedgerTickerEvent[] => {
             time: formatRelativeTime(e.anchoredAt, now),
           })),
         );
+        if (data.stats) setStats(data.stats);
       })
       .catch(() => {
-        // Fail open — an unreachable indexer just means no ticker.
+        // Fail open — an unreachable indexer just means no ticker, no live tiles.
       });
     return () => controller.abort();
   }, []);
-  return events;
+  return { events, stats };
 };
 
 interface RecentAnchorEvent {
@@ -64,20 +79,30 @@ interface RecentAnchorEvent {
 /**
  * Hero — top-of-page pitch block.
  *
+ * One slogan for both audiences: someone who wants a file onchain and a
+ * team that needs tamper-evident evidence of an agent run are doing the
+ * same thing — sealing something into portable evidence anyone can
+ * verify. The headline says that one thing; the subhead keeps both
+ * concrete examples so neither reader feels excluded. "Verify" here is
+ * the verifier's sense — existence, integrity, signing keys, timing —
+ * never truth or authorship.
+ *
  * Composition:
- *   1. Editorial kicker chip with a live "now anchoring" dot
+ *   1. Kicker chip a newcomer can parse, with a live dot
  *   2. Word-by-word revealed headline (bold sans, no italics, no gradients)
- *   3. Subhead with one emphasized fragment
+ *   3. Subhead with the two concrete examples
  *   4. Two magnetic-style CTAs (primary anchor + ghost)
- *   5. Live ledger ticker strip (drifts under the headline)
- *   6. Animated stat row (chains supported, files anchored, % uptime)
+ *   5. Live ledger ticker strip (real indexed anchors only)
+ *   6. Stat row: networks live (registry) + live indexer totals —
+ *      live tiles are dropped, not faked, while the indexer is empty
  *   7. Right side: animated ChunkFlowVisual SVG
  */
 const Hero = ({
   // "Networks live" means open for anchoring — roadmap adapters don't count.
   chainCount = ACTIVE_CHAINS.length,
 }: HeroProps) => {
-  const tickerEvents = useRecentAnchorEvents();
+  const { events: tickerEvents, stats } = useRecentAnchorFeed();
+  const showLiveStats = stats !== null && stats.totalAnchors > 0;
   return (
     <section className="relative w-full">
       <div className="grid w-full items-center gap-10 md:gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
@@ -98,13 +123,13 @@ const Hero = ({
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success">
               <span className="absolute inset-0 animate-orbit-pulse rounded-full bg-success" />
             </span>
-            <span>VOL. 01 · ONCHAIN LEDGER</span>
+            <span>Open evidence protocol · local verifier · hash-only by default</span>
           </motion.div>
 
           {/* Headline — word-by-word reveal, no italic, no gradient */}
           <WordReveal
             as="h1"
-            text={`Put any file onchain.\nProve any agent run.`}
+            text={`Seal any file or agent run.\nAnyone can verify it.`}
             className="text-balance whitespace-pre-line text-[44px] font-bold leading-[0.98] tracking-tight md:text-6xl lg:text-[72px] text-foreground"
           />
 
@@ -115,17 +140,18 @@ const Hero = ({
             transition={{ duration: 0.5, delay: 0.9, ease: EASE_OUT }}
             className="max-w-xl text-pretty text-base leading-relaxed text-muted md:text-lg"
           >
-            Drop a document, a dataset, a release — or a full{" "}
+            A document, a dataset, a release, or a full{" "}
             <Link
               href="/agent-evidence"
               className="font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline"
             >
               AI-agent run
-            </Link>{" "}
-            — and seal it into a{" "}
+            </Link>
+            : hash it, sign it, anchor it, and hand out one{" "}
             <span className="font-semibold text-foreground">portable evidence package</span>{" "}
-            anyone can independently verify. Store the bytes onchain if you want
-            to; by default only the hash leaves your machine.
+            that shows it existed, unchanged, at that time — checkable by anyone
+            with the open verifier. Store the bytes onchain if you want to; by
+            default only the hash leaves your machine.
           </motion.p>
 
           {/* CTAs — magnetic primary + ghost outline */}
@@ -172,23 +198,29 @@ const Hero = ({
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.4 }}
             transition={{ duration: 0.5, delay: 1.25, ease: EASE_OUT }}
-            className="mt-2 grid w-full max-w-xl grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-8"
+            className={`mt-2 grid w-full max-w-xl grid-cols-1 gap-6 sm:gap-8 ${showLiveStats ? "sm:grid-cols-3" : "sm:grid-cols-1"}`}
           >
             <StatCounter
               value={chainCount}
               label="Networks live"
               hint="Autonomys · Solana · EVM testnets"
             />
-            <StatCounter
-              value={1}
-              label="Open protocol"
-              hint="Independently implementable"
-            />
-            <StatCounter
-              value={3}
-              label="Storage modes"
-              hint="Hash-only by default"
-            />
+            {showLiveStats && stats && (
+              <>
+                <StatCounter
+                  value={stats.totalAnchors}
+                  format="compact"
+                  label="Anchors indexed"
+                  hint="Sepolia · Auto EVM Chronos"
+                />
+                <StatCounter
+                  value={stats.totalFiles}
+                  format="compact"
+                  label="Files anchored"
+                  hint="Distinct CIDs in the indexer"
+                />
+              </>
+            )}
           </motion.div>
 
         </motion.div>

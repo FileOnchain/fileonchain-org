@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { ACTIVE_CHAINS } from "@fileonchain/sdk";
 import { siteConfig } from "@/lib/site";
 
 // Default social share card for every route that doesn't supply its own.
@@ -7,16 +8,10 @@ export const alt = siteConfig.title;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-const CHAINS = [
-  "Autonomys",
-  "Ethereum",
-  "Base",
-  "Optimism",
-  "Arbitrum",
-  "Polygon",
-  "Solana",
-  "Aptos",
-];
+// Only networks open for anchoring — the registry's `status: "active"`
+// set — so the card never describes a network beyond its integration
+// status. Testnets keep their full name ("Ethereum Sepolia").
+const CHAINS = Array.from(new Set(ACTIVE_CHAINS.map((c) => c.name)));
 
 export default function OpengraphImage() {
   return new ImageResponse(
@@ -52,7 +47,7 @@ export default function OpengraphImage() {
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           <div
             style={{
-              fontSize: "76px",
+              fontSize: "68px",
               fontWeight: 800,
               color: "#f4f2ec",
               lineHeight: 1.05,
@@ -60,11 +55,11 @@ export default function OpengraphImage() {
               maxWidth: "1000px",
             }}
           >
-            Put any file onchain. Prove any agent run.
+            Seal any file or agent run. Anyone can verify it.
           </div>
-          <div style={{ fontSize: "32px", color: "#9aa3b2", maxWidth: "820px" }}>
-            Portable evidence packages. Open protocol. Independently
-            verifiable.
+          <div style={{ fontSize: "28px", color: "#9aa3b2", maxWidth: "960px", lineHeight: 1.35 }}>
+            A document, a release, a full AI-agent run — one portable evidence
+            package. Open protocol, local verifier, hash-only by default.
           </div>
         </div>
 

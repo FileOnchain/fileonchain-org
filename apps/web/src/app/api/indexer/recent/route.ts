@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getRecentAnchors } from "@/lib/indexer/queries";
+import { getExplorerStats, getRecentAnchors } from "@/lib/indexer/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -10,14 +10,16 @@ export const dynamic = "force-dynamic";
  * DB-backed indexer directly the way the `/explorer` server page does —
  * this route is the same `getRecentAnchors` read behind a fetch.
  *
- * Returns `{ events: [{ cid, chain, anchoredAt }] }`, newest first.
- * `anchoredAt` is a unix timestamp in seconds; the client formats the
- * relative age so it's fresh at render time. The read fails open to an
- * empty list (see `safeRead` in `lib/indexer/queries`), and the ticker
- * renders nothing for an empty feed — no fabricated rows.
+ * Returns `{ events: [{ cid, chain, anchoredAt }], stats: { totalAnchors,
+ * totalFiles } }`, events newest first. `anchoredAt` is a unix timestamp
+ * in seconds; the client formats the relative age so it's fresh at
+ * render time. `stats` are the explorer's live totals, reused by the
+ * hero's stat row. Both reads fail open (see `safeRead` in
+ * `lib/indexer/queries`): an empty feed renders no ticker and zero
+ * totals render no live tiles — no fabricated rows or counts.
  */
 export async function GET() {
-  const rows = await getRecentAnchors(14);
+  const [rows, totals] = await Promise.all([getRecentAnchors(14), getExplorerStats()]);
   const events = rows.map((row) => ({
     cid: row.cid,
     chain: (
@@ -28,7 +30,7 @@ export async function GET() {
     anchoredAt: row.anchoredAt,
   }));
   return NextResponse.json(
-    { events },
+    { events, stats: { totalAnchors: totals.totalAnchors, totalFiles: totals.totalFiles } },
     {
       headers: {
         // Cache at the edge briefly — the ticker is decoration-grade
