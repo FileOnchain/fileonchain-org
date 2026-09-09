@@ -22,9 +22,9 @@ format regular:
 
 - Homepage gains a trust strip under the hero, a "who is this for"
   block with one scenario each for agent builders, release engineers,
-  and archivists, and GitHub social proof in the footer (#234)
+  and archivists, and GitHub social proof in the footer (#245)
 - New `/changelog` page fed by this file, with an RSS feed at
-  `/changelog/feed.xml` (#234)
+  `/changelog/feed.xml` (#245)
 
 ## 2026-09-09
 
