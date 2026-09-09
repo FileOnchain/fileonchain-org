@@ -14,6 +14,7 @@ import CostEstimatePanel from "@/components/upload/CostEstimatePanel";
 import StorageSelector from "@/components/upload/StorageSelector";
 import PaymentMethodSelector from "@/components/upload/PaymentMethodSelector";
 import UploadManifest from "@/components/upload/UploadManifest";
+import EvidenceReceipt from "@/components/upload/EvidenceReceipt";
 import UploadAdvisor, { type AdvisorApplyPayload } from "@/components/upload/UploadAdvisor";
 import ChainSelect from "@/components/chain/ChainSelect";
 import { useChain } from "@/hooks/useChain";
@@ -76,6 +77,7 @@ const FileUploader = () => {
   const {
     file,
     fileContent,
+    fileCid,
     cids,
     selectedCidData,
     error,
@@ -91,6 +93,7 @@ const FileUploader = () => {
     externalUri,
     chunkSize,
     storageTxHash,
+    landedAnchor,
     pendingResume,
     setStorageMode,
     setStorageChainId,
@@ -388,6 +391,21 @@ const FileUploader = () => {
                 </div>
               )}
             </section>
+
+            {/* EVIDENCE — once a real anchor landed, the same envelope a
+                developer would seal with the SDK, verified locally and
+                rendered as the receipt. Simulated anchors never get one. */}
+            {anchorStatus === "done" && landedAnchor && !landedAnchor.simulated && (
+              <EvidenceReceipt
+                file={file}
+                cid={fileCid}
+                anchor={landedAnchor}
+                storageMode={storageMode}
+                storageChainId={storageChain?.id ?? null}
+                storageTxHash={storageTxHash}
+                externalUri={externalUri}
+              />
+            )}
 
             <CIDPreviewPanel data={preview} />
 
