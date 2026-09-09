@@ -1,0 +1,88 @@
+{
+  "protocol": "fileonchain-evidence",
+  "version": 1,
+  "subject": {
+    "type": "artifact",
+    "digests": {
+      "sha256": "cf3315e196480491a6eb663f80effcca46536d8c9a9a181ff49d900a4253e3de"
+    },
+    "mediaType": "text/plain",
+    "size": 41,
+    "name": "run-42.txt"
+  },
+  "signatures": [
+    {
+      "signer": {
+        "kind": "agent",
+        "id": "agent://reporter-1",
+        "publicKey": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "scheme": "ed25519",
+        "onBehalfOf": {
+          "kind": "organization",
+          "id": "example.org"
+        }
+      },
+      "payloadDigest": "acfd62f12e1b42c73488f276a5f110cc7479b7a64be587696f22f395e313ddee",
+      "signature": "c8719ef4bd4c0d29cdb44aaa15379cd39395732227d8b5bb6ea6ce37eb7b50d7b32e2858c1e16719d84fd714938e87254d77412f5bbf775466222a8de7a6da06",
+      "signedAt": "2026-07-11T12:00:00Z"
+    }
+  ],
+  "receipts": {
+    "storage": [
+      {
+        "type": "storage",
+        "adapter": "fileonchain-storage/v1",
+        "payload": {
+          "mode": "external-storage",
+          "uri": "https://example.org/run-42.txt"
+        }
+      }
+    ],
+    "settlement": [
+      {
+        "type": "settlement",
+        "adapter": "fileonchain-evm-anchor/v1",
+        "system": "eip155:11155111",
+        "payload": {
+          "chainId": "evm:11155111",
+          "txHash": "0xabababababababababababababababababababababababababababababababab",
+          "blockNumber": 123456
+        }
+      }
+    ],
+    "inclusion": [
+      {
+        "type": "inclusion",
+        "adapter": "fileonchain-merkle/v1",
+        "payload": {
+          "root": "c65931db4620129dc23859c0e27ca47120d287928649f0f86d37c42965c61302",
+          "leafIndex": 0,
+          "leafCount": 3,
+          "proof": [
+            "9f82e60322c6546893c3565b33fff82257f14f303a636c7f0ab7c3f29cfe5403",
+            "d3dbd3a84df7a2cd729c49574bd3b86ea0af8435e5624278ab7d454b2c55139c"
+          ]
+        }
+      }
+    ]
+  },
+  "createdAt": "2026-07-11T12:00:00Z",
+  "envelope": {
+    "digest": {
+      "sha256": "19d6b2c22232c9815903a9152d48773346d8c49646fda7b7b0d286f35e3a91a8"
+    },
+    "signatures": [
+      {
+        "signer": {
+          "kind": "organization",
+          "id": "example.org",
+          "publicKey": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+          "scheme": "ed25519"
+        },
+        "payloadDigest": "f1bf392adc924af471519614266e46b0fbe2205f35d5459c8bcf413072207732",
+        "signature": "6abc197598caacdaa2a85fbb4663b11ed174d827f66fe022061a90431c973e74c19801258e534f7296907868c963e10f36e7daf5e24a6aeb78d38436bb868e08",
+        "signedAt": "2026-07-11T12:00:00Z"
+      }
+    ]
+  }
+}
