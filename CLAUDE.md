@@ -70,6 +70,12 @@ The pnpm workspace monorepo:
     integration, not part of the protocol**: local registry/verify tools
     (including `verify_evidence`, fully in-process) + Cloud-backed
     anchoring tools behind `FILEONCHAIN_API_KEY`.
+- **`.github/actions/seal-release/`** — starter composite GitHub Action
+  (workspace package `@fileonchain/seal-release-action`): hashes release
+  artifacts into a manifest, seals it with `@fileonchain/sdk/evidence`,
+  verifies, attaches to the GitHub Release, appends the badge. Dogfooded
+  by `.github/workflows/seal-release.yml`. Installs the SDK from the
+  monorepo at run time because the packages are not on npm yet.
 - **`contracts/`** — one directory per runtime (`evm/` Foundry, `aptos/` +
   `sui/` Move, `starknet/` Cairo, `near/` Rust) — see `contracts/README.md`.
   All five are **anchor-only**: free event-carrier writes for the versioned
@@ -295,8 +301,16 @@ semver ranges. Repo-level Claude Code skills live in `.claude/skills/`
   under `app/api/`: the mock trio (`cid`, `search-file`, `upload-fallback`)
   plus the account backend (`auth`, `wallets`, `credits`, `keys`, `byok`,
   `uploads`, `preferences`, `organizations`), the auth-optional
-  `recommendations/upload` (Upload Advisor), and the API-key-scoped `v1/`
-  namespace (`v1/anchor`, `v1/credits`).
+  `recommendations/upload` (Upload Advisor), the API-key-scoped `v1/`
+  namespace (`v1/anchor`, `v1/credits`), and the public distribution
+  pair `api/badge` (status SVG) + `api/og/verify` (social card) — both
+  fetch an envelope by `?url=` through the request-forgery fence in
+  `lib/server/remote-envelope.ts` and run the offline verifier; their
+  wording is the verifier's status, never "verified". `/verify` is a
+  server page whose `generateMetadata` points `og:image` at the card
+  when `?url=` / `?envelope=` is present; the share block under a
+  report is `components/verify/ShareEvidence.tsx` (link, badge, badge
+  Markdown from `lib/verify/share.ts`).
 - **`src/components/`** — `ui/` primitives (Button, Modal, Card, …), `layout/`
   (Nav, Footer, PageShell), and feature folders (`explorer/`, `cache/`,
   `donations/`, `chain/`, `upload/`, `onboarding/`, `registry/`). Bare files in
