@@ -7,6 +7,8 @@ import { Card } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import NetworkTable from "@/components/integrations/NetworkTable";
 import { siteConfig } from "@/lib/site";
+import CodeBlock from "@/components/docs/CodeBlock";
+import { MCP_CLAUDE_CODE_SNIPPET } from "@/lib/snippets/mcp";
 
 export const metadata: Metadata = {
   title: "Integrations",
@@ -55,6 +57,13 @@ const DEVELOPER_TOOLING = [
     status: "Available",
     variant: "success",
     body: "A /verify?url= link reproduces the report in the reader's browser and carries a social card painted from the verifier's result; /api/badge?url= is an SVG whose text is the offline verifier's status for the envelope at that URL. Never a single green \u201cverified\u201d.",
+  },
+  {
+    name: "MCP server",
+    href: "/docs#mcp",
+    status: "Available",
+    variant: "success",
+    body: "A stdio MCP server for Claude Code, Cursor, and other MCP clients. A Cloud + SDK integration, not part of the protocol: verify_evidence runs the local verifier in-process with no key; the anchoring tools spend account credits through the hosted API.",
   },
   {
     name: "GitHub Action: seal a release",
@@ -163,6 +172,11 @@ const IntegrationsPage = () => (
           </Card>
         ))}
       </div>
+      <p className="mt-4 max-w-[70ch] text-sm text-muted">
+        Add the MCP server to Claude Code in one line (Cursor and other clients take the same
+        command as an <code className="font-mono text-xs">mcpServers</code> entry):
+      </p>
+      <CodeBlock className="mt-3" title="terminal" language="sh" code={MCP_CLAUDE_CODE_SNIPPET} />
     </section>
 
     <section className="mt-10">

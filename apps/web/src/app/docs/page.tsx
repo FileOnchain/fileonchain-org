@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import CodeBlock from "@/components/docs/CodeBlock";
+import { MCP_CLAUDE_CODE_SNIPPET, MCP_CONFIG_SNIPPET } from "@/lib/snippets/mcp";
 
 export const metadata: Metadata = {
   title: "SDK Documentation",
@@ -146,18 +147,6 @@ const job = await client.anchor({
 job.txHashes;                    // one { chainId, txHash, blockNumber } per chain
 await client.waitForJob(job.id); // poll until complete/failed
 await client.getCredits();       // { balanceMicroUsdc, balanceUsdc }`;
-
-const MCP_SNIPPET = `{
-  "mcpServers": {
-    "fileonchain": {
-      "command": "npx",
-      "args": ["-y", "@fileonchain/mcp"],
-      "env": { "FILEONCHAIN_API_KEY": "\${FILEONCHAIN_API_KEY}" }
-    }
-  }
-}`;
-
-const MCP_CLAUDE_SNIPPET = `claude mcp add fileonchain -- npx -y @fileonchain/mcp`;
 
 const SHARE_LINK_SNIPPET = `# Report page — the reader's browser fetches the envelope and runs every check locally
 https://fileonchain.org/verify?url=https://example.com/releases/v1.2.0/evidence.json
@@ -655,11 +644,11 @@ const DocsPage = () => (
           <code className="font-mono text-xs">get_credits</code>) spend account
           credits through the hosted API — the server never holds private keys.
         </p>
-        <CodeBlock title="mcp-config.json" language="json" code={MCP_SNIPPET} />
+        <CodeBlock title="mcp-config.json" language="json" code={MCP_CONFIG_SNIPPET} />
         <p className="max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
           Or with the Claude Code CLI:
         </p>
-        <CodeBlock title="terminal" language="sh" code={MCP_CLAUDE_SNIPPET} />
+        <CodeBlock title="terminal" language="sh" code={MCP_CLAUDE_CODE_SNIPPET} />
         <p className="max-w-[70ch] text-sm leading-relaxed text-muted md:text-base">
           <code className="font-mono text-xs">FILEONCHAIN_API_KEY</code> is required
           only for the anchoring tools;{" "}
