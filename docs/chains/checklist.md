@@ -45,5 +45,40 @@ when every box is checked.
   working links for a real tx and the signer address on both networks.
 - [ ] **Runbook updated** — the chain's runbook in `docs/deploy/` reflects
   what was actually deployed (addresses, gotchas, command changes).
+- [ ] **Copy review** — walk the list below. Every surface that states a
+  network count, names live networks, or describes fees must still match
+  the registry after the status change.
 - [ ] **`pnpm build` is green** — run from the repo root after all edits;
   it typechecks and lints the SDK and webapp.
+
+## Copy that mentions network counts, names, or fees
+
+These surfaces are the first thing a visitor, a crawler, or a social
+preview sees. They must never describe a network beyond its
+`integrationStatus`, never promise retrieval without naming its
+dependency (bytes stored onchain, or the storage history available), and
+never mention a registry fee (anchors cost each network's transaction
+fee; the registry itself charges nothing). Most derive their numbers from
+`ACTIVE_CHAINS` / `ACTIVE_FAMILIES`; re-read the surrounding prose anyway,
+because a derived count can still sit inside a stale sentence.
+
+| Surface | What to check |
+| --- | --- |
+| `apps/web/src/components/onboarding/OnboardingOverlay.tsx` | Network count, mainnet/testnet names, and wallet hints derive from `ACTIVE_CHAINS` / `ACTIVE_FAMILIES`; add the family's wallet to `FAMILY_WALLETS` before flipping it active. |
+| `apps/web/src/app/opengraph-image.tsx` | Chain row derives from `ACTIVE_CHAINS`; check the card still fits when the set grows. |
+| `apps/web/src/components/ChainsGrid.tsx` | Heading counts `status: "active"` networks only; roadmap adapters are badged, never counted. |
+| `apps/web/src/components/HomeContent.tsx` | Closing block: retrieval claims name their dependency; per-network gas, no registry fee. |
+| `apps/web/src/app/explorer/layout.tsx` | Page and social descriptions derive live network names from `ACTIVE_CHAINS`. |
+| `apps/web/src/lib/faq.ts` | Fee and storage answers (no token, per-network transaction fee, evidence-only default). |
+| `apps/web/src/lib/site.ts` | Site-wide descriptions must not name networks or counts. |
+| `docs/integrations/status.md` | The human-readable mirror of `integrationStatus`; update the row and its "Last verified" date. |
+
+Grep before opening a PR that changes a chain's `status` or
+`integrationStatus`:
+
+```bash
+grep -rnE "[0-9]+ (chains|networks)|(small|registry) fee|fee per chunk|enough to retrieve" apps/web/src docs README.md
+```
+
+Any hit that is a literal number, a hand-written network list, or a fee
+claim is a bug.

@@ -54,7 +54,7 @@ const HomeContent = ({ quickstartTabs }: HomeContentProps) => {
         {/* 4 · FEATURES / GUARANTEES -------------------------------- */}
         <FeatureTrio />
 
-        {/* 5 · ALL 10 CHAINS ---------------------------------------- */}
+        {/* 5 · NETWORKS (counts derive from the chain registry) ------ */}
         <ChainsGrid />
 
         {/* 6 · PAID CACHE -------------------------------------------- */}
@@ -74,14 +74,17 @@ const HomeContent = ({ quickstartTabs }: HomeContentProps) => {
                   Open infrastructure
                 </p>
                 <h3 className="mt-2 text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-                  Pick one chain. Or pay for more.
+                  Pick one network. Or pay for more.
                 </h3>
                 <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted md:text-base">
-                  Anchoring writes one transaction per chunk on the chain you pick. That chain
-                  alone is enough to retrieve the file. If you want redundancy you can add
-                  the same file on more chains — each chain charges its own gas, so the price
-                  stacks. Use the explorer to see what&apos;s already public before paying for an
-                  extra anchor.
+                  Anchoring writes one transaction per chunk on the network you pick. That
+                  receipt alone shows the hash existed at that block. If you opted into
+                  on-chain storage, that network alone is also enough to retrieve the file,
+                  provided its storage history is available. Anchor-only evidence, the
+                  default, keeps the bytes wherever you hold them. If you want redundancy you
+                  can anchor the same file on more networks. Each one charges its own gas, so
+                  the price stacks. Use the explorer to see what&apos;s already public before
+                  paying for an extra anchor.
                 </p>
               </div>
               <div className="flex flex-col items-stretch justify-center gap-2 md:items-end">

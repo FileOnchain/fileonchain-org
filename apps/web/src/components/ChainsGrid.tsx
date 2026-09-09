@@ -18,12 +18,16 @@ import { ChainStatusBadge } from "@/components/chain/ChainStatusBadge";
 import ScrollReveal from "@/components/ScrollReveal";
 
 /**
- * ChainsGrid — editorial grid of every supported chain, grouped by
- * runtime (EVM-compatible, Substrate-based, Solana, Aptos). Each tile
- * shows the icon, full name, runtime tag, native currency, and whether
- * it's a testnet. The active chain gets a highlighted ring. Clicking a
- * tile sets it as the active chain — this keeps the explorer / wallet
- * / upload flow in sync.
+ * ChainsGrid — editorial grid of every registered network, grouped by
+ * runtime (`CHAIN_FAMILIES`). Each tile shows the icon, full name,
+ * rollout status, native currency, and whether it's a testnet. The
+ * active chain gets a highlighted ring. Clicking a tile sets it as the
+ * active chain — this keeps the explorer / wallet / upload flow in sync.
+ *
+ * The heading counts only networks open for anchoring (`status:
+ * "active"`); roadmap adapters are listed with their badge but never
+ * counted as supported, so the copy stays within each network's
+ * integration status.
  */
 
 const RUNTIMES = CHAIN_FAMILIES;
@@ -94,6 +98,9 @@ const ChainTile = ({ chain, active, onSelect }: ChainTileProps) => {
 const ChainsGrid = () => {
   const { activeChain, setActiveChainId } = useChain();
   const visibleChains = useVisibleChains();
+  const liveChains = visibleChains.filter((c) => c.status === "active");
+  const liveRuntimes = new Set(liveChains.map((c) => c.family)).size;
+  const roadmapCount = visibleChains.length - liveChains.length;
 
   return (
     <ScrollReveal as="section" stagger amount={0.15} className="w-full">
@@ -103,13 +110,20 @@ const ChainsGrid = () => {
             Supported chains
           </p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-            {visibleChains.length} chains across {CHAIN_FAMILIES.length} runtimes.
+            {liveChains.length} live {liveChains.length === 1 ? "network" : "networks"} across{" "}
+            {liveRuntimes} {liveRuntimes === 1 ? "runtime" : "runtimes"}.
+            {roadmapCount > 0 && (
+              <span className="block text-base font-medium text-muted md:text-lg">
+                {roadmapCount} more on the roadmap.
+              </span>
+            )}
           </h2>
         </div>
         <p className="max-w-sm text-sm text-muted">
-          Each chain runs its own contract. Anchoring the same file on multiple chains
-          is optional — and each chain charges its own transaction fees, so redundancy
-          has a real cost.
+          Each network settles anchors its own way, and the registry itself charges
+          nothing beyond that network&apos;s transaction fee. Anchoring the same file on
+          several networks is optional, and each one charges its own fee, so
+          redundancy has a real cost.
         </p>
       </header>
 
