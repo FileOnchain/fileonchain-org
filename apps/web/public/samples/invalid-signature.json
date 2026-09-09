@@ -1,0 +1,42 @@
+{
+  "protocol": "fileonchain-evidence",
+  "version": 1,
+  "subject": {
+    "type": "artifact",
+    "digests": {
+      "sha256": "cf3315e196480491a6eb663f80effcca46536d8c9a9a181ff49d900a4253e3de"
+    },
+    "mediaType": "text/plain",
+    "size": 41,
+    "name": "run-42.txt"
+  },
+  "signatures": [
+    {
+      "signer": {
+        "kind": "agent",
+        "id": "agent://reporter-1",
+        "publicKey": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+        "scheme": "ed25519",
+        "onBehalfOf": {
+          "kind": "organization",
+          "id": "example.org"
+        }
+      },
+      "payloadDigest": "acfd62f12e1b42c73488f276a5f110cc7479b7a64be587696f22f395e313ddee",
+      "signature": "c8719ef4bd4c0d29cdb44aaa15379cd39395732227d8b5bb6ea6ce37eb7b50d7b32e2858c1e16719d84fd714938e87254d77412f5bbf775466222a8de7a6da00",
+      "signedAt": "2026-07-11T12:00:00Z"
+    }
+  ],
+  "receipts": {
+    "storage": [],
+    "settlement": [],
+    "inclusion": []
+  },
+  "createdAt": "2026-07-11T12:00:00Z",
+  "envelope": {
+    "digest": {
+      "sha256": "b2fc864145ea9b3a8e6bafa4c90e9745a77f116a016fb316c94b8fc4dc2ff019"
+    },
+    "signatures": []
+  }
+}
