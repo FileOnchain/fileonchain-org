@@ -22,7 +22,7 @@ interface HeroProps {
 const EASE_OUT = [0.16, 1, 0.3, 1] as const;
 
 /**
- * Live indexer numbers for the stat row — `{ totalAnchors, totalFiles }`
+ * Live indexer numbers for the stat row, `{ totalAnchors, totalFiles }`
  * from the same `/api/indexer/recent` read as the ticker. Null until the
  * feed answers; zero when the indexer has nothing, in which case the
  * live tiles are dropped rather than padded with filler.
@@ -33,11 +33,11 @@ interface IndexerStats {
 }
 
 /**
- * Recent-anchor feed + live totals for the hero — the same DB-backed
+ * Recent-anchor feed + live totals for the hero: the same DB-backed
  * indexer rows the explorer renders, fetched through
  * `/api/indexer/recent` because the homepage is a Client Component.
  * Until rows arrive (or when the indexer has none) the ticker renders
- * nothing — the hero never shows fabricated CIDs or counts.
+ * nothing. The hero never shows fabricated CIDs or counts.
  */
 const useRecentAnchorFeed = (): { events: LedgerTickerEvent[]; stats: IndexerStats | null } => {
   const [events, setEvents] = React.useState<LedgerTickerEvent[]>([]);
@@ -62,7 +62,7 @@ const useRecentAnchorFeed = (): { events: LedgerTickerEvent[]; stats: IndexerSta
         if (data.stats) setStats(data.stats);
       })
       .catch(() => {
-        // Fail open — an unreachable indexer just means no ticker, no live tiles.
+        // Fail open: an unreachable indexer just means no ticker, no live tiles.
       });
     return () => controller.abort();
   }, []);
@@ -81,10 +81,10 @@ interface RecentAnchorEvent {
  *
  * One slogan for both audiences: someone who wants a file onchain and a
  * team that needs tamper-evident evidence of an agent run are doing the
- * same thing — sealing something into portable evidence anyone can
+ * same thing: sealing something into portable evidence anyone can
  * verify. The headline says that one thing; the subhead keeps both
  * concrete examples so neither reader feels excluded. "Verify" here is
- * the verifier's sense — existence, integrity, signing keys, timing —
+ * the verifier's sense (existence, integrity, signing keys, timing),
  * never truth or authorship.
  *
  * Composition:
@@ -93,7 +93,7 @@ interface RecentAnchorEvent {
  *   3. Subhead with the two concrete examples
  *   4. Two magnetic-style CTAs (primary anchor + ghost)
  *   5. Live ledger ticker strip (real indexed anchors only)
- *   6. Stat row: networks live (registry) + live indexer totals —
+ *   6. Stat row: networks live (registry) + live indexer totals;
  *      live tiles are dropped, not faked, while the indexer is empty
  *   7. Right side: animated ChunkFlowVisual SVG
  */
@@ -149,7 +149,7 @@ const Hero = ({
             </Link>
             : hash it, sign it, anchor it, and hand out one{" "}
             <span className="font-semibold text-foreground">portable evidence package</span>{" "}
-            that shows it existed, unchanged, at that time — checkable by anyone
+            that shows it existed, unchanged, at that time. Anyone can check it
             with the open verifier. Store the bytes onchain if you want to; by
             default only the hash leaves your machine.
           </motion.p>

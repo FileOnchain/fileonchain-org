@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/cn";
 
 interface PageHeaderProps {
-  /** Editorial index for the page, e.g. "02" — the numbered-section motif shared by interior routes. */
+  /** Editorial index for the page, e.g. "02": the numbered-section motif shared by interior routes. */
   index: string;
   /** Short uppercase kicker, e.g. "Cross-chain indexer". */
   kicker: string;

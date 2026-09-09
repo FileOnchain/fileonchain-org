@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
  * render time. `stats` are the explorer's live totals, reused by the
  * hero's stat row. Both reads fail open (see `safeRead` in
  * `lib/indexer/queries`): an empty feed renders no ticker and zero
- * totals render no live tiles — no fabricated rows or counts.
+ * totals render no live tiles. No fabricated rows or counts.
  */
 export async function GET() {
   const [rows, totals] = await Promise.all([getRecentAnchors(14), getExplorerStats()]);

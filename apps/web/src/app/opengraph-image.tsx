@@ -8,8 +8,8 @@ export const alt = siteConfig.title;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-// Only networks open for anchoring — the registry's `status: "active"`
-// set — so the card never describes a network beyond its integration
+// Only networks open for anchoring (the registry's `status: "active"`
+// set), so the card never describes a network beyond its integration
 // status. Testnets keep their full name ("Ethereum Sepolia").
 const CHAINS = Array.from(new Set(ACTIVE_CHAINS.map((c) => c.name)));
 
@@ -58,7 +58,7 @@ export default function OpengraphImage() {
             Seal any file or agent run. Anyone can verify it.
           </div>
           <div style={{ fontSize: "28px", color: "#9aa3b2", maxWidth: "960px", lineHeight: 1.35 }}>
-            A document, a release, a full AI-agent run — one portable evidence
+            A document, a release, a full AI-agent run: one portable evidence
             package. Open protocol, local verifier, hash-only by default.
           </div>
         </div>
