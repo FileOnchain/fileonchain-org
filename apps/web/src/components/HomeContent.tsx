@@ -13,8 +13,20 @@ import CacheExplainer from "@/components/CacheExplainer";
 import FaqAccordion from "@/components/FaqAccordion";
 import ScrollReveal from "@/components/ScrollReveal";
 import OnboardingOverlay from "@/components/onboarding/OnboardingOverlay";
+import DeveloperQuickstart from "@/components/DeveloperQuickstart";
+import type { QuickstartTab } from "@/lib/snippets/types";
 
-export default function Home() {
+interface HomeContentProps {
+  /** Server-highlighted snippets for the developer quickstart under the hero. */
+  quickstartTabs: QuickstartTab[];
+}
+
+/**
+ * HomeContent, the homepage body. A Client Component because the hero,
+ * uploader, and stores need the browser; `app/page.tsx` is the server
+ * shell that prepares the highlighted quickstart snippets and renders this.
+ */
+const HomeContent = ({ quickstartTabs }: HomeContentProps) => {
   return (
     <main className="relative flex flex-col items-center">
       {/* Background layer — full-bleed ambient gradient + grid. */}
@@ -25,6 +37,9 @@ export default function Home() {
       <div className="flex w-full max-w-6xl flex-col items-stretch gap-16 px-4 pb-20 pt-12 md:gap-20 md:px-6 md:pb-28 md:pt-20">
         {/* 1 · HERO ------------------------------------------------- */}
         <Hero />
+
+        {/* 1b · DEVELOPER QUICKSTART: SDK / CLI / MCP above the fold ---- */}
+        <DeveloperQuickstart tabs={quickstartTabs} />
 
         <ChainTicker />
 
@@ -97,4 +112,6 @@ export default function Home() {
       <OnboardingOverlay />
     </main>
   );
-}
+};
+
+export default HomeContent;
