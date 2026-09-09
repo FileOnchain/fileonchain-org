@@ -38,15 +38,15 @@ const HomeContent = ({ quickstartTabs }: HomeContentProps) => {
         {/* 1 · HERO ------------------------------------------------- */}
         <Hero />
 
-        {/* 1b · DEVELOPER QUICKSTART: SDK / CLI / MCP above the fold ---- */}
-        <DeveloperQuickstart tabs={quickstartTabs} />
-
         <ChainTicker />
 
         {/* 2 · UPLOADER --------------------------------------------- */}
         <div id="dropzone" className="scroll-mt-24">
           <UploadFileSection />
         </div>
+
+        {/* 2b · DEVELOPER QUICKSTART: SDK / CLI / MCP ---------------- */}
+        <DeveloperQuickstart tabs={quickstartTabs} />
 
         {/* 3 · HOW IT WORKS ----------------------------------------- */}
         <HowItWorks />

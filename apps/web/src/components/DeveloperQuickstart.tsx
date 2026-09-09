@@ -73,7 +73,7 @@ const AUDIENCE_LINKS = [
 ] as const;
 
 /**
- * DeveloperQuickstart, the code block directly under the hero. Three tabs
+ * DeveloperQuickstart, the code block right under the uploader. Three tabs
  * (SDK, CLI, MCP) with a copy button each, then one line per audience.
  * Snippets arrive pre-highlighted from the server: the SDK tab is read from
  * a file `next build` type-checks, so what the homepage shows compiles
