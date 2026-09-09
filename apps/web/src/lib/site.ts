@@ -12,11 +12,11 @@ export const siteConfig = {
     /\/$/,
     ""
   ),
-  title: "FileOnChain — Put Any File Onchain, Prove Any Agent Run",
+  title: "FileOnChain · Seal Any File or Agent Run. Anyone Can Verify It.",
   description:
-    "Store any file onchain — or anchor just its hash — and seal AI agent runs, outputs, and approvals into portable evidence packages anyone can independently verify. Open protocol, local verifier, hash-only by default.",
+    "Seal a document, a dataset, a release, or a full AI-agent run into a portable evidence package that shows it existed, unchanged, at that time. Anyone can check it with the open verifier. Store the bytes onchain or anchor just the hash. Open protocol, local verifier, hash-only by default.",
   ogDescription:
-    "Any file onchain, any agent run sealed as evidence — open protocol, local verifier, independently verifiable.",
+    "Files, releases, agent runs: sealed into portable evidence anyone can verify. Open protocol, local verifier, hash-only by default.",
   twitter: "@fileonchain",
   /** Public profiles — Organization JSON-LD `sameAs` and footer links. */
   socials: {
