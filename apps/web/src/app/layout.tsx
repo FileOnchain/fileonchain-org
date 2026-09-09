@@ -52,7 +52,12 @@ export const metadata: Metadata = {
   description: siteConfig.description,
   applicationName: siteConfig.name,
   manifest: "/favicon/site.webmanifest",
-  alternates: { canonical: "/" },
+  alternates: {
+    canonical: "/",
+    // The changelog feed is the site's only feed, so advertise it from the
+    // root; sub-pages that set their own `alternates` replace this block.
+    types: { "application/rss+xml": "/changelog/feed.xml" },
+  },
   keywords: [
     "onchain storage",
     "file to blockchain",

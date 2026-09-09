@@ -16,6 +16,14 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_BUILD_ID: buildId,
   },
+  // `/changelog` and its feed read the repository CHANGELOG.md (two
+  // directories up) at build time. Both are prerendered, so the file is
+  // only needed by the build; the trace include is belt and braces for
+  // the feed route, which Next still emits as a server function.
+  outputFileTracingIncludes: {
+    "/changelog": ["../../CHANGELOG.md"],
+    "/changelog/feed.xml": ["../../CHANGELOG.md"],
+  },
   // The SDK packages are consumed straight from their TypeScript sources in
   // the workspace, so every package the @fileonchain/sdk umbrella re-exports
   // must be listed here too.
