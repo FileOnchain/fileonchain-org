@@ -3,12 +3,24 @@
 import * as React from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { FiArrowRight, FiCheck, FiLayers, FiShield, FiUpload } from "react-icons/fi";
+import {
+  ACTIVE_CHAINS,
+  ACTIVE_FAMILIES,
+  CHAIN_FAMILY_LABELS,
+  type ChainFamily,
+} from "@fileonchain/sdk";
 
 /**
  * OnboardingOverlay — first-visit 3-step walkthrough. Shows the next three
- * things a new user needs to do: pick a chain → connect a wallet → drop a
- * file. Persists completion in localStorage so it doesn't replay every
- * visit.
+ * things a new user needs to do: choose what to seal (anchor-only vs
+ * storage), pick a live network, sign and get the envelope. Persists
+ * completion in localStorage so it doesn't replay every visit.
+ *
+ * Every network count, name and wallet hint below is derived from the
+ * chain registry (`ACTIVE_CHAINS` / `ACTIVE_FAMILIES`), so the copy never
+ * describes a network beyond its rollout status. When a family flips to
+ * `status: "active"` its wallets show up here automatically; add a row to
+ * `FAMILY_WALLETS` for a family the map does not know yet.
  *
  * Motion language: bold sans typography (no italic/gradient), staggered
  * icon + body reveal, a blinking caret effect on the lead phrase, and a
@@ -16,6 +28,38 @@ import { FiArrowRight, FiCheck, FiLayers, FiShield, FiUpload } from "react-icons
  */
 
 const STORAGE_KEY = "fileonchain:onboarding-complete-v1";
+
+/** Example wallets per runtime, surfaced only for families with a live
+ * network. Keep in step with `INJECTED_WALLET_COPY` in
+ * `components/chain/WalletConnectPanel.tsx`. */
+const FAMILY_WALLETS: Partial<Record<ChainFamily, string>> = {
+  evm: "MetaMask",
+  substrate: "a Substrate extension like Talisman",
+  solana: "Phantom",
+  aptos: "Petra",
+  cosmos: "Keplr",
+  sui: "a Sui wallet like Slush",
+  starknet: "Argent",
+  near: "a NEAR wallet",
+  tron: "TronLink",
+  cardano: "a Cardano wallet like Lace",
+  ton: "a TON Connect wallet",
+  hedera: "HashPack",
+};
+
+/** "A, B and C" for short lists of names. */
+const joinNames = (names: readonly string[]): string =>
+  names.length <= 1
+    ? names.join("")
+    : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+
+const LIVE_MAINNETS = ACTIVE_CHAINS.filter((c) => !c.testnet).map((c) => c.name);
+const LIVE_TESTNETS = ACTIVE_CHAINS.filter((c) => c.testnet).map((c) => c.name);
+const LIVE_RUNTIMES = ACTIVE_FAMILIES.map((family) => CHAIN_FAMILY_LABELS[family]);
+const LIVE_WALLETS = ACTIVE_FAMILIES.flatMap((family) => {
+  const wallet = FAMILY_WALLETS[family];
+  return wallet ? [wallet] : [];
+});
 
 interface Step {
   n: string;
@@ -28,41 +72,48 @@ interface Step {
 const STEPS: Step[] = [
   {
     n: "01",
-    title: "Pick a chain",
-    lead: "Start anywhere.",
+    title: "Choose what to seal",
+    lead: "Hash first.",
     body: (
       <>
-        FileOnChain anchors CIDs on <strong className="text-foreground">10 chains</strong> across
-        four runtimes — EVM-compatible, Substrate-based, Solana, and Aptos. Switch any time from the networks grid on the home page.
+        Drop a file, a release, or an agent run. It is hashed in your browser, so the
+        bytes stay with you unless you opt in. Pick{" "}
+        <strong className="text-foreground">anchor-only evidence</strong> (hash, signatures,
+        receipts), on-chain storage for the bytes themselves, or a link to a copy you
+        already host.
+      </>
+    ),
+    Icon: FiUpload,
+  },
+  {
+    n: "02",
+    title: "Pick a live network",
+    lead: "Start anywhere live.",
+    body: (
+      <>
+        <strong className="text-foreground">
+          {ACTIVE_CHAINS.length} networks
+        </strong>{" "}
+        are open for anchoring today across the {joinNames(LIVE_RUNTIMES)} runtimes:{" "}
+        {joinNames(LIVE_MAINNETS)} on mainnet, plus {joinNames(LIVE_TESTNETS)} for
+        testing. Roadmap adapters show on the networks grid but cannot be selected.
       </>
     ),
     Icon: FiLayers,
   },
   {
-    n: "02",
-    title: "Connect a wallet",
-    lead: "Sign once, anchor forever.",
-    body: (
-      <>
-        Use any wallet that fits the chain you picked — MetaMask, Phantom, Petra, or a Substrate
-        extension. The wallet only signs the registry tx; it never sees your file.
-      </>
-    ),
-    Icon: FiShield,
-  },
-  {
     n: "03",
-    title: "Drop a file",
+    title: "Sign and get your envelope",
     lead: "That's it.",
     body: (
       <>
-        Drag the file onto the dropzone. We split, hash, and submit one transaction
-        per chunk on the chain you chose. The registry contract takes a small fee
-        per chunk — gas scales with how busy the chain is, so the total cost depends
-        on the network.
+        Connect a wallet for the runtime you picked ({joinNames(LIVE_WALLETS)}) and
+        sign. It only signs the anchor transaction and never sees your file. You pay
+        each network&apos;s ordinary transaction fee; the registry itself charges
+        nothing. Out comes one portable evidence package anyone can verify locally.
       </>
     ),
-    Icon: FiUpload,
+    Icon: FiShield,
   },
 ];
 
