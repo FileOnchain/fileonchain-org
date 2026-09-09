@@ -1,0 +1,22 @@
+{
+  "name": "@fileonchain/seal-release-action",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GitHub Action starter: seal release artifacts into a FileOnChain evidence envelope with the reference SDK.",
+  "type": "module",
+  "scripts": {
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "seal": "tsx src/seal.ts"
+  },
+  "dependencies": {
+    "@fileonchain/api": "workspace:^",
+    "@fileonchain/sdk": "workspace:^",
+    "@fileonchain/verify": "workspace:^",
+    "@noble/curves": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.23.0",
+    "typescript": "^7.0.0"
+  }
+}

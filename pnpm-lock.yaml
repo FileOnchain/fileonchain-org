@@ -128,6 +128,31 @@ importers:
         specifier: ^8.0.0
         version: 8.2.2(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.0)(yaml@2.9.0)
 
+  .github/actions/seal-release:
+    dependencies:
+      '@fileonchain/api':
+        specifier: workspace:^
+        version: link:../../../packages/api
+      '@fileonchain/sdk':
+        specifier: workspace:^
+        version: link:../../../packages/sdk
+      '@fileonchain/verify':
+        specifier: workspace:^
+        version: link:../../../packages/verify
+      '@noble/curves':
+        specifier: ^2.2.0
+        version: 2.4.0
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.3
+      tsx:
+        specifier: ^4.23.0
+        version: 4.23.0
+      typescript:
+        specifier: ^7.0.0
+        version: 7.0.2
+
   apps/web:
     dependencies:
       '@aptos-labs/ts-sdk':
@@ -476,7 +501,7 @@ importers:
     devDependencies:
       '@polkadot/api':
         specifier: 16.5.6
-        version: 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)
+        version: 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)(utf-8-validate@6.0.6)
       '@solana/web3.js':
         specifier: ^1.98.4
         version: 1.98.4(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)
@@ -10942,20 +10967,6 @@ snapshots:
   '@polkadot-api/utils@0.1.0':
     optional: true
 
-  '@polkadot/api-augment@16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)':
-    dependencies:
-      '@polkadot/api-base': 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)
-      '@polkadot/rpc-augment': 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)
-      '@polkadot/types': 16.5.6
-      '@polkadot/types-augment': 16.5.6
-      '@polkadot/types-codec': 16.5.6
-      '@polkadot/util': 14.0.3
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-
   '@polkadot/api-augment@16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)(utf-8-validate@6.0.6)':
     dependencies:
       '@polkadot/api-base': 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)(utf-8-validate@6.0.6)
@@ -10964,18 +10975,6 @@ snapshots:
       '@polkadot/types-augment': 16.5.6
       '@polkadot/types-codec': 16.5.6
       '@polkadot/util': 14.0.3
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-
-  '@polkadot/api-base@16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)':
-    dependencies:
-      '@polkadot/rpc-core': 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)
-      '@polkadot/types': 16.5.6
-      '@polkadot/util': 14.0.3
-      rxjs: 7.8.2
       tslib: 2.8.1
     transitivePeerDependencies:
       - bufferutil
@@ -10994,23 +10993,6 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@polkadot/api-derive@16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)':
-    dependencies:
-      '@polkadot/api': 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)
-      '@polkadot/api-augment': 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)
-      '@polkadot/api-base': 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)
-      '@polkadot/rpc-core': 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)
-      '@polkadot/types': 16.5.6
-      '@polkadot/types-codec': 16.5.6
-      '@polkadot/util': 14.0.3
-      '@polkadot/util-crypto': 14.0.3(@polkadot/util@14.0.3)
-      rxjs: 7.8.2
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-
   '@polkadot/api-derive@16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)(utf-8-validate@6.0.6)':
     dependencies:
       '@polkadot/api': 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)(utf-8-validate@6.0.6)
@@ -11021,30 +11003,6 @@ snapshots:
       '@polkadot/types-codec': 16.5.6
       '@polkadot/util': 14.0.3
       '@polkadot/util-crypto': 14.0.3(@polkadot/util@14.0.3)
-      rxjs: 7.8.2
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-
-  '@polkadot/api@16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)':
-    dependencies:
-      '@polkadot/api-augment': 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)
-      '@polkadot/api-base': 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)
-      '@polkadot/api-derive': 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)
-      '@polkadot/keyring': 14.0.3(@polkadot/util-crypto@14.0.3(@polkadot/util@14.0.3))(@polkadot/util@14.0.3)
-      '@polkadot/rpc-augment': 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)
-      '@polkadot/rpc-core': 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)
-      '@polkadot/rpc-provider': 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)(utf-8-validate@6.0.6)
-      '@polkadot/types': 16.5.6
-      '@polkadot/types-augment': 16.5.6
-      '@polkadot/types-codec': 16.5.6
-      '@polkadot/types-create': 16.5.6
-      '@polkadot/types-known': 16.5.6
-      '@polkadot/util': 14.0.3
-      '@polkadot/util-crypto': 14.0.3(@polkadot/util@14.0.3)
-      eventemitter3: 5.0.4
       rxjs: 7.8.2
       tslib: 2.8.1
     transitivePeerDependencies:
@@ -11140,37 +11098,12 @@ snapshots:
       '@substrate/ss58-registry': 1.51.0
       tslib: 2.8.1
 
-  '@polkadot/rpc-augment@16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)':
-    dependencies:
-      '@polkadot/rpc-core': 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)
-      '@polkadot/types': 16.5.6
-      '@polkadot/types-codec': 16.5.6
-      '@polkadot/util': 14.0.3
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-
   '@polkadot/rpc-augment@16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)(utf-8-validate@6.0.6)':
     dependencies:
       '@polkadot/rpc-core': 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)(utf-8-validate@6.0.6)
       '@polkadot/types': 16.5.6
       '@polkadot/types-codec': 16.5.6
       '@polkadot/util': 14.0.3
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-
-  '@polkadot/rpc-core@16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)':
-    dependencies:
-      '@polkadot/rpc-augment': 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)
-      '@polkadot/rpc-provider': 16.5.6(bufferutil@4.1.0)(supports-color@10.2.2)(utf-8-validate@6.0.6)
-      '@polkadot/types': 16.5.6
-      '@polkadot/util': 14.0.3
-      rxjs: 7.8.2
       tslib: 2.8.1
     transitivePeerDependencies:
       - bufferutil
@@ -16634,7 +16567,7 @@ snapshots:
       '@babel/types': 7.29.8
       flow-enums-runtime: 0.0.6
       invariant: 2.2.4
-      metro-symbolicate: 0.84.4(supports-color@10.2.2)
+      metro-symbolicate: 0.84.4
       nullthrows: 1.1.1
       ob1: 0.84.4
       source-map: 0.5.7
@@ -16642,7 +16575,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  metro-symbolicate@0.84.4(supports-color@10.2.2):
+  metro-symbolicate@0.84.4:
     dependencies:
       flow-enums-runtime: 0.0.6
       invariant: 2.2.4
@@ -16650,8 +16583,6 @@ snapshots:
       nullthrows: 1.1.1
       source-map: 0.5.7
       vlq: 1.0.1
-    transitivePeerDependencies:
-      - supports-color
 
   metro-transform-plugins@0.84.4(supports-color@10.2.2):
     dependencies:
@@ -16715,7 +16646,7 @@ snapshots:
       metro-resolver: 0.84.4
       metro-runtime: 0.84.4
       metro-source-map: 0.84.4(supports-color@10.2.2)
-      metro-symbolicate: 0.84.4(supports-color@10.2.2)
+      metro-symbolicate: 0.84.4
       metro-transform-plugins: 0.84.4(supports-color@10.2.2)
       metro-transform-worker: 0.84.4(bufferutil@4.1.0)(supports-color@10.2.2)(utf-8-validate@6.0.6)
       mime-types: 3.0.2
