@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { OVERALL, STATUS_ICON, SECTIONS } from "@/components/verify/reportView";
 import { ShareEvidence } from "@/components/verify/ShareEvidence";
+import { ReceiptView } from "@/components/verify/ReceiptView";
 import {
   SAMPLE_SUBJECT_CONTENT,
   SAMPLE_SUBJECT_NAME,
@@ -36,11 +37,13 @@ import {
  *    browser → that origin only; nothing goes to FileOnChain.
  *  - `/verify?envelope=<base64url>` carries a small envelope inline.
  *
- * The overall chip wording + the six grouped sections live in
- * `./reportView.tsx` so the hosted `/cloud/verify/[envelopeId]` page can
- * share them — `/verify` and the hosted page must produce the same shape.
- * The share controls under the chip (report link, status badge, badge
- * Markdown) live in `./ShareEvidence.tsx`.
+ * The report is headed by the receipt (`./ReceiptView.tsx` — stamped
+ * status, one line per check, receipts as line items, download as PNG /
+ * print) and followed by the six grouped detail sections from
+ * `./reportView.tsx`; the hosted `/cloud/verify/[envelopeId]` page uses
+ * the same two pieces so both surfaces produce the same shape. The share
+ * controls under the receipt (report link, status badge, badge Markdown)
+ * live in `./ShareEvidence.tsx`.
  */
 
 /** Where the current envelope came from — shown above the textarea. */
@@ -331,18 +334,13 @@ const VerifyPanel = () => {
       {/* Report column ------------------------------------------------- */}
       <div className="flex flex-col gap-4">
         {report && (
-          <div
-            className={cn(
-              "flex items-center justify-between rounded-lg border px-4 py-3",
-              OVERALL[report.status].className,
-            )}
-            role="status"
-          >
-            <span className="text-base font-semibold">{OVERALL[report.status].label}</span>
-            <span className="font-mono text-xs opacity-80">
-              {report.checks.length} checks · status: {report.status}
-            </span>
-          </div>
+          <ReceiptView
+            report={report}
+            envelopeFileName={
+              envelopeFileName ?? (source?.kind === "sample" ? source.sample.file : null)
+            }
+            subjectFileName={subjectBytes ? subjectFileName : null}
+          />
         )}
 
         {report && (
