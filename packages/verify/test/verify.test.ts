@@ -319,3 +319,101 @@ describe("drafts and unknowns", () => {
     expect(report.ok).toBe(true);
   });
 });
+
+describe("evidence summary", () => {
+  const read = (file: string) => readFileSync(resolve(fixturesDir, file), "utf8");
+
+  it("copies subject, digest, signature counts, and receipt line items from the envelope", async () => {
+    const report = await verifyEvidenceJson(read("full-receipts-envelope-signed.json"));
+    const summary = report.summary;
+    expect(summary).toBeDefined();
+    expect(summary?.format).toBe("envelope");
+    expect(summary?.protocol).toBe("fileonchain-evidence");
+    expect(summary?.version).toBe(1);
+    expect(summary?.subject).toEqual({
+      type: "artifact",
+      name: "run-42.txt",
+      sha256: "cf3315e196480491a6eb663f80effcca46536d8c9a9a181ff49d900a4253e3de",
+      mediaType: "text/plain",
+      size: 41,
+    });
+    expect(summary?.envelopeDigest).toBe(
+      "19d6b2c22232c9815903a9152d48773346d8c49646fda7b7b0d286f35e3a91a8",
+    );
+    // Artifact and envelope signatures are counted apart, never merged.
+    expect(summary?.artifactSignatures).toBe(1);
+    expect(summary?.envelopeSignatures).toBe(1);
+    expect(summary?.receipts.map((r) => r.name)).toEqual([
+      "storage[0]:fileonchain-storage/v1",
+      "settlement[1]:fileonchain-evm-anchor/v1",
+      "inclusion[2]:fileonchain-merkle/v1",
+    ]);
+    const settlement = summary?.receipts[1];
+    expect(settlement).toMatchObject({
+      type: "settlement",
+      adapterKnown: true,
+      system: "eip155:11155111",
+      txHash: "0xabababababababababababababababababababababababababababababababab",
+      blockNumber: 123456,
+    });
+    expect(summary?.receipts[0]?.uri).toBe("https://example.org/run-42.txt");
+    expect(summary?.receipts[2]?.root).toBe(
+      "c65931db4620129dc23859c0e27ca47120d287928649f0f86d37c42965c61302",
+    );
+    // Every receipt line pairs with the checks the verifier emitted for it.
+    for (const line of summary?.receipts ?? []) {
+      expect(report.checks.some((c) => c.name.startsWith(line.name))).toBe(true);
+    }
+  });
+
+  it("records the inputs so the CLI command can be reproduced", async () => {
+    const raw = read("signed-artifact.json");
+    const offline = await verifyEvidenceJson(raw);
+    expect(offline.summary?.inputs).toEqual({ subjectBytes: false, online: false });
+    const bytes = new TextEncoder().encode(manifest.subjectContent);
+    const withBytes = await verifyEvidenceJson(raw, { subjectBytes: bytes });
+    expect(withBytes.summary?.inputs).toEqual({ subjectBytes: true, online: false });
+  });
+
+  it("flags an unregistered profile without failing it", async () => {
+    const report = await verifyEvidenceJson(read("unknown-profile.json"));
+    expect(report.summary?.profile).toBeDefined();
+    expect(report.summary?.profileKnown).toBe(false);
+    expect(report.status).not.toBe("invalid");
+  });
+
+  it("flags an unregistered adapter without failing it", async () => {
+    const parsed = JSON.parse(read("full-receipts-envelope-signed.json")) as EvidenceEnvelope;
+    parsed.receipts.settlement.push({
+      type: "settlement",
+      adapter: "acme-notary/v9",
+      system: "acme:main",
+      payload: { txHash: "0x1234" },
+    });
+    // The receipt set is inside the digested region, so re-finalize.
+    const envelope = finalizeEnvelope({ ...parsed, envelope: undefined });
+    const report = await verifyEnvelope(envelope);
+    const line = report.summary?.receipts.find((r) => r.adapter === "acme-notary/v9");
+    expect(line).toMatchObject({ adapterKnown: false, system: "acme:main", txHash: "0x1234" });
+    const check = report.checks.find((c) => c.name === line?.name);
+    expect(check?.status).toBe("unknown");
+    expect(report.status).not.toBe("invalid");
+  });
+
+  it("omits the summary when the document does not parse", async () => {
+    const report = await verifyEvidenceJson("{not json");
+    expect(report.summary).toBeUndefined();
+  });
+
+  it("summarizes a legacy-evidence-v1 package", async () => {
+    const report = await verifyEvidenceJson(read("legacy-evidence-v1.json"));
+    const summary = report.summary;
+    expect(summary?.format).toBe("legacy-evidence-v1");
+    expect(summary?.envelopeDigest).toBeUndefined();
+    expect(summary?.envelopeSignatures).toBe(0);
+    expect(summary?.subject.sha256).toMatch(/^[0-9a-f]{64}$/);
+    for (const line of summary?.receipts ?? []) {
+      expect(report.checks.some((c) => c.name.startsWith(line.name))).toBe(true);
+    }
+  });
+});
