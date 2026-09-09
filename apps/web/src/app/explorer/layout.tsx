@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
+import { ACTIVE_CHAINS } from "@fileonchain/sdk";
+
+// Only networks open for anchoring, so the description never names a
+// network beyond its integration status.
+const LIVE_NETWORKS = Array.from(new Set(ACTIVE_CHAINS.map((c) => c.name))).join(", ");
+const SOCIAL_DESCRIPTION = `Search the multichain CID index: every anchored file across ${ACTIVE_CHAINS.length} live networks.`;
 
 // The explorer index is a Client Component; its metadata lives here. Per-CID
 // detail pages (`[cid]/page.tsx`) override this via `generateMetadata`.
 export const metadata: Metadata = {
   title: "Explorer",
-  description:
-    "Browse and search files anchored onchain across Autonomys, Ethereum, Base, Optimism, Arbitrum, Polygon, Solana, and Aptos. Look up any CID and its anchor records.",
+  description: `Browse and search files anchored onchain across ${LIVE_NETWORKS}. Look up any CID and its anchor records.`,
   alternates: { canonical: "/explorer" },
   openGraph: {
     title: "Explorer · FileOnChain",
-    description:
-      "Search the multichain CID index — every anchored file across 10 chains.",
+    description: SOCIAL_DESCRIPTION,
     url: "/explorer",
     type: "website",
   },
@@ -19,8 +23,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Explorer · FileOnChain",
-    description:
-      "Search the multichain CID index — every anchored file across 10 chains.",
+    description: SOCIAL_DESCRIPTION,
   },
 };
 

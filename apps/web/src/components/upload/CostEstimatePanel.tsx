@@ -116,9 +116,10 @@ const CostEstimatePanel = ({ chunkCount }: CostEstimatePanelProps) => {
 
       <p className="mt-2 inline-flex items-start gap-1.5 text-[11px] text-muted">
         <FiInfo size={11} className="mt-0.5 shrink-0" />
-        One chain is enough to retrieve. Each chain you check below pays its own
-        gas — anchoring is free beyond that, and costs scale linearly with the
-        number of chains.
+        One anchor is enough to prove the hash; one network is enough to retrieve
+        the file when you store the bytes there. Each chain you check below pays
+        its own gas. Anchoring is free beyond that, and costs scale linearly with
+        the number of chains.
       </p>
 
       <p className="mt-1.5 text-[10px] leading-relaxed text-muted/80">

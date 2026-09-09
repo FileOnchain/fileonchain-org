@@ -278,9 +278,10 @@ export default async function ExplorerPage({ searchParams }: PageProps) {
               ? "no chains reporting yet"
               : `${stats.totalChains} chain${stats.totalChains === 1 ? "" : "s"} reporting`}
           </span>
-          {" "}so far, with coverage growing chain by chain. One chain is
-          enough to retrieve a file — adding more is optional and each chain
-          charges its own gas.
+          {" "}so far, with coverage growing chain by chain. One anchor is
+          enough to prove a hash existed, and one network is enough to retrieve
+          a file when its bytes were stored there. Adding more is optional and
+          each chain charges its own gas.
         </p>
       </section>
     </PageShell>
