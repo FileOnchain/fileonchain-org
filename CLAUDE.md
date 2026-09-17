@@ -433,7 +433,13 @@ JSON-LD, and mounts GA4 via `components/AnalyticsGate.tsx` **only when
 Custom events fire through `trackEvent(name, params)` in
 `src/lib/analytics.ts` — add new events to the `AnalyticsEvents` map (GA4
 snake_case names, flat scalar params, no PII) rather than calling
-`sendGAEvent` directly. The home FAQ emits `FAQPage` JSON-LD from
+`sendGAEvent` directly. Marketing CTAs are tracked by delegation: add
+`data-cta="<name>"` + `data-cta-location="<placement>"` to the link or
+button and `components/CtaTracker.tsx` (mounted in the root layout) fires
+`cta_click`, so server components stay server-only; the same tracker
+fires `cid_search` for a form carrying `data-cid-search`. Verification
+events carry the verifier's exact status string, never envelope contents,
+URLs, or file names. The home FAQ emits `FAQPage` JSON-LD from
 `src/lib/faq.ts` (single source shared with `FaqAccordion`). Social image:
 `src/app/opengraph-image.tsx` via `next/og`. Per-page metadata: server
 pages export `metadata`/`generateMetadata`; client pages carry a sibling

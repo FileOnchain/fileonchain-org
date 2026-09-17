@@ -20,6 +20,11 @@ format regular:
 
 ### Webapp
 
+- Analytics events now cover the verify flow (runs, receipt exports,
+  share controls), marketing calls to action, explorer CID search,
+  BYOK keys, the add-credits funnel, onboarding, and Cloud management
+  actions. Still gated by the GA id and the analytics-cookies
+  preference; no envelope contents, URLs, or file names are sent (#250)
 - Homepage gains a trust strip under the hero, a "who is this for"
   block with one scenario each for agent builders, release engineers,
   and archivists, and GitHub social proof in the footer (#245)

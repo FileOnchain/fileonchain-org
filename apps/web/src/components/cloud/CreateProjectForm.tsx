@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 export const CreateProjectForm = ({ orgId }: { orgId: string }) => {
   const router = useRouter();
@@ -26,6 +27,7 @@ export const CreateProjectForm = ({ orgId }: { orgId: string }) => {
           if (!res.ok) {
             setError(body.error ?? `Failed (${res.status})`);
           } else {
+            trackEvent("cloud_action", { area: "project", action: "create" });
             setName("");
             router.refresh();
           }

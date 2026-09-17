@@ -9,6 +9,7 @@ import {
   CHAIN_FAMILY_LABELS,
   type ChainFamily,
 } from "@fileonchain/sdk";
+import { trackEvent } from "@/lib/analytics";
 
 /**
  * OnboardingOverlay — first-visit 3-step walkthrough. Shows the next three
@@ -138,8 +139,23 @@ const OnboardingOverlay = () => {
     return;
   }, []);
 
+  // `dismiss` can run from inside a state updater (which React may invoke
+  // twice), so the event is guarded to fire once per overlay session.
+  const stepRef = React.useRef(0);
+  React.useEffect(() => {
+    stepRef.current = step;
+  }, [step]);
+  const tracked = React.useRef(false);
+
   const dismiss = React.useCallback((mark: "skip" | "finish") => {
     setOpen(false);
+    if (!tracked.current) {
+      tracked.current = true;
+      trackEvent("onboarding", {
+        action: mark === "finish" ? "complete" : "skip",
+        step: stepRef.current + 1,
+      });
+    }
     try {
       if (mark === "finish") window.localStorage.setItem(STORAGE_KEY, "1");
     } catch {

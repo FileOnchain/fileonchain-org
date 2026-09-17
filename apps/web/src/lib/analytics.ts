@@ -79,6 +79,56 @@ export interface AnalyticsEvents {
   organization: {
     action: "create" | "rename" | "delete" | "member_add" | "member_remove";
   };
+  /**
+   * A verification ran to completion. `status` is the verifier's own status
+   * word, never a paraphrase; the envelope, its URL, and file names are never
+   * sent.
+   */
+  evidence_verify: {
+    surface: "verify" | "cloud";
+    source: "paste" | "file" | "sample" | "url" | "link" | "hosted";
+    status: string;
+    with_subject: boolean;
+    online: boolean;
+  };
+  /**
+   * A verification receipt was exported (PNG download or print), or the
+   * uploader's freshly built envelope JSON was downloaded.
+   */
+  receipt_export: {
+    action: "png" | "print" | "envelope_json";
+    surface: "verify" | "cloud" | "upload";
+    status: string;
+  };
+  /** A share control under a report was used (kind only, never the link). */
+  evidence_share: {
+    kind: "report_link" | "badge_markdown" | "envelope_link";
+    status: string;
+  };
+  /**
+   * A marketing call to action was clicked. Fired by `CtaTracker` for any
+   * element carrying `data-cta` (+ optional `data-cta-location`), so server
+   * components can be tracked without becoming client components.
+   */
+  cta_click: { cta: string; location: string };
+  /** A BYOK provider key was saved or removed (never the key itself). */
+  byok_key: { provider: string; action: "add" | "remove" };
+  /** The add-credits flow was opened (top of the deposit funnel). */
+  credit_deposit_open: Record<string, never>;
+  /** The first-run onboarding overlay was finished or skipped. */
+  onboarding: { action: "complete" | "skip"; step: number };
+  /** A FileOnChain Cloud management action (action name only, no ids). */
+  cloud_action: {
+    area:
+      | "project"
+      | "project_member"
+      | "signer"
+      | "webhook"
+      | "retention"
+      | "quota"
+      | "export";
+    action: string;
+  };
 }
 
 type GAEventParams = Record<string, string | number | boolean | undefined>;

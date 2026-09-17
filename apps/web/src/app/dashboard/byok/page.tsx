@@ -78,7 +78,7 @@ export default async function ByokPage() {
                       : ""}
                   </p>
                 </div>
-                <ByokRowActions keyId={key.id} />
+                <ByokRowActions keyId={key.id} provider={key.provider} />
               </li>
             );
           })}

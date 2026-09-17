@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 interface Job {
   id: string;
@@ -67,6 +68,7 @@ export const ExportsList = ({ jobs }: { jobs: Job[] }) => {
                     const body = await res.json().catch(() => ({}));
                     alert(`Failed: ${body.error ?? res.status}`);
                   } else {
+                    trackEvent("cloud_action", { area: "export", action: "delete" });
                     router.refresh();
                   }
                 } finally {

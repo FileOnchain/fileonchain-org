@@ -58,7 +58,12 @@ const ChangelogPage = async () => {
         lede="Every release of the protocol, the profile, the verifier, the SDKs, the Cloud, and this site, newest first. Entries that change the protocol's canonical bytes say so and name the regenerated conformance fixtures, so an integrator can watch this page or its feed."
         actions={
           <>
-            <a href="/changelog/feed.xml" className={actionLink}>
+            <a
+              href="/changelog/feed.xml"
+              data-cta="rss_feed"
+              data-cta-location="changelog_header"
+              className={actionLink}
+            >
               <FiRss size={14} aria-hidden />
               RSS feed
             </a>
@@ -134,6 +139,8 @@ const ChangelogPage = async () => {
           in the repository at build time. Subscribe to the{" "}
           <a
             href="/changelog/feed.xml"
+            data-cta="rss_feed"
+            data-cta-location="changelog_footer"
             className="font-medium text-foreground underline-offset-4 hover:text-primary hover:underline"
           >
             RSS feed

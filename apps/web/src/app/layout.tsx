@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Instrument_Serif } from "next/font/google";
 import AnalyticsGate from "@/components/AnalyticsGate";
+import CtaTracker from "@/components/CtaTracker";
 import ThemeProvider from "@/components/ThemeProvider";
 import AuthSessionProvider from "@/components/providers/AuthSessionProvider";
 import WalletPairingProviders from "@/components/providers/WalletPairingProviders";
@@ -200,6 +201,8 @@ export default function RootLayout({
             </WalletPairingProviders>
           </AuthSessionProvider>
         </ThemeProvider>
+        {/* Delegated `data-cta` click tracking; inert without a GA id. */}
+        {gaId ? <CtaTracker /> : null}
       </body>
       {/* Google Analytics 4 — mounts only when NEXT_PUBLIC_GA_ID is configured
           AND the user's analytics-cookies preference allows it. */}

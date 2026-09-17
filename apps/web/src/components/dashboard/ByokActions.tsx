@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { BYOK_PROVIDERS } from "@/lib/byok/providers";
+import { trackEvent } from "@/lib/analytics";
 
 /** Client widgets for the server-rendered BYOK page. */
 
@@ -46,6 +47,7 @@ export const AddByokKeyButton = () => {
         throw new Error(data?.error ?? "Could not store the key");
       }
       const data = await res.json();
+      trackEvent("byok_key", { provider, action: "add" });
       toast({
         title: "Provider key added",
         description:
@@ -143,7 +145,7 @@ export const AddByokKeyButton = () => {
   );
 };
 
-export const ByokRowActions = ({ keyId }: { keyId: string }) => {
+export const ByokRowActions = ({ keyId, provider }: { keyId: string; provider: string }) => {
   const router = useRouter();
   const { toast } = useToast();
   const [busy, setBusy] = React.useState<"validate" | "remove" | null>(null);
@@ -159,6 +161,7 @@ export const ByokRowActions = ({ keyId }: { keyId: string }) => {
         const data = await res.json().catch(() => null);
         throw new Error(data?.error ?? "Request failed");
       }
+      if (action === "remove") trackEvent("byok_key", { provider, action: "remove" });
       toast({
         title: action === "validate" ? "Validation finished" : "Provider key removed",
         variant: "success",

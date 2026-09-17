@@ -6,6 +6,7 @@ import { buildStorageUri } from "@fileonchain/sdk";
 import type { VerificationReport } from "@fileonchain/verify";
 import { Button } from "@/components/ui/Button";
 import { ReceiptView } from "@/components/verify/ReceiptView";
+import { trackEvent } from "@/lib/analytics";
 import type { LandedAnchor, StorageMode } from "@/hooks/useFileUploader";
 
 /**
@@ -112,6 +113,11 @@ const EvidenceReceipt = ({
     link.download = ENVELOPE_FILE;
     link.click();
     URL.revokeObjectURL(url);
+    trackEvent("receipt_export", {
+      action: "envelope_json",
+      surface: "upload",
+      status: report?.status ?? "",
+    });
   };
 
   if (error) {
@@ -138,6 +144,7 @@ const EvidenceReceipt = ({
         report={report}
         envelopeFileName={ENVELOPE_FILE}
         subjectFileName={file.name}
+        surface="upload"
       />
       <p className="text-[11px] text-muted">
         The envelope was built in your browser from the file bytes and the anchor that landed;

@@ -14,6 +14,9 @@ interface MagneticButtonProps extends React.ButtonHTMLAttributes<HTMLButtonEleme
   rightIcon?: React.ReactNode;
   variant?: "primary" | "secondary" | "ghost" | "outline";
   fullWidth?: boolean;
+  /** CTA name + placement for `CtaTracker` (forwarded on the link branch too). */
+  "data-cta"?: string;
+  "data-cta-location"?: string;
 }
 
 const VARIANTS = {
@@ -98,6 +101,8 @@ export const MagneticButton = React.forwardRef<HTMLButtonElement, MagneticButton
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           className="group/Magnetic inline-flex"
+          data-cta={rest["data-cta"]}
+          data-cta-location={rest["data-cta-location"]}
         >
           {inner}
         </Link>

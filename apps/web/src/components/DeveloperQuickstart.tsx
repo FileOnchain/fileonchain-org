@@ -121,6 +121,8 @@ const DeveloperQuickstart = ({ tabs }: DeveloperQuickstartProps) => {
                   value={tab.code}
                   label="Copy"
                   ariaLabel={`Copy the ${tab.label} snippet`}
+                  data-cta={`copy_snippet_${tab.id}`}
+                  data-cta-location="developer_quickstart"
                 />
               </figcaption>
               {/* Shiki output rendered on the server from our own string
@@ -139,6 +141,8 @@ const DeveloperQuickstart = ({ tabs }: DeveloperQuickstartProps) => {
           <li key={item.href}>
             <Link
               href={item.href}
+              data-cta={item.href}
+              data-cta-location="developer_quickstart"
               className="group flex h-full flex-col gap-1 rounded-lg border border-border bg-surface px-4 py-3 transition-colors duration-base hover:border-primary/50 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">

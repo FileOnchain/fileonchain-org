@@ -103,6 +103,7 @@ export default async function ExplorerPage({ searchParams }: PageProps) {
         {/* Search bar — server action redirects to the detail page */}
         <form
           action={searchCid}
+          data-cid-search="explorer_index"
           className="flex flex-col gap-2 sm:flex-row"
           role="search"
           aria-label="Search a CID"
@@ -127,6 +128,8 @@ export default async function ExplorerPage({ searchParams }: PageProps) {
               <Link
                 key={seed}
                 href={`/explorer/${seed}`}
+                data-cta="recent_cid"
+                data-cta-location="explorer_index"
                 className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 font-mono text-muted transition-colors hover:border-primary/40 hover:text-foreground"
               >
                 {truncateCID(seed, 8, 6)}
