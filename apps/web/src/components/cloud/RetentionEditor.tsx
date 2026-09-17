@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import { trackEvent } from "@/lib/analytics";
 
 /**
  * Client editor for the server-rendered `/cloud/retention` page. Submits the
@@ -42,6 +43,7 @@ export const RetentionEditor = ({
         const data = await res.json().catch(() => null);
         throw new Error(data?.error ?? "Could not update retention");
       }
+      trackEvent("cloud_action", { area: "retention", action: "update" });
       toast({ title: `Retention set to ${parsed} days`, variant: "success" });
       router.refresh();
     } catch (err) {

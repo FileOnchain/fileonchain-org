@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 export interface SignerInfo {
   publicKey: string;
@@ -36,6 +37,7 @@ export const ProjectSignerManager = ({
         setError(body.error ?? `Failed (${res.status})`);
         return;
       }
+      trackEvent("cloud_action", { area: "signer", action: `project_${action}` });
       router.refresh();
     } finally {
       setBusy(false);

@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 interface QuotaInputs {
   envelopesPerMonth: number | null;
@@ -49,6 +50,7 @@ export const QuotaEditor = ({
           if (!res.ok) {
             setError(body.error ?? `Failed (${res.status})`);
           } else {
+            trackEvent("cloud_action", { area: "quota", action: "update" });
             setSaved("Saved.");
           }
         } finally {

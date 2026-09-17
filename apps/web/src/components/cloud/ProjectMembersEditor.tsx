@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 interface Member {
   userId: string;
@@ -46,6 +47,7 @@ export const ProjectMembersEditor = ({
                     if (!res.ok) {
                       setError(body.error ?? `Failed (${res.status})`);
                     } else {
+                      trackEvent("cloud_action", { area: "project_member", action: "remove" });
                       router.refresh();
                     }
                   } finally {
@@ -77,6 +79,7 @@ export const ProjectMembersEditor = ({
               if (!res.ok) {
                 setError(body.error ?? `Failed (${res.status})`);
               } else {
+                trackEvent("cloud_action", { area: "project_member", action: "add" });
                 setEmail("");
                 router.refresh();
               }

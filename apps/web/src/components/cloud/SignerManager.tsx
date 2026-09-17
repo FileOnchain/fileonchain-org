@@ -6,6 +6,7 @@ import { FiKey, FiRefreshCw, FiTrash2 } from "react-icons/fi";
 import Button from "@/components/ui/Button";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { useToast } from "@/components/ui/Toast";
+import { trackEvent } from "@/lib/analytics";
 
 /**
  * Client controls for the server-rendered `/cloud/signer` page. Generate /
@@ -35,7 +36,11 @@ export const SignerManager = ({
   const { toast } = useToast();
   const [busy, setBusy] = React.useState(false);
 
-  const call = async (method: "POST" | "DELETE", successMsg: string) => {
+  const call = async (
+    method: "POST" | "DELETE",
+    successMsg: string,
+    action: "generate" | "rotate" | "revoke",
+  ) => {
     setBusy(true);
     try {
       const res = await fetch(`/api/organizations/${orgId}/signer`, { method });
@@ -43,6 +48,7 @@ export const SignerManager = ({
         const data = await res.json().catch(() => null);
         throw new Error(data?.error ?? "Request failed");
       }
+      trackEvent("cloud_action", { area: "signer", action: `org_${action}` });
       toast({ title: successMsg, variant: "success" });
       router.refresh();
     } catch (err) {
@@ -81,14 +87,14 @@ export const SignerManager = ({
             <Button
               variant="secondary"
               disabled={busy}
-              onClick={() => call("POST", "Signer rotated")}
+              onClick={() => call("POST", "Signer rotated", "rotate")}
             >
               <FiRefreshCw size={14} /> Rotate key
             </Button>
             <Button
               variant="danger"
               disabled={busy}
-              onClick={() => call("DELETE", "Signer revoked")}
+              onClick={() => call("DELETE", "Signer revoked", "revoke")}
             >
               <FiTrash2 size={14} /> Revoke
             </Button>
@@ -111,7 +117,7 @@ export const SignerManager = ({
           </p>
           <Button
             disabled={busy}
-            onClick={() => call("POST", "Signer generated")}
+            onClick={() => call("POST", "Signer generated", "generate")}
           >
             <FiKey size={14} /> Generate Cloud signer
           </Button>

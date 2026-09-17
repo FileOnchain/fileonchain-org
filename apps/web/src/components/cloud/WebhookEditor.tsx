@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 const ALL_EVENTS = [
   "evidence.sealed",
@@ -57,6 +58,7 @@ export const WebhookEditor = ({
             if (!res.ok) {
               setError(body.error ?? `Failed (${res.status})`);
             } else {
+              trackEvent("cloud_action", { area: "webhook", action: "create" });
               setSecret(body.secret ?? null);
               setUrl("");
               setDesc("");
@@ -153,6 +155,7 @@ export const WebhookEditor = ({
                   );
                   const body = await res.json();
                   if (res.ok) {
+                    trackEvent("cloud_action", { area: "webhook", action: "rotate_secret" });
                     alert(`New signing secret: ${body.secret}`);
                   } else {
                     alert(`Failed: ${body.error ?? res.status}`);
@@ -173,6 +176,7 @@ export const WebhookEditor = ({
                     const body = await res.json().catch(() => ({}));
                     alert(`Failed: ${body.error ?? res.status}`);
                   } else {
+                    trackEvent("cloud_action", { area: "webhook", action: "disable" });
                     router.refresh();
                   }
                 }}
