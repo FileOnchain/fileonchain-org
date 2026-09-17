@@ -109,6 +109,8 @@ const Footer = () => (
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
+                data-cta={`social_${label.split(" ").pop()?.toLowerCase()}`}
+                data-cta-location="footer"
                 aria-label={label}
                 className={iconLink}
               >

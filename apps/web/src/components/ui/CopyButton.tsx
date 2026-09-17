@@ -9,6 +9,9 @@ interface CopyButtonProps {
   label?: string;
   className?: string;
   ariaLabel?: string;
+  /** CTA name + placement for `CtaTracker`; omit for plain value copies. */
+  "data-cta"?: string;
+  "data-cta-location"?: string;
 }
 
 /**
@@ -16,7 +19,14 @@ interface CopyButtonProps {
  * Use wherever a CID, address, tx hash, or other opaque string is shown so
  * users can grab it with one click.
  */
-export const CopyButton = ({ value, label, className, ariaLabel }: CopyButtonProps) => {
+export const CopyButton = ({
+  value,
+  label,
+  className,
+  ariaLabel,
+  "data-cta": dataCta,
+  "data-cta-location": dataCtaLocation,
+}: CopyButtonProps) => {
   const [copied, setCopied] = React.useState(false);
 
   const handleCopy = async () => {
@@ -35,6 +45,8 @@ export const CopyButton = ({ value, label, className, ariaLabel }: CopyButtonPro
       type="button"
       onClick={handleCopy}
       aria-label={ariaLabel ?? `Copy ${label ?? "value"}`}
+      data-cta={dataCta}
+      data-cta-location={dataCtaLocation}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-md p-1.5 text-muted",
         "hover:text-foreground hover:bg-surface transition-colors duration-base",

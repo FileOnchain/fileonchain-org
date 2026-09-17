@@ -14,6 +14,7 @@ import { siteConfig } from "@/lib/site";
 const ITEMS = [
   {
     Icon: FiCode,
+    cta: "open_source",
     label: "Open source, MIT",
     detail: "Protocol, verifier, SDKs, and this site",
     href: siteConfig.repo,
@@ -21,6 +22,7 @@ const ITEMS = [
   },
   {
     Icon: FiCpu,
+    cta: "verifier_local",
     label: "Verifier runs locally",
     detail: "In your browser or the CLI, no call home",
     href: "/verify",
@@ -28,6 +30,7 @@ const ITEMS = [
   },
   {
     Icon: FiHash,
+    cta: "hash_only",
     label: "Hash-only by default",
     detail: "Bytes stay with you unless you opt in",
     href: "/protocol",
@@ -35,6 +38,7 @@ const ITEMS = [
   },
   {
     Icon: FiUserX,
+    cta: "no_account",
     label: "No account to verify",
     detail: "An envelope is a file anyone can check",
     href: "/verify",
@@ -45,7 +49,7 @@ const ITEMS = [
 const TrustStrip = () => (
   <section aria-label="What you can check yourself" className="w-full">
     <ul className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border/60 md:grid-cols-4">
-      {ITEMS.map(({ Icon, label, detail, href, external }) => {
+      {ITEMS.map(({ Icon, cta, label, detail, href, external }) => {
         const body = (
           <>
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -62,11 +66,23 @@ const TrustStrip = () => (
         return (
           <li key={label} className="min-w-0">
             {external ? (
-              <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-cta={cta}
+                data-cta-location="trust_strip"
+                className={className}
+              >
                 {body}
               </a>
             ) : (
-              <Link href={href} className={className}>
+              <Link
+                href={href}
+                data-cta={cta}
+                data-cta-location="trust_strip"
+                className={className}
+              >
                 {body}
               </Link>
             )}

@@ -94,6 +94,8 @@ const WhoIsItFor = () => (
           <p className="text-sm leading-relaxed text-muted">{scenario}</p>
           <Link
             href={href}
+            data-cta={href}
+            data-cta-location="who_is_it_for"
             className="mt-auto inline-flex items-center gap-1.5 pt-2 text-sm font-medium text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             {cta}

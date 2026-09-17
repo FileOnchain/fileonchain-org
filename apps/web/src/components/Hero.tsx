@@ -143,6 +143,8 @@ const Hero = ({
             A document, a dataset, a release, or a full{" "}
             <Link
               href="/agent-evidence"
+              data-cta="agent_evidence"
+              data-cta-location="hero_subhead"
               className="font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline"
             >
               AI-agent run
@@ -161,11 +163,18 @@ const Hero = ({
             transition={{ duration: 0.5, delay: 1.0, ease: EASE_OUT }}
             className="mt-1 flex flex-wrap items-center gap-3"
           >
-            <MagneticButton href="#dropzone" rightIcon={<FiArrowRight size={16} />}>
+            <MagneticButton
+              href="#dropzone"
+              data-cta="upload_file"
+              data-cta-location="hero"
+              rightIcon={<FiArrowRight size={16} />}
+            >
               Upload a file
             </MagneticButton>
             <Link
               href="/verify"
+              data-cta="verify_package"
+              data-cta-location="hero"
               className="group inline-flex h-11 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium text-foreground transition-all hover:gap-2 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               Verify a package

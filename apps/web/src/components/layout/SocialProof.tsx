@@ -45,6 +45,8 @@ const SocialProof = () => {
         href={siteConfig.repo}
         target="_blank"
         rel="noopener noreferrer"
+        data-cta="github_star"
+        data-cta-location="footer"
         className={pill}
         aria-label={stars ? `${stars} GitHub stars` : "Star FileOnChain on GitHub"}
       >
@@ -57,6 +59,8 @@ const SocialProof = () => {
           href={`https://www.npmjs.com/package/${name}`}
           target="_blank"
           rel="noopener noreferrer"
+          data-cta={`npm_${name.replace("@fileonchain/", "")}`}
+          data-cta-location="footer"
           className={pill}
           aria-label={`${name}: ${weeklyDownloads} npm downloads last week`}
         >

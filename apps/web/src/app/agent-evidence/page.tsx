@@ -119,8 +119,19 @@ const AgentEvidencePage = () => (
       lede="The Agent Evidence Profile seals what an agent did — the run, its outputs, its tool calls, its approvals — into one portable evidence envelope. Hash-only by default, signed by the keys involved, settled on public systems, and verifiable by anyone with the open local verifier."
       actions={
         <div className="flex flex-wrap gap-2">
-          <ButtonLink href="/#dropzone">Create evidence →</ButtonLink>
-          <ButtonLink href="/verify" variant="secondary">
+          <ButtonLink
+            href="/#dropzone"
+            data-cta="create_evidence"
+            data-cta-location="agent_evidence_header"
+          >
+            Create evidence →
+          </ButtonLink>
+          <ButtonLink
+            href="/verify"
+            variant="secondary"
+            data-cta="verify_package"
+            data-cta-location="agent_evidence_header"
+          >
             Verify a package →
           </ButtonLink>
         </div>
