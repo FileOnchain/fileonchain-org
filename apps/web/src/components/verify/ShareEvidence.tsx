@@ -4,6 +4,7 @@ import * as React from "react";
 import type { VerificationStatus } from "@fileonchain/verify";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { trackEvent, type AnalyticsEvents } from "@/lib/analytics";
 import { buildEnvelopeShareLink } from "@/lib/verify/samples";
 import { buildBadgeMarkdown, buildBadgeUrl, buildUrlShareLink } from "@/lib/verify/share";
 
@@ -37,9 +38,14 @@ export const ShareEvidence = ({ json, sourceUrl, status }: ShareEvidenceProps) =
   const [copied, setCopied] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
-  const copy = async (key: string, text: string) => {
+  const copy = async (
+    key: string,
+    text: string,
+    kind: AnalyticsEvents["evidence_share"]["kind"],
+  ) => {
     try {
       await navigator.clipboard.writeText(text);
+      trackEvent("evidence_share", { kind, status });
       setError(null);
       setCopied(key);
       window.setTimeout(() => setCopied((k) => (k === key ? null : k)), 2000);
@@ -71,10 +77,10 @@ export const ShareEvidence = ({ json, sourceUrl, status }: ShareEvidenceProps) =
           <img src={badgeUrl} alt={`FileOnChain evidence badge: ${status}`} height={20} />
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="secondary" onClick={() => copy("link", reportLink)}>
+          <Button size="sm" variant="secondary" onClick={() => copy("link", reportLink, "report_link")}>
             {copied === "link" ? "Link copied" : "Copy link"}
           </Button>
-          <Button size="sm" variant="secondary" onClick={() => copy("badge", markdown)}>
+          <Button size="sm" variant="secondary" onClick={() => copy("badge", markdown, "badge_markdown")}>
             {copied === "badge" ? "Markdown copied" : "Copy badge Markdown"}
           </Button>
           {error && <p className="text-xs text-danger">{error}</p>}
@@ -98,7 +104,7 @@ export const ShareEvidence = ({ json, sourceUrl, status }: ShareEvidenceProps) =
             Host the envelope at a public URL to get a status badge as well.
           </p>
         </div>
-        <Button size="sm" variant="secondary" onClick={() => copy("link", envelopeLink)}>
+        <Button size="sm" variant="secondary" onClick={() => copy("link", envelopeLink, "envelope_link")}>
           {copied === "link" ? "Link copied" : "Copy link"}
         </Button>
       </div>

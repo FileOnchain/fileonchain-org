@@ -10,6 +10,7 @@ import type {
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { trackEvent } from "@/lib/analytics";
 import { SECTIONS, STATUS_ICON } from "@/components/verify/reportView";
 import { ReceiptView } from "@/components/verify/ReceiptView";
 
@@ -63,6 +64,13 @@ export const VerifyReportPanel = ({
         ...(subjectBytes ? { subjectBytes } : {}),
       });
       setReport(result);
+      trackEvent("evidence_verify", {
+        surface: "cloud",
+        source: "hosted",
+        status: result.status,
+        with_subject: subjectBytes !== null,
+        online: false,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Verification failed unexpectedly.");
     } finally {
@@ -164,7 +172,11 @@ export const VerifyReportPanel = ({
       </Card>
 
       {report && (
-        <ReceiptView report={report} subjectFileName={subjectBytes ? subjectFileName : null} />
+        <ReceiptView
+          report={report}
+          subjectFileName={subjectBytes ? subjectFileName : null}
+          surface="cloud"
+        />
       )}
 
       {SECTIONS.map((section) => {

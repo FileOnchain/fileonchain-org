@@ -4,6 +4,7 @@ import * as React from "react";
 import type { CheckResult, VerificationReport } from "@fileonchain/verify";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { trackEvent, type AnalyticsEvents } from "@/lib/analytics";
 import {
   CHECK_TAG,
   RECEIPT_SECTIONS,
@@ -46,6 +47,8 @@ export interface ReceiptViewProps {
   subjectFileName?: string | null;
   /** Show the download / print / theme toolbar. */
   actions?: boolean;
+  /** Which surface renders the receipt, for the `receipt_export` event. */
+  surface?: AnalyticsEvents["receipt_export"]["surface"];
   className?: string;
 }
 
@@ -83,6 +86,7 @@ export const ReceiptView = ({
   envelopeFileName,
   subjectFileName,
   actions = true,
+  surface = "verify",
   className,
 }: ReceiptViewProps) => {
   const ref = React.useRef<HTMLDivElement>(null);
@@ -111,6 +115,7 @@ export const ReceiptView = ({
       link.href = dataUrl;
       link.download = receiptFileName(report);
       link.click();
+      trackEvent("receipt_export", { action: "png", surface, status: report.status });
     } catch (err) {
       setError(
         err instanceof Error
@@ -133,6 +138,7 @@ export const ReceiptView = ({
       window.removeEventListener("afterprint", cleanup);
     };
     window.addEventListener("afterprint", cleanup);
+    trackEvent("receipt_export", { action: "print", surface, status: report.status });
     window.print();
     // Browsers that never fire afterprint (or a cancelled dialog) still
     // need the page restored.

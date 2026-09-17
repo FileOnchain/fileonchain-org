@@ -9,6 +9,7 @@ import type {
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { trackEvent, type AnalyticsEvents } from "@/lib/analytics";
 import { OVERALL, STATUS_ICON, SECTIONS } from "@/components/verify/reportView";
 import { ShareEvidence } from "@/components/verify/ShareEvidence";
 import { ReceiptView } from "@/components/verify/ReceiptView";
@@ -45,6 +46,9 @@ import {
  * controls under the receipt (report link, status badge, badge Markdown)
  * live in `./ShareEvidence.tsx`.
  */
+
+/** How the envelope reached the panel, for the `evidence_verify` event. */
+type VerifySource = AnalyticsEvents["evidence_verify"]["source"];
 
 /** Where the current envelope came from — shown above the textarea. */
 type EnvelopeSource =
@@ -90,7 +94,12 @@ const VerifyPanel = () => {
    * state) so a sample or link can load and verify in the same tick.
    */
   const verify = React.useCallback(
-    async (input: string, bytes: Uint8Array | null, checkOnline: boolean) => {
+    async (
+      input: string,
+      bytes: Uint8Array | null,
+      checkOnline: boolean,
+      via: VerifySource,
+    ) => {
       if (!input.trim()) {
         setError("Paste an evidence envelope, choose a .json file, or try a sample first.");
         return;
@@ -105,6 +114,13 @@ const VerifyPanel = () => {
           checkReceiptsOnline: checkOnline,
         });
         setReport(result);
+        trackEvent("evidence_verify", {
+          surface: "verify",
+          source: via,
+          status: result.status,
+          with_subject: bytes !== null,
+          online: checkOnline,
+        });
       } catch (err) {
         setError(err instanceof Error ? err.message : "Verification failed unexpectedly.");
       } finally {
@@ -114,7 +130,13 @@ const VerifyPanel = () => {
     [],
   );
 
-  const runVerify = () => verify(json, subjectBytes, online);
+  const runVerify = () =>
+    verify(
+      json,
+      subjectBytes,
+      online,
+      source?.kind ?? (envelopeFileName ? "file" : "paste"),
+    );
 
   const loadSample = async (sample: VerifySample) => {
     setLoadingSample(sample.id);
@@ -130,7 +152,7 @@ const VerifyPanel = () => {
       setSource({ kind: "sample", sample });
       setSubjectBytes(bytes);
       setSubjectFileName(`${SAMPLE_SUBJECT_NAME} (sample bytes)`);
-      await verify(text, bytes, online);
+      await verify(text, bytes, online, "sample");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load the sample.");
     } finally {
@@ -167,7 +189,7 @@ const VerifyPanel = () => {
         if (cancelled) return;
         setJson(text);
         setSource({ kind: "link" });
-        await verify(text, null, false);
+        await verify(text, null, false, "link");
         return;
       }
 
@@ -184,7 +206,7 @@ const VerifyPanel = () => {
         if (cancelled) return;
         setJson(text);
         setSource({ kind: "url", url: remote.href });
-        await verify(text, null, false);
+        await verify(text, null, false, "url");
       } catch (err) {
         if (cancelled) return;
         const reason = err instanceof Error ? err.message : String(err);
