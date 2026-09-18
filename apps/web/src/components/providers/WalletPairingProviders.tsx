@@ -1,23 +1,23 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
+import { TonConnectProvider } from "@/components/auth/TonConnectProvider";
+import { HederaAppKitProvider } from "@/components/auth/HederaAppKitProvider";
 
 /**
- * Client-only wrapper for the two browser-touching wallet-pairing
- * providers. `next/dynamic({ ssr: false })` is forbidden in Server
- * Components, so this thin client wrapper sits between the server root
- * layout and the provider modules.
+ * Client wrapper for the two wallet-pairing providers that sit between the
+ * server root layout and every page.
+ *
+ * These MUST NOT be loaded with `next/dynamic({ ssr: false })`: that mounts
+ * a client-side-rendering bailout around `children`, and because `children`
+ * is the entire app, every page prerendered as an empty
+ * `<template data-dgst="BAILOUT_TO_CLIENT_SIDE_RENDERING">` shell. Crawlers
+ * and link previews saw no headings or copy at all.
+ *
+ * Both providers are safe to render on the server: `TonConnectUIProvider`
+ * returns a `null` instance when `window` is undefined, and
+ * `HederaAppKitProvider` defers every browser-only import to `useEffect`.
  */
-const TonConnectProvider = dynamic(
-  () => import("@/components/auth/TonConnectProvider"),
-  { ssr: false },
-);
-const HederaAppKitProvider = dynamic(
-  () => import("@/components/auth/HederaAppKitProvider"),
-  { ssr: false },
-);
-
 export const WalletPairingProviders = ({ children }: { children: ReactNode }) => (
   <TonConnectProvider>
     <HederaAppKitProvider>{children}</HederaAppKitProvider>
