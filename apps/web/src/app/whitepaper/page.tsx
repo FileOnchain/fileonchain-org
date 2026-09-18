@@ -5,28 +5,17 @@ import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Documents",
   description:
-    "The FileOnChain document set: the neutral Evidence Protocol specification, the Agent Evidence Profile, the FileOnChain Cloud product overview, the integration status ledger, and the architecture decision records.",
-  alternates: { canonical: "/whitepaper" },
-  openGraph: {
-    title: "Documents · FileOnChain",
-    description:
-      "Protocol spec, Agent Evidence Profile, Cloud overview, integration status, and ADRs — the neutral protocol, the opinionated profile, the convenient product.",
-    url: "/whitepaper",
-    type: "article",
-  },
-  // Without this, the root layout's twitter block (homepage copy) is
-  // inherited wholesale — metadata merges shallowly per top-level key.
-  twitter: {
-    card: "summary_large_image",
-    title: "Documents · FileOnChain",
-    description:
-      "Protocol spec, Agent Evidence Profile, Cloud overview, integration status, and ADRs — the neutral protocol, the opinionated profile, the convenient product.",
-  },
-};
+    "The FileOnChain documents: the neutral Evidence Protocol specification, the Agent Evidence Profile, the Cloud product overview, the integration status ledger, and the ADRs.",
+  path: "/whitepaper",
+  socialDescription:
+    "Protocol spec, Agent Evidence Profile, Cloud overview, integration status, and ADRs — the neutral protocol, the opinionated profile, the convenient product.",
+  ogType: "article",
+});
 
 const GITHUB_REPO = "https://github.com/FileOnchain/fileonchain-org";
 

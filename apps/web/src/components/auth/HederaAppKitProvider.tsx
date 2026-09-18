@@ -12,10 +12,11 @@ import { siteConfig } from "@/lib/site";
  * can drive `connect()` / `signMessage()` / `disconnect()` without
  * re-creating the AppKit on every render.
  *
- * The provider is loaded via `next/dynamic({ ssr: false })` in
- * `apps/web/src/components/providers/WalletPairingProviders.tsx` —
- * `@reown/appkit` touches `window`, `IndexedDB`, and the WalletConnect relay
- * at mount.
+ * The provider renders on the server too (mounted from
+ * `apps/web/src/components/providers/WalletPairingProviders.tsx`). That is
+ * safe because `@reown/appkit` and the Hedera adapter, which touch
+ * `window`, `IndexedDB`, and the WalletConnect relay, are only imported
+ * inside the `useEffect` below.
  *
  * Requirements:
  *   - `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` provisioned at

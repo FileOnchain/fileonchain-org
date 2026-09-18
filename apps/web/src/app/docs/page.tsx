@@ -6,29 +6,17 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import CodeBlock from "@/components/docs/CodeBlock";
+import { pageMetadata } from "@/lib/seo";
 import { MCP_CLAUDE_CODE_SNIPPET, MCP_CONFIG_SNIPPET } from "@/lib/snippets/mcp";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "SDK Documentation",
   description:
-    "How to anchor CIDs onchain with the @fileonchain packages: the @fileonchain/sdk umbrella, twelve per-family anchor clients, the hosted API client, and the MCP server for AI agents.",
-  alternates: { canonical: "/docs" },
-  openGraph: {
-    title: "SDK Documentation · FileOnChain",
-    description:
-      "Anchor CIDs across twelve chain families with the @fileonchain/* packages — umbrella SDK, family clients, hosted API, and MCP server.",
-    url: "/docs",
-    type: "website",
-  },
-  // Without this, the root layout's twitter block (homepage copy) is
-  // inherited wholesale — metadata merges shallowly per top-level key.
-  twitter: {
-    card: "summary_large_image",
-    title: "SDK Documentation · FileOnChain",
-    description:
-      "Anchor CIDs across twelve chain families with the @fileonchain/* packages — umbrella SDK, family clients, hosted API, and MCP server.",
-  },
-};
+    "Anchor CIDs onchain with the @fileonchain packages: the @fileonchain/sdk umbrella, twelve per-family anchor clients, the hosted API client, and the MCP server.",
+  path: "/docs",
+  socialDescription:
+    "Anchor CIDs across twelve chain families with the @fileonchain/* packages — umbrella SDK, family clients, hosted API, and MCP server.",
+});
 
 const GITHUB_PACKAGES = "https://github.com/FileOnchain/fileonchain-org/tree/main/packages";
 

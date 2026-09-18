@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -5,6 +6,18 @@ import { ButtonLink } from "@/components/ui/ButtonLink";
 import { CloudShell } from "@/components/cloud/CloudShell";
 import { FeatureCard, type CloudFeature } from "@/components/cloud/FeatureCard";
 import { isCloudEvidenceEnabled } from "@/lib/server/cloud-feature";
+import { pageMetadata } from "@/lib/seo";
+
+// The public landing is the only indexable `/cloud` page; the sibling
+// layout marks the signed-in workspace routes noindex.
+export const metadata: Metadata = pageMetadata({
+  title: "Cloud",
+  description:
+    "FileOnChain Cloud: hosted anchoring, evidence ingestion, agent-run sealing, hosted verification, retention, and search, built on the open Evidence Protocol.",
+  path: "/cloud",
+  socialDescription:
+    "Hosted anchoring, evidence ingestion, agent-run sealing, hosted verification, retention, and search, built on the open FileOnChain Evidence Protocol.",
+});
 
 /**
  * /cloud — marketing landing for FileOnChain Cloud. Server component:

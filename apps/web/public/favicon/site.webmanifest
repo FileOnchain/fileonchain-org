@@ -1,12 +1,24 @@
 {
   "id": "/",
-  "name": "FileOnChain — Multichain Onchain Storage",
+  "name": "FileOnChain: portable, verifiable evidence",
   "short_name": "FileOnChain",
-  "description": "Anchor file CIDs across Autonomys, Ethereum, Base, Optimism, Arbitrum, Polygon, Solana, and Aptos. Pay for a private cache; fund the public one.",
+  "description": "Seal any file or AI-agent run into a portable evidence package anyone can verify with the open verifier. Hash-only by default; storage optional.",
   "start_url": "/",
   "scope": "/",
   "categories": ["utilities", "productivity", "developer"],
   "icons": [
+    {
+      "src": "/favicon/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "/favicon/web-app-manifest-192x192.png",
       "sizes": "192x192",

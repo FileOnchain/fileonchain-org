@@ -2,30 +2,18 @@ import type { Metadata } from "next";
 import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import UploadFileSection from "@/components/upload/UploadFileSection";
+import { pageMetadata } from "@/lib/seo";
 
 // Server page: metadata lives here directly; the upload flow itself is the
 // client-only UploadFileSection (same component as the home-page dropzone).
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Upload a file",
   description:
-    "Put any file onchain: it's hashed in your browser and sealed into a portable evidence package. Anchor the hash on the networks you pick; storing the bytes onchain is an optional choice.",
-  alternates: { canonical: "/upload-file" },
-  openGraph: {
-    title: "Upload a file · FileOnChain",
-    description:
-      "Hash any file in your browser, seal it into an evidence package, and anchor it on the networks you pick. Storage is opt-in — by default only the hash leaves your machine.",
-    url: "/upload-file",
-    type: "website",
-  },
-  // Without this, the root layout's twitter block (homepage copy) is
-  // inherited wholesale — metadata merges shallowly per top-level key.
-  twitter: {
-    card: "summary_large_image",
-    title: "Upload a file · FileOnChain",
-    description:
-      "Hash any file in your browser, seal it into an evidence package, and anchor it on the networks you pick. Storage is opt-in — by default only the hash leaves your machine.",
-  },
-};
+    "Put any file onchain: it is hashed in your browser and sealed into a portable evidence package. Anchor the hash on the networks you pick; storing the bytes is optional.",
+  path: "/upload-file",
+  socialDescription:
+    "Hash any file in your browser, seal it into an evidence package, and anchor it on the networks you pick. Storage is opt-in: by default only the hash leaves your machine.",
+});
 
 /**
  * /upload-file — the standalone home of the core upload flow. Same

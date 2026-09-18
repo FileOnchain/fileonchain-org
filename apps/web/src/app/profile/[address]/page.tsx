@@ -3,6 +3,7 @@ import * as React from "react";
 import { getProfile } from "@/lib/mock/profiles";
 import { getFilesByUploader } from "@/lib/indexer/queries";
 import { truncateAddress } from "@/lib/cid/format";
+import { pageMetadata } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
 import ProfileClient from "@/components/profile/ProfileClient";
 
@@ -16,33 +17,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { address } = await params;
   const decoded = decodeURIComponent(address);
   const profile = await getProfile(decoded);
-  const canonical = `/profile/${decoded}`;
   const display = profile.handle ?? truncateAddress(decoded);
   const known = profile.stats.anchors > 0;
 
-  const title = `${display} · Profile`;
-  const description = known
-    ? `${display} has anchored ${profile.stats.files} files (${profile.stats.anchors} onchain anchors) across ${profile.stats.chains} chains on FileOnChain.`
-    : `Public FileOnChain profile for ${display}. No public anchors indexed yet.`;
-
-  return {
-    title,
-    description,
-    alternates: { canonical },
+  return pageMetadata({
+    title: `${display} · Profile`,
+    description: known
+      ? `${display} has anchored ${profile.stats.files} files (${profile.stats.anchors} onchain anchors) across ${profile.stats.chains} chains on FileOnChain.`
+      : `Public FileOnChain profile for ${display}. No public anchors indexed yet.`,
+    path: `/profile/${decoded}`,
+    ogType: "profile",
     // Address space is unbounded — only index profiles with real activity.
     // Explicit in both branches so the parent layout's noindex (meant for
     // the /profile entry point) is never inherited here.
-    robots: known
-      ? { index: true, follow: true }
-      : { index: false, follow: true },
-    openGraph: {
-      title: `${title} · ${siteConfig.name}`,
-      description,
-      url: canonical,
-      type: "profile",
-    },
-    twitter: { card: "summary_large_image", title, description },
-  };
+    index: known,
+  });
 }
 
 /**

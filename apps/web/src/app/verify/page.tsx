@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import VerifyPanel from "@/components/verify/VerifyPanel";
+import { pageMetadata } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
 
 /**
@@ -36,25 +37,13 @@ export async function generateMetadata({
   const envelope = first(params.envelope);
   const linked: Record<string, string> | null = url ? { url } : envelope ? { envelope } : null;
 
-  const base: Metadata = {
+  const base = pageMetadata({
     title: "Verify",
     description:
-      "Verify a FileOnChain evidence package in your browser — no account, no wallet. Paste the envelope JSON, optionally supply the original bytes, and get the full check-by-check report: subject integrity, signatures, receipts, key status.",
-    alternates: { canonical: "/verify" },
-    openGraph: {
-      title: "Verify · FileOnChain",
-      description: DESCRIPTION,
-      url: "/verify",
-      type: "website",
-    },
-    // Without this, the root layout's twitter block (homepage copy) is
-    // inherited wholesale — metadata merges shallowly per top-level key.
-    twitter: {
-      card: "summary_large_image",
-      title: "Verify · FileOnChain",
-      description: DESCRIPTION,
-    },
-  };
+      "Verify a FileOnChain evidence package in your browser, no account or wallet. Paste the envelope JSON, add the original bytes, and get the full check-by-check report.",
+    path: "/verify",
+    socialDescription: DESCRIPTION,
+  });
   if (!linked) return base;
 
   const query = new URLSearchParams(linked).toString();

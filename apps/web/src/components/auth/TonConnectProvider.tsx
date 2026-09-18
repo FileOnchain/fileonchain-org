@@ -17,9 +17,10 @@ import { siteConfig } from "@/lib/site";
  *      shipped at `apps/web/public/tonconnect-manifest.json`. In production
  *      this resolves to the canonical `siteConfig.url`.
  *
- * The component is loaded via `next/dynamic({ ssr: false })` in
- * `apps/web/src/app/layout.tsx` — `@tonconnect/ui-react` touches `window` at
- * mount and cannot render server-side.
+ * Rendered on the server as well as the client (see
+ * `components/providers/WalletPairingProviders.tsx`): `TonConnectUIProvider`
+ * only constructs the `TonConnectUI` singleton when `window` exists and
+ * provides `null` otherwise, so it never touches the DOM during prerender.
  */
 export const TonConnectProvider = ({
   children,

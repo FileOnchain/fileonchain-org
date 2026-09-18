@@ -53,23 +53,27 @@ export const metadata: Metadata = {
   description: siteConfig.description,
   applicationName: siteConfig.name,
   manifest: "/favicon/site.webmanifest",
+  // No canonical here on purpose: `alternates` is inherited wholesale, so a
+  // root canonical of "/" made every route without its own (404s, error
+  // pages, nested workspace pages) declare the homepage as its canonical
+  // URL. Each indexable page sets its own through `pageMetadata()`; the
+  // homepage sets it in `app/page.tsx`.
   alternates: {
-    canonical: "/",
     // The changelog feed is the site's only feed, so advertise it from the
     // root; sub-pages that set their own `alternates` replace this block.
     types: { "application/rss+xml": "/changelog/feed.xml" },
   },
   keywords: [
-    "onchain storage",
-    "file to blockchain",
+    "evidence envelope",
+    "verifiable evidence",
+    "AI agent audit trail",
+    "proof of existence",
+    "hash anchoring",
     "CID anchoring",
-    "IPFS",
+    "onchain storage",
     "Autonomys",
     "Ethereum",
     "Solana",
-    "Aptos",
-    "Polkadot",
-    "decentralized storage",
   ],
   robots: {
     index: true,

@@ -20,6 +20,15 @@ format regular:
 
 ### Webapp
 
+- Every page is server-rendered again: the wallet-pairing providers were
+  loaded with `ssr: false` around the whole app, so crawlers and link
+  unfurlers received an empty shell with no headings or copy (#251)
+- Link previews carry a page-specific share card, the site name, and the
+  Twitter handle on every route (pages that set their own Open Graph
+  copy had lost the image), 404 and signed-in Cloud workspace pages no
+  longer declare another URL as canonical, meta descriptions fit the
+  search-snippet length, and robots.txt lets unfurlers fetch the verify
+  card and the status badge (#251)
 - Analytics events now cover the verify flow (runs, receipt exports,
   share controls), marketing calls to action, explorer CID search,
   BYOK keys, the add-credits funnel, onboarding, and Cloud management

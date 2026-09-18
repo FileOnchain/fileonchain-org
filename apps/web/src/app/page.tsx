@@ -1,5 +1,15 @@
+import type { Metadata } from "next";
 import HomeContent from "@/components/HomeContent";
 import { getDeveloperQuickstartTabs } from "@/lib/snippets/quickstart";
+
+// Title, description, share card, and JSON-LD come from the root layout;
+// only the canonical lives here so it never leaks into other routes.
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/",
+    types: { "application/rss+xml": "/changelog/feed.xml" },
+  },
+};
 
 /**
  * `/`, the homepage. A thin server shell: it highlights the developer
