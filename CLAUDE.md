@@ -441,11 +441,22 @@ fires `cid_search` for a form carrying `data-cid-search`. Verification
 events carry the verifier's exact status string, never envelope contents,
 URLs, or file names. The home FAQ emits `FAQPage` JSON-LD from
 `src/lib/faq.ts` (single source shared with `FaqAccordion`). Social image:
-`src/app/opengraph-image.tsx` via `next/og`. Per-page metadata: server
-pages export `metadata`/`generateMetadata`; client pages carry a sibling
-`layout.tsx`. Each page sets its own `alternates.canonical`; `/dashboard`
-is `robots: { index: false }`. Prefer editing `siteConfig` over hardcoding
-URLs or titles.
+`src/app/opengraph-image.tsx` via `next/og` for the homepage; every other
+page gets a card painted from its own title by `api/og/page`. Per-page
+metadata: server pages export `metadata`/`generateMetadata`; client pages
+carry a sibling `layout.tsx`. **Always build it with `pageMetadata()` from
+`src/lib/seo.ts`** (title, description, `path`, optional
+`socialDescription` / `ogType` / `index: false`): Next merges metadata
+shallowly per top-level key, so a hand-written `openGraph` or `twitter`
+block silently drops the share image, `og:site_name`, and `twitter:site`.
+The root layout deliberately sets no `alternates.canonical` (it would be
+inherited by 404s and nested workspace pages); the homepage sets its own
+in `app/page.tsx`. `/dashboard`, `/login`, `/profile`, and the signed-in
+`/cloud/*` workspace routes are `noindex`. Prefer editing `siteConfig`
+over hardcoding URLs or titles. The whole tree is server-rendered: never
+wrap `children` of the root layout in a `next/dynamic({ ssr: false })`
+component, or every page prerenders as an empty client-side-rendering
+bailout shell (see `components/providers/WalletPairingProviders.tsx`).
 
 ## Language & claims policy
 
