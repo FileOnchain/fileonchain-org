@@ -6,31 +6,18 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import NetworkTable from "@/components/integrations/NetworkTable";
-import { siteConfig } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
 import CodeBlock from "@/components/docs/CodeBlock";
 import { MCP_CLAUDE_CODE_SNIPPET } from "@/lib/snippets/mcp";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Integrations",
   description:
-    "Honest integration status for every system FileOnChain touches: storage and settlement networks straight from the chain registry, plus planned agent-framework and observability integrations.",
-  alternates: { canonical: `${siteConfig.url}/integrations` },
-  openGraph: {
-    title: "Integrations · FileOnChain",
-    description:
-      "Storage and settlement systems with their real integration status — plus planned agent-framework and observability integrations.",
-    url: "/integrations",
-    type: "website",
-  },
-  // Without this, the root layout's twitter block (homepage copy) is
-  // inherited wholesale — metadata merges shallowly per top-level key.
-  twitter: {
-    card: "summary_large_image",
-    title: "Integrations · FileOnChain",
-    description:
-      "Storage and settlement systems with their real integration status — plus planned agent-framework and observability integrations.",
-  },
-};
+    "Honest integration status for every system FileOnChain touches: storage and settlement networks from the chain registry, plus planned agent-framework integrations.",
+  path: "/integrations",
+  socialDescription:
+    "Storage and settlement systems with their real integration status, plus planned agent-framework and observability integrations.",
+});
 
 /* ------------------------------------------------------------------ */
 /* Registry-driven network tables                                      */

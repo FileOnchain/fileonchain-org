@@ -4,14 +4,16 @@ import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/ButtonLink";
-import { siteConfig } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Protocol",
   description:
-    "The FileOnChain Evidence Protocol: a neutral, independently implementable envelope format — subject, claims, artifact and envelope signatures, receipt adapters, application profiles — verified locally by an open verifier. No token, no market.",
-  alternates: { canonical: `${siteConfig.url}/protocol` },
-};
+    "The FileOnChain Evidence Protocol: a neutral, independently implementable envelope format for subject, claims, signatures, and receipts, verified locally by an open verifier.",
+  path: "/protocol",
+  socialDescription:
+    "A neutral, independently implementable evidence envelope: subject, claims, artifact and envelope signatures, receipt adapters, application profiles. No token, no market.",
+});
 
 const GITHUB_REPO = "https://github.com/FileOnchain/fileonchain-org";
 const PROTOCOL_SPEC = `${GITHUB_REPO}/blob/main/docs/protocol/evidence-protocol.md`;

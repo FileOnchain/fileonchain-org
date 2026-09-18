@@ -4,14 +4,15 @@ import { auth } from "@/lib/auth";
 import { availableOAuthProviders } from "@/lib/auth/config";
 import PageShell from "@/components/layout/PageShell";
 import LoginOptions from "@/components/auth/LoginOptions";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Sign in",
   description:
     "Sign in to FileOnChain with Google, GitHub, or any connected wallet to manage credits, API keys, and uploads.",
-  alternates: { canonical: "/login" },
-  robots: { index: false },
-};
+  path: "/login",
+  index: false,
+});
 
 interface LoginPageProps {
   searchParams: Promise<{ next?: string }>;

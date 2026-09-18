@@ -7,30 +7,23 @@ import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import ChangelogRelease from "@/components/changelog/ChangelogRelease";
 import { loadChangelog } from "@/lib/changelog/load";
+import { pageMetadata } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
 
 const DESCRIPTION =
-  "What changed in the FileOnChain Evidence Protocol, the Agent Evidence Profile, the reference implementations, and the webapp. Protocol version and conformance fixture changes are called out so integrators can watch them.";
+  "What changed in the FileOnChain Evidence Protocol, the Agent Evidence Profile, the reference implementations, and the webapp, with protocol version and fixture changes called out.";
 
-export const metadata: Metadata = {
+const base = pageMetadata({
   title: "Changelog",
   description: DESCRIPTION,
+  path: "/changelog",
+});
+
+export const metadata: Metadata = {
+  ...base,
   alternates: {
-    canonical: "/changelog",
+    ...base.alternates,
     types: { "application/rss+xml": "/changelog/feed.xml" },
-  },
-  openGraph: {
-    title: "Changelog · FileOnChain",
-    description: DESCRIPTION,
-    url: "/changelog",
-    type: "website",
-  },
-  // Without this, the root layout's twitter block (homepage copy) is
-  // inherited wholesale; metadata merges shallowly per top-level key.
-  twitter: {
-    card: "summary_large_image",
-    title: "Changelog · FileOnChain",
-    description: DESCRIPTION,
   },
 };
 

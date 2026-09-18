@@ -6,30 +6,17 @@ import { Card } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import CodeBlock from "@/components/docs/CodeBlock";
-import { siteConfig } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
 import { MCP_CLAUDE_CODE_SNIPPET, MCP_CONFIG_SNIPPET } from "@/lib/snippets/mcp";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Agent Evidence",
   description:
-    "Tamper-evident audit trails for AI agents: seal agent runs, outputs, tool calls, and approvals into portable evidence packages under the Agent Evidence Profile — hash-only by default, independently verifiable.",
-  alternates: { canonical: `${siteConfig.url}/agent-evidence` },
-  openGraph: {
-    title: "Agent Evidence · FileOnChain",
-    description:
-      "Seal agent runs, outputs, tool calls, and approvals into portable evidence packages anyone can verify locally.",
-    url: "/agent-evidence",
-    type: "website",
-  },
-  // Without this, the root layout's twitter block (homepage copy) is
-  // inherited wholesale — metadata merges shallowly per top-level key.
-  twitter: {
-    card: "summary_large_image",
-    title: "Agent Evidence · FileOnChain",
-    description:
-      "Seal agent runs, outputs, tool calls, and approvals into portable evidence packages anyone can verify locally.",
-  },
-};
+    "Tamper-evident audit trails for AI agents: seal runs, outputs, tool calls, and approvals into portable evidence packages. Hash-only by default, verifiable by anyone.",
+  path: "/agent-evidence",
+  socialDescription:
+    "Seal agent runs, outputs, tool calls, and approvals into portable evidence packages anyone can verify locally.",
+});
 
 /* ------------------------------------------------------------------ */
 /* Content data                                                        */

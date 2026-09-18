@@ -9,6 +9,7 @@ import {
 } from "@/lib/indexer/queries";
 import type { RelatedEntry } from "./ExplorerDetailClient";
 import { truncateCID } from "@/lib/cid/format";
+import { pageMetadata } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
 import ExplorerDetailClient from "./ExplorerDetailClient";
 
@@ -21,28 +22,25 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { cid } = await params;
   const result = await lookupFile(cid);
-  const canonical = `/explorer/${cid}`;
+  const path = `/explorer/${cid}`;
 
   if (!result) {
-    return {
+    return pageMetadata({
       title: `Unknown CID · ${truncateCID(cid)}`,
       description: `No public anchor record for ${cid} on FileOnChain yet.`,
-      alternates: { canonical },
+      path,
       // Nothing to index for an unresolved CID.
-      robots: { index: false, follow: true },
-    };
+      index: false,
+    });
   }
 
-  const title = `CID ${truncateCID(cid, 12, 10)} · FileOnChain`;
-  const desc = `${result.hits.length} onchain anchor${result.hits.length === 1 ? "" : "s"} across ${new Set(result.hits.map((h) => h.chainId)).size} chain${result.hits.length === 1 ? "" : "s"} — view the tx receipts and submitter on FileOnChain.`;
-
-  return {
-    title,
-    description: desc,
-    alternates: { canonical },
-    openGraph: { title, description: desc, url: canonical, type: "website" },
-    twitter: { card: "summary_large_image", title, description: desc },
-  };
+  const chains = new Set(result.hits.map((h) => h.chainId)).size;
+  // Bare title: the root layout's template appends "· FileOnChain".
+  return pageMetadata({
+    title: `CID ${truncateCID(cid, 12, 10)}`,
+    description: `${result.hits.length} onchain anchor${result.hits.length === 1 ? "" : "s"} across ${chains} chain${chains === 1 ? "" : "s"}. View the tx receipts and submitter on FileOnChain.`,
+    path,
+  });
 }
 
 /**

@@ -7,6 +7,7 @@ import DonateButton from "@/components/donations/DonateButton";
 import DonationImpactStrip from "@/components/donations/DonationImpactStrip";
 import DonationChainTotalsStrip from "@/components/donations/DonationChainTotalsStrip";
 import TreasuryAddressCard from "@/components/donations/TreasuryAddressCard";
+import { pageMetadata } from "@/lib/seo";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import {
   isDonationProvisioned,
@@ -25,25 +26,13 @@ const HOW_IT_WORKS_STEPS = [
   "Treasury forwards funds to maintain the public cache.",
 ] as const;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Donations",
   description:
     "Support FileOnChain's public cache. Donate to the platform, fund pinning for a specific CID, or back the public cache layer for a single chain.",
-  alternates: { canonical: "/donations" },
-  openGraph: {
-    title: "Donations · FileOnChain",
-    description: "Fund the public cache that keeps onchain files retrievable for everyone.",
-    url: "/donations",
-    type: "website",
-  },
-  // Without this, the root layout's twitter block (homepage copy) is
-  // inherited wholesale — metadata merges shallowly per top-level key.
-  twitter: {
-    card: "summary_large_image",
-    title: "Donations · FileOnChain",
-    description: "Fund the public cache that keeps onchain files retrievable for everyone.",
-  },
-};
+  path: "/donations",
+  socialDescription: "Fund the public cache that keeps onchain files retrievable for everyone.",
+});
 
 /**
  * DonationsPage — server component. The treasury card list resolves
