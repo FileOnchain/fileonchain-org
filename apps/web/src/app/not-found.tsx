@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { FiAlertTriangle, FiArrowLeft, FiCompass } from "react-icons/fi";
 import { MAINNET_CHAINS } from "@fileonchain/sdk";
@@ -6,9 +7,11 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 
-export const metadata = {
+export const metadata: Metadata = {
   // Bare title — the root layout's title template appends "· FileOnChain".
   title: "404 — Not Found",
+  // A missing route has nothing to index and no canonical of its own.
+  robots: { index: false, follow: true },
 };
 
 /**
