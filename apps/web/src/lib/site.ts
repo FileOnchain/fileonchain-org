@@ -13,8 +13,9 @@ export const siteConfig = {
     ""
   ),
   title: "FileOnChain · Seal Any File or Agent Run. Anyone Can Verify It.",
+  /** Search-snippet length (about 160 characters); the long form lives on the page. */
   description:
-    "Seal a document, a dataset, a release, or a full AI-agent run into a portable evidence package that shows it existed, unchanged, at that time. Anyone can check it with the open verifier. Store the bytes onchain or anchor just the hash. Open protocol, local verifier, hash-only by default.",
+    "Seal a document, a dataset, a release, or a full AI-agent run into portable evidence anyone can verify with the open verifier. Hash-only by default; storage optional.",
   ogDescription:
     "Files, releases, agent runs: sealed into portable evidence anyone can verify. Open protocol, local verifier, hash-only by default.",
   twitter: "@fileonchain",
