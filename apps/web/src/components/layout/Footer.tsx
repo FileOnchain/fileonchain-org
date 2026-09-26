@@ -30,6 +30,7 @@ const RESOURCE_LINKS = [
   },
   { href: GITHUB_REPO, label: "GitHub repository" },
   { href: "/changelog", label: "Changelog", internal: true },
+  { href: "/blog", label: "Blog", internal: true },
   { href: "/#faq", label: "FAQ", internal: true },
 ] as const;
 
