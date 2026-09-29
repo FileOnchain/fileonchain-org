@@ -20,6 +20,9 @@ format regular:
 
 ### Webapp
 
+- New `/blog`, with an RSS feed at `/blog/feed.xml`. Posts are Markdown
+  files in `apps/web/content/blog/`, prerendered at build time with
+  article metadata and sitemap entries; no posts yet
 - Every page is server-rendered again: the wallet-pairing providers were
   loaded with `ssr: false` around the whole app, so crawlers and link
   unfurlers received an empty shell with no headings or copy (#251)

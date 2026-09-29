@@ -17,12 +17,17 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_BUILD_ID: buildId,
   },
   // `/changelog` and its feed read the repository CHANGELOG.md (two
-  // directories up) at build time. Both are prerendered, so the file is
-  // only needed by the build; the trace include is belt and braces for
-  // the feed route, which Next still emits as a server function.
+  // directories up) at build time; `/blog`, its posts, its feed, and the
+  // sitemap read `content/blog/*.md`. All are prerendered, so the files are
+  // only needed by the build; the trace includes are belt and braces for
+  // the routes Next still emits as server functions.
   outputFileTracingIncludes: {
     "/changelog": ["../../CHANGELOG.md"],
     "/changelog/feed.xml": ["../../CHANGELOG.md"],
+    "/blog": ["./content/blog/*.md"],
+    "/blog/[slug]": ["./content/blog/*.md"],
+    "/blog/feed.xml": ["./content/blog/*.md"],
+    "/sitemap.xml": ["./content/blog/*.md"],
   },
   // The SDK packages are consumed straight from their TypeScript sources in
   // the workspace, so every package the @fileonchain/sdk umbrella re-exports
