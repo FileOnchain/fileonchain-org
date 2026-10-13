@@ -300,8 +300,9 @@ semver ranges. Repo-level Claude Code skills live in `.claude/skills/`
   generated at build time from the root `CHANGELOG.md` via
   `lib/changelog/`), `/blog` (+ `/blog/[slug]` and `/blog/feed.xml`
   RSS; all prerendered from `apps/web/content/blog/*.md` via
-  `lib/blog/`, authoring rules in that folder's `README.md`; drafts
-  show in dev only), `/login`, and the auth-guarded `/dashboard`
+  `lib/blog/` — a file anywhere else does not appear, and an empty
+  folder is the "No posts yet" state; see "Adding a blog post" below;
+  drafts show in dev only), `/login`, and the auth-guarded `/dashboard`
   (+ `logs`, `credits`, `keys`, `byok`, `preferences` subroutes). API routes
   under `app/api/`: the mock trio (`cid`, `search-file`, `upload-fallback`)
   plus the account backend (`auth`, `wallets`, `credits`, `keys`, `byok`,
@@ -517,6 +518,41 @@ Terminology is part of the protocol's honesty. The standardized terms:
 - **`apps/web/src/lib/crypto/aes.ts`** is a real implementation stub kept
   for future wiring, even though nothing imports it yet.
 - **Vercel** builds from Root Directory `apps/web`.
+
+## Adding a blog post
+
+`/blog` renders only `apps/web/content/blog/<slug>.md`. The index, the
+post page, `/blog/feed.xml`, and the sitemap all read that directory
+through `src/lib/blog/load.ts` at build time. When it contains no post
+files, `/blog` shows **No posts yet**. A Markdown file in any other
+folder, including the repo root, is not a post.
+
+To publish one:
+
+1. Add `apps/web/content/blog/<slug>.md`. The slug is the filename:
+   lowercase words joined by hyphens. `README.md` and names starting
+   with `_` are skipped.
+2. Frontmatter requires `title`, `description`, and `date`
+   (`YYYY-MM-DD`). `description` is the subtitle: the index card, the
+   search snippet, and the feed. Keep it to about 150 characters. The
+   build throws, naming the file, when one of those three is missing or
+   the date is malformed. Optional fields: `updated`, `author` (defaults
+   to Marc-Aurèle Besner), `tags` (comma-separated). There is no `slug`
+   or `excerpt` field.
+3. Leave `draft` unset. `draft: true` is visible in `pnpm dev` only;
+   production omits it from the index, the feed, the sitemap, and the
+   static pages.
+4. The page title is the `h1`. Start sections at `##`. Grammar
+   (`###` / `####`, lists, quotes, fenced code, `---`) is in
+   `apps/web/content/blog/README.md`.
+5. Put each image on its own line as
+   `![alt text](/blog/images/<file>.png)` and save the file at
+   `apps/web/public/blog/images/<file>.png`. A relative path such as
+   `images/file.png` does not resolve on the site.
+6. Wording follows the language and claims policy above.
+
+A deploy is what publishes the post. `pnpm build` prerenders `/blog`
+and fails if the new file's frontmatter is invalid.
 
 ## Conventions
 
