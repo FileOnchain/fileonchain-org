@@ -25,6 +25,8 @@ format regular:
   article metadata and sitemap entries
 - First post, "What an evidence envelope proves", at
   `/blog/what-an-evidence-envelope-proves`
+- New post, "The bytes can stay where they are", at
+  `/blog/the-bytes-can-stay-where-they-are`
 - Every page is server-rendered again: the wallet-pairing providers were
   loaded with `ssr: false` around the whole app, so crawlers and link
   unfurlers received an empty shell with no headings or copy (#251)
