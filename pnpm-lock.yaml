@@ -220,7 +220,7 @@ importers:
         version: 1.11.3
       '@autonomys/auto-dag-data':
         specifier: ^1.6.14
-        version: 1.6.14
+        version: 1.6.15
       '@autonomys/auto-utils':
         specifier: ^1.6.14
         version: 1.6.14(@polkadot/util-crypto@14.0.3(@polkadot/util@14.0.3))(@polkadot/util@14.0.3)(bufferutil@4.1.0)(supports-color@8.1.1)(utf-8-validate@6.0.6)
@@ -880,12 +880,12 @@ packages:
   '@auth/drizzle-adapter@1.11.3':
     resolution: {integrity: sha512-TxqVasPVuf7LDAT1Yuu6bftpuet8o0tjdXW+mXpnXWdSRPQsomdzMoz9RsXkFN/JfdK+/DwdgOEmOTv1gbiFNw==}
 
-  '@autonomys/asynchronous@1.6.14':
-    resolution: {integrity: sha512-mTl9kVUCaGIcI1rgKav4zVIV3WjNj28EbqT6dvT6gACQPaCJJWJAPh6DwUJGb3CQUuCfvAsrFN19/xCxFXgkNw==}
+  '@autonomys/asynchronous@1.6.15':
+    resolution: {integrity: sha512-WISiiFHlj3owtnXTtAE66hxppDviX3WDlmf+PH4THB2liKu8LFXwWd8YEozy+TS4R58B6SX2UOhFeKXqDpGkFg==}
 
-  '@autonomys/auto-dag-data@1.6.14':
-    resolution: {integrity: sha512-vUZ4nfNoRRH1+qEC+7PPDqrLRUUlRfKpN/K9W4pT3BLZC2CN/cu26pGc0leztIBQulSaiU8H9VkAG0j2MYzLQQ==}
-    engines: {node: '>=20.8.0'}
+  '@autonomys/auto-dag-data@1.6.15':
+    resolution: {integrity: sha512-2WoF8WS+Ap5+NzSvqcHl3S/VW/jSkoxssMP1aUe4XJj72RGWCrDMt4AKeL6a9ITFIoNpJ8WDiHzdnGpcruL2lA==}
+    engines: {node: '>=22.0.0'}
 
   '@autonomys/auto-utils@1.6.14':
     resolution: {integrity: sha512-D50DBBxKh1LB2uh6PRCYCNiJzf/TbQCSqe/NCIhwu7HX5znmx81Hdpe1TBNdQGh+yaYR/Y6ROF1JB/Y3LfBU7g==}
@@ -2556,20 +2556,6 @@ packages:
 
   '@panva/hkdf@1.2.1':
     resolution: {integrity: sha512-6oclG6Y3PiDFcoyk8srjLfVKyMfVCKJ27JwNPViuXziFpmdz+MZnZN/aKY0JGXgYuO/VghU0jcOAZgWXZ1Dmrw==}
-
-  '@peculiar/asn1-schema@2.8.0':
-    resolution: {integrity: sha512-7YT0U/ze0tF2QOBbE15gKZwy5tvgGyLRiRHLzhlbOpf7BT032oBSd0haZqXn5W6l26WLlu3dyxzjM+2638/z2Q==}
-
-  '@peculiar/json-schema@1.1.12':
-    resolution: {integrity: sha512-coUfuoMeIB7B8/NMekxaDzLhaYmp0HZNPEjYRm9goRou8UZIC3z21s0sL9AWoCw4EG876QyO3kYrc61WNF9B/w==}
-    engines: {node: '>=8.0.0'}
-
-  '@peculiar/utils@2.0.3':
-    resolution: {integrity: sha512-+oL3HPFRIZ1St2K50lWCXiioIgSoxzz7R1J3uF6neO2yl1sgmpgY6XXJH4BdpoDkMWznQTeYF6oWNDZLCdQ4eQ==}
-
-  '@peculiar/webcrypto@1.7.1':
-    resolution: {integrity: sha512-ODOov0sGMJMf3jPonOkgGqPknTsu+DdQ7kD++gz8aI+aFMOMHFbWAA2taqXXVTdP+OTOQR/znGvSpmkeI0WTYQ==}
-    engines: {node: '>=14.18.0'}
 
   '@phosphor-icons/webcomponents@2.1.5':
     resolution: {integrity: sha512-JcvQkZxvcX2jK+QCclm8+e8HXqtdFW9xV4/kk2aL9Y3dJA2oQVt+pzbv1orkumz3rfx4K9mn9fDoMr1He1yr7Q==}
@@ -4910,10 +4896,6 @@ packages:
 
   asap@2.0.6:
     resolution: {integrity: sha512-BSHWgDSAiKs50o2Re8ppvp3seVHXSRM44cdSsT9FfNEUUZLOGWVCsiWaRPWM1Znn+mqZ1OfVZ3z3DWEzSp7hRA==}
-
-  asn1js@3.0.10:
-    resolution: {integrity: sha512-S2s3aOytiKdFRdulw2qPE51MzjzVOisppcVv7jVFR+Kw0kxwvFrDcYA0h7Ndqbmj0HkMIXYWaoj7fli8kgx1eg==}
-    engines: {node: '>=12.0.0'}
 
   asn1js@3.0.6:
     resolution: {integrity: sha512-UOCGPYbl0tv8+006qks/dTgV9ajs97X2p0FAbyS2iyCRrmLSRolDaHdp+v/CLgnzHc3fVB+CwYiUmei7ndFcgA==}
@@ -8817,9 +8799,6 @@ packages:
     resolution: {integrity: sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw==}
     engines: {node: '>= 8'}
 
-  webcrypto-core@1.9.2:
-    resolution: {integrity: sha512-gsXecm82UQNlTBURJGuqOWy1Ww08S3kZUcr3aOJS02Pk0xLtkfeUAVC0u0xhgdonFme80edSJUIJyuvL/7250Q==}
-
   webextension-polyfill@0.8.0:
     resolution: {integrity: sha512-a19+DzlT6Kp9/UI+mF9XQopeZ+n2ussjhxHJ4/pmIGge9ijCDz7Gn93mNnjpZAk95T4Tae8iHZ6sSf869txqiQ==}
 
@@ -9083,15 +9062,14 @@ snapshots:
       - '@simplewebauthn/server'
       - nodemailer
 
-  '@autonomys/asynchronous@1.6.14':
+  '@autonomys/asynchronous@1.6.15':
     dependencies:
       stream-fork: 1.0.5
 
-  '@autonomys/auto-dag-data@1.6.14':
+  '@autonomys/auto-dag-data@1.6.15':
     dependencies:
-      '@autonomys/asynchronous': 1.6.14
+      '@autonomys/asynchronous': 1.6.15
       '@ipld/dag-pb': 4.1.7
-      '@peculiar/webcrypto': 1.7.1
       '@webbuf/blake3': 3.8.0(@webbuf/fixedbuf@3.8.0(@webbuf/webbuf@3.8.0))(@webbuf/webbuf@3.8.0)
       '@webbuf/fixedbuf': 3.8.0(@webbuf/webbuf@3.8.0)
       '@webbuf/webbuf': 3.8.0
@@ -10953,28 +10931,6 @@ snapshots:
   '@oxc-project/types@0.146.0': {}
 
   '@panva/hkdf@1.2.1': {}
-
-  '@peculiar/asn1-schema@2.8.0':
-    dependencies:
-      '@peculiar/utils': 2.0.3
-      asn1js: 3.0.10
-      tslib: 2.8.1
-
-  '@peculiar/json-schema@1.1.12':
-    dependencies:
-      tslib: 2.8.1
-
-  '@peculiar/utils@2.0.3':
-    dependencies:
-      tslib: 2.8.1
-
-  '@peculiar/webcrypto@1.7.1':
-    dependencies:
-      '@peculiar/asn1-schema': 2.8.0
-      '@peculiar/json-schema': 1.1.12
-      '@peculiar/utils': 2.0.3
-      tslib: 2.8.1
-      webcrypto-core: 1.9.2
 
   '@phosphor-icons/webcomponents@2.1.5':
     dependencies:
@@ -14267,12 +14223,6 @@ snapshots:
       is-array-buffer: 3.0.5
 
   asap@2.0.6: {}
-
-  asn1js@3.0.10:
-    dependencies:
-      pvtsutils: 1.3.6
-      pvutils: 1.2.0
-      tslib: 2.8.1
 
   asn1js@3.0.6:
     dependencies:
@@ -18725,14 +18675,6 @@ snapshots:
       '@zxing/text-encoding': 0.9.0
 
   web-streams-polyfill@3.3.3: {}
-
-  webcrypto-core@1.9.2:
-    dependencies:
-      '@peculiar/asn1-schema': 2.8.0
-      '@peculiar/json-schema': 1.1.12
-      '@peculiar/utils': 2.0.3
-      asn1js: 3.0.10
-      tslib: 2.8.1
 
   webextension-polyfill@0.8.0: {}
 
