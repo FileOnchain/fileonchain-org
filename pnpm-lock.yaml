@@ -220,7 +220,7 @@ importers:
         version: 1.11.3
       '@autonomys/auto-dag-data':
         specifier: ^1.6.14
-        version: 1.6.15
+        version: 1.6.16
       '@autonomys/auto-utils':
         specifier: ^1.6.14
         version: 1.6.15(@polkadot/util-crypto@14.0.3(@polkadot/util@14.0.3))(@polkadot/util@14.0.3)(bufferutil@4.1.0)(supports-color@8.1.1)(utf-8-validate@6.0.6)
@@ -880,11 +880,11 @@ packages:
   '@auth/drizzle-adapter@1.11.3':
     resolution: {integrity: sha512-TxqVasPVuf7LDAT1Yuu6bftpuet8o0tjdXW+mXpnXWdSRPQsomdzMoz9RsXkFN/JfdK+/DwdgOEmOTv1gbiFNw==}
 
-  '@autonomys/asynchronous@1.6.15':
-    resolution: {integrity: sha512-WISiiFHlj3owtnXTtAE66hxppDviX3WDlmf+PH4THB2liKu8LFXwWd8YEozy+TS4R58B6SX2UOhFeKXqDpGkFg==}
+  '@autonomys/asynchronous@1.6.16':
+    resolution: {integrity: sha512-HR5CKGK+iuA3WatCwNJoX2NonwVLXsogXm7DHIk4D1pzzqBz+GvsCjhwGQm5k8uH161ouu7jADZDihW7KBMm6Q==}
 
-  '@autonomys/auto-dag-data@1.6.15':
-    resolution: {integrity: sha512-2WoF8WS+Ap5+NzSvqcHl3S/VW/jSkoxssMP1aUe4XJj72RGWCrDMt4AKeL6a9ITFIoNpJ8WDiHzdnGpcruL2lA==}
+  '@autonomys/auto-dag-data@1.6.16':
+    resolution: {integrity: sha512-PKg4HqYutd3c1yz+6em7LrUsuY20DlgxX0z8u3stqLdGC9M7jbE507jzlA9CI8j3a2hRbA7Y7Dwtwjj5yI+pMQ==}
     engines: {node: '>=22.0.0'}
 
   '@autonomys/auto-utils@1.6.15':
@@ -9050,13 +9050,13 @@ snapshots:
       - '@simplewebauthn/server'
       - nodemailer
 
-  '@autonomys/asynchronous@1.6.15':
+  '@autonomys/asynchronous@1.6.16':
     dependencies:
       stream-fork: 1.0.5
 
-  '@autonomys/auto-dag-data@1.6.15':
+  '@autonomys/auto-dag-data@1.6.16':
     dependencies:
-      '@autonomys/asynchronous': 1.6.15
+      '@autonomys/asynchronous': 1.6.16
       '@ipld/dag-pb': 4.1.7
       '@webbuf/blake3': 3.8.0(@webbuf/fixedbuf@3.8.0(@webbuf/webbuf@3.8.0))(@webbuf/webbuf@3.8.0)
       '@webbuf/fixedbuf': 3.8.0(@webbuf/webbuf@3.8.0)
@@ -9171,7 +9171,7 @@ snapshots:
       '@babel/parser': 7.29.8
       '@babel/template': 7.29.7
       '@babel/types': 7.29.8
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.1(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -17279,7 +17279,7 @@ snapshots:
       '@protobufjs/float': 1.0.2
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
-      '@protobufjs/utf8': 1.1.1
+      '@protobufjs/utf8': 1.1.2
       '@types/node': 24.13.3
       long: 5.3.2
 
