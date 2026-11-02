@@ -241,13 +241,13 @@ importers:
         version: link:../../packages/verify
       '@hashgraph/hedera-wallet-connect':
         specifier: ^2.1.3
-        version: 2.1.3(c4ac0549fc40bbcbe7ce9b7d55fbc354)
+        version: 2.1.3(@hiero-ledger/proto@2.32.0(protobufjs@8.8.1))(@hiero-ledger/sdk@2.79.0(bn.js@5.2.3)(react-native@0.86.0(@babel/core@7.29.7(supports-color@8.1.1))(@types/react@19.3.0)(bufferutil@4.1.0)(react@19.3.1)(supports-color@8.1.1)(utf-8-validate@6.0.6))(supports-color@8.1.1))(@reown/appkit-controllers@1.8.24(@types/react@19.3.0)(bufferutil@4.1.0)(react@19.3.1)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.5.4))(@reown/appkit@1.8.24(@types/react@19.3.0)(bufferutil@4.1.0)(debug@4.4.1(supports-color@8.1.1))(react@19.3.1)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.5.4))(@reown/walletkit@1.5.6(bufferutil@4.1.0)(react-native@0.86.0(@babel/core@7.29.7(supports-color@8.1.1))(@types/react@19.3.0)(bufferutil@4.1.0)(react@19.3.1)(supports-color@8.1.1)(utf-8-validate@6.0.6))(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.5.4))(@walletconnect/modal@2.7.0(@types/react@19.3.0)(react@19.3.1))(ethers@6.17.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))
       '@hashgraph/sdk':
         specifier: ^2.81.0
         version: 2.81.0(bn.js@5.2.3)(react-native@0.86.0(@babel/core@7.29.7(supports-color@8.1.1))(@types/react@19.3.0)(bufferutil@4.1.0)(react@19.3.1)(supports-color@8.1.1)(utf-8-validate@6.0.6))(supports-color@8.1.1)
       '@hiero-ledger/proto':
         specifier: ^2.31.0
-        version: 2.31.0(ansi-regex@6.2.2)(ansi-styles@6.2.3)(debug@4.4.1(supports-color@8.1.1))(protobufjs@8.0.1)(strip-ansi@7.1.2)
+        version: 2.32.0(protobufjs@8.8.1)
       '@meshsdk/core':
         specifier: ^1.9.1
         version: 1.9.1(@bufbuild/protobuf@1.10.1)(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/crypto@0.3.1)(bufferutil@4.1.0)(debug@4.4.1(supports-color@8.1.1))(rxjs@7.8.2)(supports-color@8.1.1)(utf-8-validate@6.0.6)
@@ -2004,15 +2004,11 @@ packages:
       protobufjs: 7.5.4
       strip-ansi: 7.1.2
 
-  '@hiero-ledger/proto@2.31.0':
-    resolution: {integrity: sha512-6Uq9cSK1lqhMsP/Zwz3liKIzn5QtN2dvt/7EET00/LdubYxYqVxREs8SCtYbgOlzMy34n1Hl6eNeEDDFpkQhMg==}
+  '@hiero-ledger/proto@2.32.0':
+    resolution: {integrity: sha512-tyA4kcRhPM5lvLnpb1n3SDoyTfgnbwCEWk6U5rReWE20+Gjw+Cgx84gy2+FgZe9PPrp1gC791tD1tribxEf64g==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
-      ansi-regex: 6.2.2
-      ansi-styles: 6.2.3
-      debug: 4.4.1
-      protobufjs: 8.0.1
-      strip-ansi: 7.1.2
+      protobufjs: ^8.6.6
 
   '@hiero-ledger/sdk@2.79.0':
     resolution: {integrity: sha512-9x0yp7VSwSMMjAypWuAMj39D3k09ArrKMCBBJT6fBi7R3ZtSdDTJNrjZRBgR/afMi6N0gGEkqg61rx9eg77L+Q==}
@@ -7624,8 +7620,8 @@ packages:
     resolution: {integrity: sha512-jx6+sE9h/UryaCZhsJWbJtTEy47yXoGNYI4z8ZaRncM0zBKeRqjO2JEcOUYwrYGb1WLhXM1FfMzW3annvFv0rw==}
     engines: {node: '>=12.0.0'}
 
-  protobufjs@8.0.1:
-    resolution: {integrity: sha512-NWWCCscLjs+cOKF/s/XVNFRW7Yih0fdH+9brffR5NZCy8k42yRdl5KlWKMVXuI1vfCoy4o1z80XR/W/QUb3V3w==}
+  protobufjs@8.8.1:
+    resolution: {integrity: sha512-d9e9179bjXSJdpJ3+R9fP8hzXsnKLyxTjHLG1dUzje8a27pPyXCe6PrcRtgx2rjoM3IZzHd2vAs+6J/BsO1k7Q==}
     engines: {node: '>=12.0.0'}
 
   protons-runtime@5.6.0:
@@ -10172,9 +10168,9 @@ snapshots:
       - react-native
       - supports-color
 
-  '@hashgraph/hedera-wallet-connect@2.1.3(c4ac0549fc40bbcbe7ce9b7d55fbc354)':
+  '@hashgraph/hedera-wallet-connect@2.1.3(@hiero-ledger/proto@2.32.0(protobufjs@8.8.1))(@hiero-ledger/sdk@2.79.0(bn.js@5.2.3)(react-native@0.86.0(@babel/core@7.29.7(supports-color@8.1.1))(@types/react@19.3.0)(bufferutil@4.1.0)(react@19.3.1)(supports-color@8.1.1)(utf-8-validate@6.0.6))(supports-color@8.1.1))(@reown/appkit-controllers@1.8.24(@types/react@19.3.0)(bufferutil@4.1.0)(react@19.3.1)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.5.4))(@reown/appkit@1.8.24(@types/react@19.3.0)(bufferutil@4.1.0)(debug@4.4.1(supports-color@8.1.1))(react@19.3.1)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.5.4))(@reown/walletkit@1.5.6(bufferutil@4.1.0)(react-native@0.86.0(@babel/core@7.29.7(supports-color@8.1.1))(@types/react@19.3.0)(bufferutil@4.1.0)(react@19.3.1)(supports-color@8.1.1)(utf-8-validate@6.0.6))(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.5.4))(@walletconnect/modal@2.7.0(@types/react@19.3.0)(react@19.3.1))(ethers@6.17.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))':
     dependencies:
-      '@hiero-ledger/proto': 2.31.0(ansi-regex@6.2.2)(ansi-styles@6.2.3)(debug@4.4.1(supports-color@8.1.1))(protobufjs@8.0.1)(strip-ansi@7.1.2)
+      '@hiero-ledger/proto': 2.32.0(protobufjs@8.8.1)
       '@hiero-ledger/sdk': 2.79.0(bn.js@5.2.3)(react-native@0.86.0(@babel/core@7.29.7(supports-color@8.1.1))(@types/react@19.3.0)(bufferutil@4.1.0)(react@19.3.1)(supports-color@8.1.1)(utf-8-validate@6.0.6))(supports-color@8.1.1)
       '@reown/appkit': 1.8.24(@types/react@19.3.0)(bufferutil@4.1.0)(debug@4.4.1(supports-color@8.1.1))(react@19.3.1)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.5.4)
       '@reown/appkit-controllers': 1.8.24(@types/react@19.3.0)(bufferutil@4.1.0)(react@19.3.1)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.5.4)
@@ -10250,14 +10246,10 @@ snapshots:
       protobufjs: 7.5.4
       strip-ansi: 7.1.2
 
-  '@hiero-ledger/proto@2.31.0(ansi-regex@6.2.2)(ansi-styles@6.2.3)(debug@4.4.1(supports-color@8.1.1))(protobufjs@8.0.1)(strip-ansi@7.1.2)':
+  '@hiero-ledger/proto@2.32.0(protobufjs@8.8.1)':
     dependencies:
-      ansi-regex: 6.2.2
-      ansi-styles: 6.2.3
-      debug: 4.4.1(supports-color@8.1.1)
-      long: 5.3.1
-      protobufjs: 8.0.1
-      strip-ansi: 7.1.2
+      long: 5.3.2
+      protobufjs: 8.8.1
 
   '@hiero-ledger/sdk@2.79.0(bn.js@5.2.3)(react-native@0.86.0(@babel/core@7.29.7(supports-color@8.1.1))(@types/react@19.3.0)(bufferutil@4.1.0)(react@19.3.1)(supports-color@8.1.1)(utf-8-validate@6.0.6))(supports-color@8.1.1)':
     dependencies:
@@ -11703,7 +11695,7 @@ snapshots:
   '@react-native/community-cli-plugin@0.86.0(bufferutil@4.1.0)(supports-color@8.1.1)(utf-8-validate@6.0.6)':
     dependencies:
       '@react-native/dev-middleware': 0.86.0(bufferutil@4.1.0)(supports-color@8.1.1)(utf-8-validate@6.0.6)
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@8.1.1)
       invariant: 2.2.4
       metro: 0.84.4(bufferutil@4.1.0)(supports-color@8.1.1)(utf-8-validate@6.0.6)
       metro-config: 0.84.4(bufferutil@4.1.0)(supports-color@8.1.1)(utf-8-validate@6.0.6)
@@ -11719,7 +11711,7 @@ snapshots:
   '@react-native/debugger-shell@0.86.0(supports-color@8.1.1)':
     dependencies:
       cross-spawn: 7.0.6
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@8.1.1)
       fb-dotslash: 0.5.8
     transitivePeerDependencies:
       - supports-color
@@ -11732,7 +11724,7 @@ snapshots:
       chrome-launcher: 0.15.2(supports-color@8.1.1)
       chromium-edge-launcher: 0.3.0(supports-color@8.1.1)
       connect: 3.7.0(supports-color@8.1.1)
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@8.1.1)
       invariant: 2.2.4
       nullthrows: 1.1.1
       open: 7.4.2
@@ -15802,7 +15794,7 @@ snapshots:
   https-proxy-agent@7.0.6(supports-color@8.1.1):
     dependencies:
       agent-base: 7.1.4
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -16511,7 +16503,7 @@ snapshots:
 
   metro-file-map@0.84.4(supports-color@8.1.1):
     dependencies:
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@8.1.1)
       fb-watchman: 2.0.2
       flow-enums-runtime: 0.0.6
       graceful-fs: 4.2.11
@@ -16603,7 +16595,7 @@ snapshots:
       accepts: 2.0.0
       ci-info: 2.0.0
       connect: 3.7.0(supports-color@8.1.1)
-      debug: 4.4.1(supports-color@8.1.1)
+      debug: 4.4.3(supports-color@8.1.1)
       error-stack-parser: 2.1.4
       flow-enums-runtime: 0.0.6
       graceful-fs: 4.2.11
@@ -17314,19 +17306,8 @@ snapshots:
       '@types/node': 24.13.3
       long: 5.3.2
 
-  protobufjs@8.0.1:
+  protobufjs@8.8.1:
     dependencies:
-      '@protobufjs/aspromise': 1.1.2
-      '@protobufjs/base64': 1.1.2
-      '@protobufjs/codegen': 2.0.5
-      '@protobufjs/eventemitter': 1.1.1
-      '@protobufjs/fetch': 1.1.1
-      '@protobufjs/float': 1.0.2
-      '@protobufjs/inquire': 1.1.2
-      '@protobufjs/path': 1.1.2
-      '@protobufjs/pool': 1.1.0
-      '@protobufjs/utf8': 1.1.2
-      '@types/node': 24.13.3
       long: 5.3.2
 
   protons-runtime@5.6.0:
