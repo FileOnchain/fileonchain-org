@@ -310,7 +310,7 @@ importers:
         version: 1.5.6(bufferutil@4.1.0)(react-native@0.86.0(@babel/core@7.29.7(supports-color@8.1.1))(@types/react@19.3.0)(bufferutil@4.1.0)(react@19.3.1)(supports-color@8.1.1)(utf-8-validate@6.0.6))(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.5.4)
       '@solana/web3.js':
         specifier: ^1.98.4
-        version: 1.98.4(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)
+        version: 1.99.0(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)
       '@ton/core':
         specifier: ^0.63.1
         version: 0.63.1(@ton/crypto@3.3.0)
@@ -564,7 +564,7 @@ importers:
         version: 17.0.2(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@solana/web3.js':
         specifier: ^1.98.4
-        version: 1.98.4(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)
+        version: 1.99.0(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
@@ -685,7 +685,7 @@ importers:
     devDependencies:
       '@solana/web3.js':
         specifier: ^1.98.4
-        version: 1.98.4(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)
+        version: 1.99.0(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
@@ -3608,12 +3608,6 @@ packages:
     resolution: {integrity: sha512-E1ImOIAD1tBZFRdjeM4/pzTiTApC0AOBGwyAMS4fwIodCWArzJ3DWdoh8cKxeFM2fElkxBh2Aqts1BPC373rHA==}
     engines: {node: '>=5.10'}
 
-  '@solana/codecs-core@2.3.0':
-    resolution: {integrity: sha512-oG+VZzN6YhBHIoSKgS5ESM9VIGzhWjEHEGNPSibiDTxFhsFWxNaz8LbMDPjBUE69r9wmdGLkrQ+wVPbnJcZPvw==}
-    engines: {node: '>=20.18.0'}
-    peerDependencies:
-      typescript: ^7.0.0
-
   '@solana/codecs-core@5.5.1':
     resolution: {integrity: sha512-TgBt//bbKBct0t6/MpA8ElaOA3sa8eYVvR7LGslCZ84WiAwwjCY0lW/lOYsFHJQzwREMdUyuEyy5YWBKtdh8Rw==}
     engines: {node: '>=20.18.0'}
@@ -3631,12 +3625,6 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
-
-  '@solana/codecs-numbers@2.3.0':
-    resolution: {integrity: sha512-jFvvwKJKffvG7Iz9dmN51OGB7JBcy2CJ6Xf3NqD/VP90xak66m/Lg48T01u5IQ/hc15mChVHiBm+HHuOFDUrQg==}
-    engines: {node: '>=20.18.0'}
-    peerDependencies:
-      typescript: ^7.0.0
 
   '@solana/codecs-numbers@5.5.1':
     resolution: {integrity: sha512-rllMIZAHqmtvC0HO/dc/21wDuWaD0B8Ryv8o+YtsICQBuiL/0U4AGwH7Pi5GNFySYk0/crSuwfIqQFtmxNSPFw==}
@@ -3667,13 +3655,6 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
-
-  '@solana/errors@2.3.0':
-    resolution: {integrity: sha512-66RI9MAbwYV0UtP7kGcTBVLxJgUxoZGm8Fbc0ah+lGiAw17Gugco6+9GrJCV83VyF2mDWyYnYM9qdI3yjgpnaQ==}
-    engines: {node: '>=20.18.0'}
-    hasBin: true
-    peerDependencies:
-      typescript: ^7.0.0
 
   '@solana/errors@5.5.1':
     resolution: {integrity: sha512-vFO3p+S7HoyyrcAectnXbdsMfwUzY2zYFUc2DEe5BwpiE9J1IAxPBGjOWO6hL1bbYdBrlmjNx8DXCslqS+Kcmg==}
@@ -3955,8 +3936,8 @@ packages:
       typescript:
         optional: true
 
-  '@solana/web3.js@1.98.4':
-    resolution: {integrity: sha512-vv9lfnvjUsRiq//+j5pBdXig0IQdtzA0BRZ3bXEP4KaIyF1CcaydWqgyzQgfZMNIsWNWmG+AUHwPy4AHOD6gpw==}
+  '@solana/web3.js@1.99.0':
+    resolution: {integrity: sha512-QZYQ2T1z6xWisoyALPq25i/QZTsRlM02BABtAsfaQ1p8wX4SdTfxrKTRue/ZZqrhNVh5oL7T/DUFiTS9DRgxow==}
 
   '@starknet-io/get-starknet-wallet-standard@5.0.0':
     resolution: {integrity: sha512-isDNGDlp16W24HE4IuweYXLDRZN0JbsDnazAieeKXE87Mn+jqhsjgTsMxcwWTjX7v906Bjz39FiDjGUddnr36g==}
@@ -5030,9 +5011,6 @@ packages:
 
   bn.js@5.2.3:
     resolution: {integrity: sha512-EAcmnPkxpntVL+DS7bO1zhcZNvCkxqtkd0ZY53h06GNQ3DEkkGZ/gKgmDv6DdZQGj9BgfSPKtJJ7Dp1GPP8f7w==}
-
-  bn.js@5.2.4:
-    resolution: {integrity: sha512-QL7sb18rJ1PbdsKsqPA0guxL563vIMwRHgzNrW/uzQuRGN1Cjqd/wonUBAVqHox9KwzHA6vCbM0lXx3k4iQMow==}
 
   bn.js@5.2.5:
     resolution: {integrity: sha512-Vq886eXykuP5E6HcKSSStP3bJgrE6In5WKxVUvJ8XGpWWYs2xZHWqUwzCtGgEtBcxyd57KBFDPFoUfNzdaHCNg==}
@@ -12412,17 +12390,11 @@ snapshots:
     dependencies:
       buffer: 6.0.3
 
-  '@solana/codecs-core@2.3.0(typescript@7.0.2)':
-    dependencies:
-      '@solana/errors': 2.3.0(typescript@7.0.2)
-      typescript: 7.0.2
-
   '@solana/codecs-core@5.5.1(typescript@7.0.2)':
     dependencies:
       '@solana/errors': 5.5.1(typescript@7.0.2)
     optionalDependencies:
       typescript: 7.0.2
-    optional: true
 
   '@solana/codecs-data-structures@5.5.1(typescript@7.0.2)':
     dependencies:
@@ -12433,19 +12405,12 @@ snapshots:
       typescript: 7.0.2
     optional: true
 
-  '@solana/codecs-numbers@2.3.0(typescript@7.0.2)':
-    dependencies:
-      '@solana/codecs-core': 2.3.0(typescript@7.0.2)
-      '@solana/errors': 2.3.0(typescript@7.0.2)
-      typescript: 7.0.2
-
   '@solana/codecs-numbers@5.5.1(typescript@7.0.2)':
     dependencies:
       '@solana/codecs-core': 5.5.1(typescript@7.0.2)
       '@solana/errors': 5.5.1(typescript@7.0.2)
     optionalDependencies:
       typescript: 7.0.2
-    optional: true
 
   '@solana/codecs-strings@5.5.1(typescript@7.0.2)':
     dependencies:
@@ -12469,19 +12434,12 @@ snapshots:
       - fastestsmallesttextencoderdecoder
     optional: true
 
-  '@solana/errors@2.3.0(typescript@7.0.2)':
-    dependencies:
-      chalk: 5.6.2
-      commander: 14.0.3
-      typescript: 7.0.2
-
   '@solana/errors@5.5.1(typescript@7.0.2)':
     dependencies:
       chalk: 5.6.2
       commander: 14.0.2
     optionalDependencies:
       typescript: 7.0.2
-    optional: true
 
   '@solana/fast-stable-stringify@5.5.1(typescript@7.0.2)':
     optionalDependencies:
@@ -12858,15 +12816,15 @@ snapshots:
       - fastestsmallesttextencoderdecoder
     optional: true
 
-  '@solana/web3.js@1.98.4(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)':
+  '@solana/web3.js@1.99.0(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)':
     dependencies:
       '@babel/runtime': 7.29.7
       '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
       '@solana/buffer-layout': 4.0.1
-      '@solana/codecs-numbers': 2.3.0(typescript@7.0.2)
+      '@solana/codecs-numbers': 5.5.1(typescript@7.0.2)
       agentkeepalive: 4.6.0
-      bn.js: 5.2.4
+      bn.js: 5.2.5
       borsh: 0.7.0
       bs58: 4.0.1
       buffer: 6.0.3
@@ -14363,8 +14321,6 @@ snapshots:
 
   bn.js@5.2.3: {}
 
-  bn.js@5.2.4: {}
-
   bn.js@5.2.5: {}
 
   body-parser@2.3.0(supports-color@8.1.1):
@@ -14621,8 +14577,7 @@ snapshots:
 
   commander@12.1.0: {}
 
-  commander@14.0.2:
-    optional: true
+  commander@14.0.2: {}
 
   commander@14.0.3: {}
 
