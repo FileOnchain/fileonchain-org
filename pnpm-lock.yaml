@@ -322,7 +322,7 @@ importers:
         version: 16.3.0(@ton/core@0.63.1(@ton/crypto@3.3.0))(@ton/crypto@3.3.0)(debug@4.4.1(supports-color@8.1.1))(supports-color@8.1.1)
       '@tonconnect/sdk':
         specifier: ^4.0.0
-        version: 4.0.2
+        version: 4.1.0
       '@tonconnect/ui-react':
         specifier: ^3.0.0
         version: 3.0.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -4111,6 +4111,9 @@ packages:
 
   '@tonconnect/sdk@4.0.2':
     resolution: {integrity: sha512-BIoixBenjWLIYhJrdYw9IF20ukE/zvInxoj82McSN1IUmn2Q6fkUnrQwpnIRXW0SqTIDEJPK29btP7euFCIjTA==}
+
+  '@tonconnect/sdk@4.1.0':
+    resolution: {integrity: sha512-0CfID6/dQxEHZiTMP9PW8yxJpdSzI3rDwvc3a66wZzvf4EKQH4KMh3fF+qFS0PCklHLKPJD9JBQIvcXaDvjz4g==}
 
   '@tonconnect/ui-react@3.0.2':
     resolution: {integrity: sha512-qPOnSSaKFoWPa2h1XR3eUp9wVGGQf9SE4+47wKg30WcCUp61QGAm9lNB5cEvGdS683jDeEDv1JWdHROG/AWkow==}
@@ -13042,6 +13045,14 @@ snapshots:
       tweetnacl-util: 0.15.1
 
   '@tonconnect/sdk@4.0.2':
+    dependencies:
+      '@tonconnect/isomorphic-eventsource': 0.0.2
+      '@tonconnect/isomorphic-fetch': 0.0.3
+      '@tonconnect/protocol': 3.0.0
+    transitivePeerDependencies:
+      - encoding
+
+  '@tonconnect/sdk@4.1.0':
     dependencies:
       '@tonconnect/isomorphic-eventsource': 0.0.2
       '@tonconnect/isomorphic-fetch': 0.0.3
