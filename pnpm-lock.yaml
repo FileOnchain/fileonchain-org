@@ -385,7 +385,7 @@ importers:
         version: 2.57.15(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.5.4)
       ws:
         specifier: ^8.21.0
-        version: 8.21.3(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+        version: 8.22.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       zustand:
         specifier: ^5.0.1
         version: 5.0.16(@types/react@19.3.0)(react@19.3.1)
@@ -404,7 +404,7 @@ importers:
         version: 19.3.0(@types/react@19.3.0)
       '@types/ws':
         specifier: ^8.18.1
-        version: 8.18.1
+        version: 8.18.2
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.11
@@ -4202,8 +4202,8 @@ packages:
   '@types/ws@7.4.7':
     resolution: {integrity: sha512-JQbbmxZTZehdc2iszGKs5oC3NFnjeay7mtAWrdt7qNtAVK0g19muApzAy4bm9byz79xa2ZnO/BOBC2R8RC5Lww==}
 
-  '@types/ws@8.18.1':
-    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
+  '@types/ws@8.18.2':
+    resolution: {integrity: sha512-67MQl+fpWKVTT1NYdnmo3U4sc/xPo/zQBncVnI74qmQa0z/b+1g6iYqNmGCPbxO+zz2aklb08a0oHfegiVd0/w==}
 
   '@types/yargs-parser@21.0.3':
     resolution: {integrity: sha512-I4q9QU9MQv4oEOz4tAHJtNz1cwuLxn2F3xcc2iV5WdqLPpUnj30aUuxt1mAxYTG+oe8CZMV/+6rU4S4gRDzqtQ==}
@@ -8825,8 +8825,8 @@ packages:
       utf-8-validate:
         optional: true
 
-  ws@8.21.3:
-    resolution: {integrity: sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw==}
+  ws@8.22.1:
+    resolution: {integrity: sha512-oyL6OPYme/CmiFvNuGzeoxCJ4nOrZE2O1FwM9MWM1AsGri6nLXB2pg+lNA8aLeXMSav0J6eIVS1j6vUPzUtK9g==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -11253,7 +11253,7 @@ snapshots:
     dependencies:
       '@polkadot/x-global': 14.0.3
       tslib: 2.8.1
-      ws: 8.21.3(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      ws: 8.22.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -12569,7 +12569,7 @@ snapshots:
       '@solana/functional': 5.5.1(typescript@7.0.2)
       '@solana/rpc-subscriptions-spec': 5.5.1(typescript@7.0.2)
       '@solana/subscribable': 5.5.1(typescript@7.0.2)
-      ws: 8.21.3(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      ws: 8.22.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)
     optionalDependencies:
       typescript: 7.0.2
     transitivePeerDependencies:
@@ -13070,7 +13070,7 @@ snapshots:
     dependencies:
       '@types/node': 24.19.2
 
-  '@types/ws@8.18.1':
+  '@types/ws@8.18.2':
     dependencies:
       '@types/node': 24.19.2
 
@@ -17568,11 +17568,11 @@ snapshots:
     dependencies:
       '@swc/helpers': 0.5.23
       '@types/uuid': 10.0.0
-      '@types/ws': 8.18.1
+      '@types/ws': 8.18.2
       buffer: 6.0.3
       eventemitter3: 5.0.4
       uuid: 14.0.1
-      ws: 8.21.3(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      ws: 8.22.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)
     optionalDependencies:
       bufferutil: 4.1.0
       utf-8-validate: 6.0.6
@@ -17815,7 +17815,7 @@ snapshots:
 
   smoldot@2.0.26(bufferutil@4.1.0)(utf-8-validate@6.0.6):
     dependencies:
-      ws: 8.21.3(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      ws: 8.22.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -18664,7 +18664,7 @@ snapshots:
       bufferutil: 4.1.0
       utf-8-validate: 6.0.6
 
-  ws@8.21.3(bufferutil@4.1.0)(utf-8-validate@6.0.6):
+  ws@8.22.1(bufferutil@4.1.0)(utf-8-validate@6.0.6):
     optionalDependencies:
       bufferutil: 4.1.0
       utf-8-validate: 6.0.6
