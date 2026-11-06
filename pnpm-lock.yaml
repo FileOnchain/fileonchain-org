@@ -223,7 +223,7 @@ importers:
         version: 1.7.0
       '@autonomys/auto-utils':
         specifier: ^1.6.14
-        version: 1.6.16(@polkadot/util-crypto@14.0.3(@polkadot/util@14.0.3))(@polkadot/util@14.0.3)(bufferutil@4.1.0)(supports-color@8.1.1)(utf-8-validate@6.0.6)
+        version: 1.7.0(@polkadot/util-crypto@14.0.3(@polkadot/util@14.0.3))(@polkadot/util@14.0.3)(bufferutil@4.1.0)(supports-color@8.1.1)(utf-8-validate@6.0.6)
       '@cosmjs/proto-signing':
         specifier: ^0.39.0
         version: 0.39.0
@@ -887,8 +887,8 @@ packages:
     resolution: {integrity: sha512-wWpbgU4XuN9oebNyipiGllEER4QlR0ShElSDMl7Y7/nDRrClsGbjai1cFdim6po5GmQHgEha3hq2SBatFiK75g==}
     engines: {node: '>=22.0.0'}
 
-  '@autonomys/auto-utils@1.6.16':
-    resolution: {integrity: sha512-6FnBbWQgQoGM+sYGl4pkhmS9AChzp0SWE3+J/AIOQehWrBVesUhtMt1Ix9HUhlHx+XlTuCZGsr4tjekNfz3Vhw==}
+  '@autonomys/auto-utils@1.7.0':
+    resolution: {integrity: sha512-4spQIwD/Hb+6QMQghYuWBIqO2mxyQkvG5rLowf0GVv/KK7XoSwnUD7wZS3ozI9D+la1Ybt+1SaeKQYk/TzUtQw==}
 
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
@@ -9018,7 +9018,7 @@ snapshots:
       protons: 7.7.0(protobufjs@7.6.4)
       protons-runtime: 5.6.0
 
-  '@autonomys/auto-utils@1.6.16(@polkadot/util-crypto@14.0.3(@polkadot/util@14.0.3))(@polkadot/util@14.0.3)(bufferutil@4.1.0)(supports-color@8.1.1)(utf-8-validate@6.0.6)':
+  '@autonomys/auto-utils@1.7.0(@polkadot/util-crypto@14.0.3(@polkadot/util@14.0.3))(@polkadot/util@14.0.3)(bufferutil@4.1.0)(supports-color@8.1.1)(utf-8-validate@6.0.6)':
     dependencies:
       '@polkadot/api': 17.0.2(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@polkadot/extension-dapp': 0.63.1(@polkadot/api@17.0.2(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@polkadot/util-crypto@14.0.3(@polkadot/util@14.0.3))(@polkadot/util@14.0.3)(bufferutil@4.1.0)(supports-color@8.1.1)(utf-8-validate@6.0.6)
