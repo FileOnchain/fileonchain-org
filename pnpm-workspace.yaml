@@ -46,9 +46,12 @@ allowBuilds:
   # removed in newer V8. `chacha` falls back to its pure-JS implementation
   # when the native binding is missing, so skipping the build is safe.
 
-# tsup 8.5.1 bundles rollup-plugin-dts 6.1.1, which reads internal TS API
-# (`sys.useCaseSensitiveFileNames` and friends) that TS 7 removed. Patch the
-# bundled require to load `@typescript/typescript6` (the TS 6 API shim) instead
-# so dts generation works under either TS major.
+# tsup 9's bundled rollup-plugin-dts already falls back to
+# `@typescript/typescript6` on its own, but tsup's own dts plumbing
+# (`src/rollup.ts` -> dist/rollup.js, `src/tsc.ts` -> dist/index.js) still
+# `require('typescript')` and calls the compiler API (`parseJsonConfigFileContent`,
+# `sys`, `createProgram`) that TS 7 removed — typescript@7 only ships a version
+# stub. Patch those requires to load `@typescript/typescript6` (the TS 6 API
+# shim) instead so dts generation works under either TS major.
 patchedDependencies:
-  tsup@8.5.1: patches/tsup@8.5.1.patch
+  tsup@9.0.0: patches/tsup@9.0.0.patch
