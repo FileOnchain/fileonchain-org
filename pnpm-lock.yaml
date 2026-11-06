@@ -220,7 +220,7 @@ importers:
         version: 1.11.3
       '@autonomys/auto-dag-data':
         specifier: ^1.6.14
-        version: 1.6.16
+        version: 1.7.0
       '@autonomys/auto-utils':
         specifier: ^1.6.14
         version: 1.6.16(@polkadot/util-crypto@14.0.3(@polkadot/util@14.0.3))(@polkadot/util@14.0.3)(bufferutil@4.1.0)(supports-color@8.1.1)(utf-8-validate@6.0.6)
@@ -880,11 +880,11 @@ packages:
   '@auth/drizzle-adapter@1.11.3':
     resolution: {integrity: sha512-TxqVasPVuf7LDAT1Yuu6bftpuet8o0tjdXW+mXpnXWdSRPQsomdzMoz9RsXkFN/JfdK+/DwdgOEmOTv1gbiFNw==}
 
-  '@autonomys/asynchronous@1.6.16':
-    resolution: {integrity: sha512-HR5CKGK+iuA3WatCwNJoX2NonwVLXsogXm7DHIk4D1pzzqBz+GvsCjhwGQm5k8uH161ouu7jADZDihW7KBMm6Q==}
+  '@autonomys/asynchronous@1.7.0':
+    resolution: {integrity: sha512-OHruhSCQ6nqBDz3u2aQKwvGw9Q9RCGZpd67VcEAu3CFlqV4fe4b/ukuuuKuU2YrnxZqpFuH03Vnng8D/eYjBGA==}
 
-  '@autonomys/auto-dag-data@1.6.16':
-    resolution: {integrity: sha512-PKg4HqYutd3c1yz+6em7LrUsuY20DlgxX0z8u3stqLdGC9M7jbE507jzlA9CI8j3a2hRbA7Y7Dwtwjj5yI+pMQ==}
+  '@autonomys/auto-dag-data@1.7.0':
+    resolution: {integrity: sha512-wWpbgU4XuN9oebNyipiGllEER4QlR0ShElSDMl7Y7/nDRrClsGbjai1cFdim6po5GmQHgEha3hq2SBatFiK75g==}
     engines: {node: '>=22.0.0'}
 
   '@autonomys/auto-utils@1.6.16':
@@ -8082,9 +8082,6 @@ packages:
   stream-chain@2.2.5:
     resolution: {integrity: sha512-1TJmBx6aSWqZ4tx7aTpBDXK0/e2hhcNSTV8+CbFJtDjbb+I1mZ8lHit0Grw9GRT+6JbIrrDd8esncgBi8aBXGA==}
 
-  stream-fork@1.0.5:
-    resolution: {integrity: sha512-kRaa+t3lB5psyojuUpyNCMsDAvJMmfLw53uNaZXABxQzbMeHa9a6CNavhhjDzTegVyqPM8/QueRowBibwzXhcg==}
-
   stream-json@1.9.1:
     resolution: {integrity: sha512-uWkjJ+2Nt/LO9Z/JyKZbMusL8Dkh97uUBTv3AJQ74y07lVahLY4eEFsPsE97pxYBwr8nnjMAIch5eqI0gPShyw==}
 
@@ -9006,13 +9003,11 @@ snapshots:
       - '@simplewebauthn/server'
       - nodemailer
 
-  '@autonomys/asynchronous@1.6.16':
-    dependencies:
-      stream-fork: 1.0.5
+  '@autonomys/asynchronous@1.7.0': {}
 
-  '@autonomys/auto-dag-data@1.6.16':
+  '@autonomys/auto-dag-data@1.7.0':
     dependencies:
-      '@autonomys/asynchronous': 1.6.16
+      '@autonomys/asynchronous': 1.7.0
       '@ipld/dag-pb': 4.1.7
       '@webbuf/blake3': 3.8.0(@webbuf/fixedbuf@3.8.0(@webbuf/webbuf@3.8.0))(@webbuf/webbuf@3.8.0)
       '@webbuf/fixedbuf': 3.8.0(@webbuf/webbuf@3.8.0)
@@ -17905,8 +17900,6 @@ snapshots:
       internal-slot: 1.1.0
 
   stream-chain@2.2.5: {}
-
-  stream-fork@1.0.5: {}
 
   stream-json@1.9.1:
     dependencies:
