@@ -160,14 +160,16 @@ const anchorOnSolana = async (
     import("@fileonchain/sdk/solana"),
   ]);
   const connection = new Connection(chain.rpcUrl, "confirmed");
-  const keypair = Keypair.fromSecretKey(parseSolanaSecretKey(secretKey));
+  const keypair = await Keypair.fromSecretKey(parseSolanaSecretKey(secretKey));
   const { signature, slot } = await solana.anchorCIDWithMemo(
     connection,
     {
       publicKey: keypair.publicKey,
       signAndSendTransaction: async (transaction) => {
-        transaction.sign(keypair);
-        return { signature: await connection.sendRawTransaction(transaction.serialize()) };
+        await transaction.sign(keypair);
+        return {
+          signature: await connection.sendRawTransaction(await transaction.serialize()),
+        };
       },
     },
     { chainId: chain.id, cid },
