@@ -72,7 +72,7 @@ const sendMemoTransaction = async (
   if (confirmation.value.err) {
     throw new Error(`Solana transaction failed: ${JSON.stringify(confirmation.value.err)}`);
   }
-  return { signature, slot: confirmation.context.slot };
+  return { signature, slot: Number(confirmation.context.slot) };
 };
 
 export interface SolanaAnchorParams extends BuildFileAnchorParams {

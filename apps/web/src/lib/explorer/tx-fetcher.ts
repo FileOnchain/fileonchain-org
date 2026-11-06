@@ -174,8 +174,8 @@ const fetchSolanaTx = async (
     txHash,
     status: tx.meta?.err ? "failed" : "confirmed",
     blockHash: tx.transaction.message.recentBlockhash,
-    blockNumber: tx.slot,
-    timestamp: tx.blockTime ?? Math.floor(Date.now() / 1000),
+    blockNumber: Number(tx.slot),
+    timestamp: Number(tx.blockTime ?? Math.floor(Date.now() / 1000)),
     submitter,
     anchors: memos
       .map((m) => parseAnchorPayload(m))
