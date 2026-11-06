@@ -52,7 +52,7 @@
     "@ton/core": "^0.63.1",
     "@ton/crypto": "^3.3.0",
     "@ton/ton": "^16.3.0",
-    "@tonconnect/sdk": "^4.0.0",
+    "@tonconnect/sdk": "^5.0.0",
     "@tonconnect/ui-react": "^3.0.0",
     "@walletconnect/modal": "^2.7.0",
     "bech32": "^2.0.0",
