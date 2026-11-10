@@ -271,7 +271,7 @@ importers:
         version: 2.4.0
       '@openrouter/sdk':
         specifier: ^1.0.0
-        version: 1.5.70
+        version: 1.5.71
       '@polkadot/api':
         specifier: 17.0.2
         version: 17.0.2(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -2551,8 +2551,8 @@ packages:
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
 
-  '@openrouter/sdk@1.5.70':
-    resolution: {integrity: sha512-gxtUJJwstAG63sU233SwUpPywwSDnS51IcRsVTXn25Qg0bDg4mOV1tcpvMGeyHKOunKEX4lUvBW7V60Ab372oQ==}
+  '@openrouter/sdk@1.5.71':
+    resolution: {integrity: sha512-rZXorz2krkI82PH2GoAXHrht3YUzy5oJZhbEvsL4jvvLA7muz0H2ak9h2p4wfFsqwMv5DvWIvC2DmRxCyhiOJg==}
 
   '@oxc-project/types@0.156.0':
     resolution: {integrity: sha512-1Duyg48TdJNdyhEB8Xn1L36bT9Pv6GUtlKjHxOys8xkaF/rQq3XJE+bAurSK/AgIz5mGFsb77cn9Pb20+WCScw==}
@@ -5323,6 +5323,7 @@ packages:
 
   axios-retry@4.5.0:
     resolution: {integrity: sha512-aR99oXhpEDGo0UuAlYcn2iGRds30k366Zfa05XWScR9QaQD4JYiP3/1Qt1u7YlefUOK+cn0CcwoL1oefavQUlQ==}
+    deprecated: axios-retry is no longer maintained. See https://github.com/softonic/axios-retry for alternatives.
     peerDependencies:
       axios: 0.x || 1.x
 
@@ -11208,7 +11209,7 @@ snapshots:
 
   '@nolyfill/is-core-module@1.0.39': {}
 
-  '@openrouter/sdk@1.5.70':
+  '@openrouter/sdk@1.5.71':
     dependencies:
       zod: 4.6.7
 
