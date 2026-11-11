@@ -310,7 +310,7 @@ importers:
         version: 1.6.0(bufferutil@4.1.0)(react-native@0.86.0(@babel/core@7.29.7(supports-color@8.1.1))(@types/react@19.3.0)(bufferutil@4.1.0)(react@19.3.1)(supports-color@8.1.1))(typescript@7.0.2)(zod@4.6.7)
       '@solana/web3.js':
         specifier: ^3.0.0
-        version: 3.2.0(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)
+        version: 3.2.1(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)
       '@ton/core':
         specifier: ^0.63.1
         version: 0.63.1(@ton/crypto@3.3.0)
@@ -564,7 +564,7 @@ importers:
         version: 17.0.2(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@solana/web3.js':
         specifier: ^3.0.0
-        version: 3.2.0(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)
+        version: 3.2.1(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)
       '@types/node':
         specifier: ^26.0.0
         version: 26.6.6
@@ -685,7 +685,7 @@ importers:
     devDependencies:
       '@solana/web3.js':
         specifier: ^3.0.0
-        version: 3.2.0(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)
+        version: 3.2.1(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)
       '@types/node':
         specifier: ^26.0.0
         version: 26.6.6
@@ -4347,8 +4347,8 @@ packages:
       typescript:
         optional: true
 
-  '@solana/web3.js@3.2.0':
-    resolution: {integrity: sha512-cOJn9j/pxCTAzvc28FDrI488Sw4z8lR297CucPWP1C/N7MGmUJfQYHrLABxQNtgGlvKeOLuM/YtSccSYv+pT3A==}
+  '@solana/web3.js@3.2.1':
+    resolution: {integrity: sha512-1L5VtTSgYgfPdwko+enWQ13IS6suTS0Fm/bVROe5dYKr7JbSUmYGNFUxK36kgzfm+kEaCr33qyOKioTaZLEh3g==}
     engines: {node: '>=20.18.0'}
 
   '@starknet-io/get-starknet-wallet-standard@5.0.0':
@@ -13627,7 +13627,7 @@ snapshots:
     transitivePeerDependencies:
       - fastestsmallesttextencoderdecoder
 
-  '@solana/web3.js@3.2.0(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)':
+  '@solana/web3.js@3.2.1(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)':
     dependencies:
       '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
