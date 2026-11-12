@@ -301,7 +301,11 @@ semver ranges. Repo-level Claude Code skills live in `.claude/skills/`
   `lib/changelog/`), `/blog` (+ `/blog/[slug]` and `/blog/feed.xml`
   RSS; all prerendered from `apps/web/content/blog/*.md` via
   `lib/blog/`, authoring rules in that folder's `README.md`; drafts
-  show in dev only), `/login`, and the auth-guarded `/dashboard`
+  show in dev only), `/contact` (public form; `POST /api/contact`
+  validates with `lib/contact.ts`, rate-limits per IP, and emails the
+  team through Resend via `lib/server/resend.ts`; needs `RESEND_API_KEY`
+  + `CONTACT_TO_EMAIL` + `CONTACT_FROM_EMAIL`, else 503), `/login`, and
+  the auth-guarded `/dashboard`
   (+ `logs`, `credits`, `keys`, `byok`, `preferences` subroutes). API routes
   under `app/api/`: the mock trio (`cid`, `search-file`, `upload-fallback`)
   plus the account backend (`auth`, `wallets`, `credits`, `keys`, `byok`,
