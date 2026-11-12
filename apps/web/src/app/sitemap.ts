@@ -26,6 +26,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/docs", priority: 0.7, changeFrequency: "weekly" },
     { path: "/changelog", priority: 0.6, changeFrequency: "weekly" },
     { path: "/blog", priority: 0.6, changeFrequency: "weekly" },
+    { path: "/contact", priority: 0.4, changeFrequency: "yearly" },
   ];
 
   // Evaluated at build time, so lastModified tracks the deploy — the

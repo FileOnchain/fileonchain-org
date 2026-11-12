@@ -177,4 +177,22 @@ export const env = {
   get depositTreasuryMnemonic(): string | undefined {
     return process.env.DEPOSIT_TREASURY_MNEMONIC;
   },
+  /** Resend API key for the public contact form (`/contact` +
+   * `POST /api/contact`). Absent = the route answers 503 and the page
+   * points visitors at GitHub instead. */
+  get resendApiKey(): string | undefined {
+    return process.env.RESEND_API_KEY;
+  },
+  /** Inbox(es) that receive contact submissions, comma-separated. */
+  get contactToEmails(): string[] {
+    return (process.env.CONTACT_TO_EMAIL ?? "")
+      .split(",")
+      .map((address) => address.trim())
+      .filter(Boolean);
+  },
+  /** Sender on a domain verified in Resend, e.g.
+   * `FileOnChain <contact@fileonchain.org>`. */
+  get contactFromEmail(): string | undefined {
+    return process.env.CONTACT_FROM_EMAIL;
+  },
 };
