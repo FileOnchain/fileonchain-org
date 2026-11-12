@@ -153,6 +153,13 @@ export const enforceIpRateLimit = async (
   return bumpAndCheck("ip", ip, endpoint, limit);
 };
 
+/** Per-IP cap for the public contact form. Far below the v1 IP cap: a
+ *  person sends one message, a script sends hundreds. */
+const CONTACT_PER_MIN = 3;
+
+export const enforceContactRateLimit = async (ip: string): Promise<UpsertResult> =>
+  bumpAndCheck("ip", ip, "POST /api/contact", CONTACT_PER_MIN);
+
 /** Debug-only peek (used by tests / dashboards); does not bump the
  *  counter. Returns null when the window has no row yet. */
 export const peekRateLimit = async (
