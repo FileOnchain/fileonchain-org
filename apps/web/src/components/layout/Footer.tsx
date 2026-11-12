@@ -32,6 +32,7 @@ const RESOURCE_LINKS = [
   { href: "/changelog", label: "Changelog", internal: true },
   { href: "/blog", label: "Blog", internal: true },
   { href: "/#faq", label: "FAQ", internal: true },
+  { href: "/contact", label: "Contact", internal: true },
 ] as const;
 
 const ORG_SOCIALS = [

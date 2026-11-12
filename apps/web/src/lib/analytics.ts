@@ -115,6 +115,8 @@ export interface AnalyticsEvents {
   byok_key: { provider: string; action: "add" | "remove" };
   /** The add-credits flow was opened (top of the deposit funnel). */
   credit_deposit_open: Record<string, never>;
+  /** The contact form was submitted (topic + outcome only, never content). */
+  contact_submit: { topic: string; status: "success" | "error" };
   /** The first-run onboarding overlay was finished or skipped. */
   onboarding: { action: "complete" | "skip"; step: number };
   /** A FileOnChain Cloud management action (action name only, no ids). */
