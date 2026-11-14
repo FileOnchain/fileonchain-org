@@ -18,7 +18,8 @@ const nextConfig: NextConfig = {
   },
   // `/changelog` and its feed read the repository CHANGELOG.md (two
   // directories up) at build time; `/blog`, its posts, its feed, and the
-  // sitemap read `content/blog/*.md`. All are prerendered, so the files are
+  // sitemap read `content/blog/*.md`; `/llms-full.txt` also inlines the
+  // specs under the repo's `docs/`. All are prerendered, so the files are
   // only needed by the build; the trace includes are belt and braces for
   // the routes Next still emits as server functions.
   outputFileTracingIncludes: {
@@ -27,7 +28,14 @@ const nextConfig: NextConfig = {
     "/blog": ["./content/blog/*.md"],
     "/blog/[slug]": ["./content/blog/*.md"],
     "/blog/feed.xml": ["./content/blog/*.md"],
-    "/sitemap.xml": ["./content/blog/*.md"],
+    "/sitemap.xml": ["./content/blog/*.md", "../../CHANGELOG.md"],
+    "/llms.txt": ["./content/blog/*.md"],
+    "/llms-full.txt": [
+      "./content/blog/*.md",
+      "../../docs/protocol/evidence-protocol.md",
+      "../../docs/profiles/agent-evidence-v1.md",
+      "../../docs/integrations/status.md",
+    ],
   },
   // The SDK packages are consumed straight from their TypeScript sources in
   // the workspace, so every package the @fileonchain/sdk umbrella re-exports

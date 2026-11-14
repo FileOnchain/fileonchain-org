@@ -54,7 +54,7 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
     path: "/verify",
     title: "Verify",
     summary:
-      "Public browser verifier: paste an evidence envelope (and optionally the original bytes) and get a check-by-check report. No account, no wallet, no server call.",
+      "Public browser verifier: paste an evidence envelope (and optionally the original bytes) and get a check-by-check report. Runs in your browser; no account, no wallet.",
     section: "Tools",
     priority: 0.8,
     changeFrequency: "monthly",
