@@ -4,7 +4,10 @@ import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/ButtonLink";
+import JsonLd from "@/components/JsonLd";
 import { pageMetadata } from "@/lib/seo";
+import { siteConfig } from "@/lib/site";
+import { ORGANIZATION_ID, WEBSITE_ID, breadcrumbList } from "@/lib/structured-data";
 
 export const metadata: Metadata = pageMetadata({
   title: "Protocol",
@@ -85,8 +88,34 @@ const V1_CONTRACTS = [
  * profiles, reference implementations, and honest verification limits.
  * The Agent Evidence Profile builds on it; FileOnChain Cloud hosts it.
  */
+/** Explainer of the spec it links to; `isBasedOn` names the normative source. */
+const protocolJsonLd = [
+  {
+    "@type": "TechArticle",
+    "@id": `${siteConfig.url}/protocol#article`,
+    headline: "A neutral protocol, one portable envelope",
+    name: "FileOnChain Evidence Protocol",
+    description: metadata.description ?? undefined,
+    url: `${siteConfig.url}/protocol`,
+    inLanguage: "en",
+    isBasedOn: PROTOCOL_SPEC,
+    publisher: { "@id": ORGANIZATION_ID },
+    isPartOf: { "@id": WEBSITE_ID },
+    about: [
+      { "@type": "Thing", name: "Evidence envelope" },
+      { "@type": "Thing", name: "Digital signature" },
+      { "@type": "Thing", name: "Proof of existence" },
+    ],
+  },
+  breadcrumbList([
+    ["Home", "/"],
+    ["Protocol", "/protocol"],
+  ]),
+];
+
 const ProtocolPage = () => (
   <PageShell size="wide" padding="lg" atmosphere>
+    <JsonLd data={protocolJsonLd} />
     <PageHeader
       className="mb-8"
       index="07"
