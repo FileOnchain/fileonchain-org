@@ -7,7 +7,12 @@ import { getDeveloperQuickstartTabs } from "@/lib/snippets/quickstart";
 export const metadata: Metadata = {
   alternates: {
     canonical: "/",
-    types: { "application/rss+xml": "/changelog/feed.xml" },
+    types: {
+      "application/rss+xml": [
+        { url: "/blog/feed.xml", title: "FileOnChain blog" },
+        { url: "/changelog/feed.xml", title: "FileOnChain changelog" },
+      ],
+    },
   },
 };
 
