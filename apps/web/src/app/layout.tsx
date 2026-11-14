@@ -13,6 +13,7 @@ import Footer from "@/components/layout/Footer";
 import RouteFade from "@/components/layout/RouteFade";
 import ScrollProgress from "@/components/ScrollProgress";
 import { siteConfig, gaId, googleSiteVerification } from "@/lib/site";
+import { ORGANIZATION_ID, WEBSITE_ID, serializeJsonLd } from "@/lib/structured-data";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -59,9 +60,14 @@ export const metadata: Metadata = {
   // URL. Each indexable page sets its own through `pageMetadata()`; the
   // homepage sets it in `app/page.tsx`.
   alternates: {
-    // The changelog feed is the site's only feed, so advertise it from the
-    // root; sub-pages that set their own `alternates` replace this block.
-    types: { "application/rss+xml": "/changelog/feed.xml" },
+    // Advertise both feeds from the root; sub-pages that set their own
+    // `alternates` replace this block.
+    types: {
+      "application/rss+xml": [
+        { url: "/blog/feed.xml", title: `${siteConfig.name} blog` },
+        { url: "/changelog/feed.xml", title: `${siteConfig.name} changelog` },
+      ],
+    },
   },
   keywords: [
     "evidence envelope",
@@ -131,35 +137,48 @@ export const viewport: Viewport = {
  * Organization + WebSite structured data. Gives search engines an explicit
  * name/URL/logo for the knowledge panel and enables the sitelinks search box.
  */
-const structuredData = {
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Organization",
-      "@id": `${siteConfig.url}/#organization`,
-      name: siteConfig.name,
-      url: siteConfig.url,
-      logo: `${siteConfig.url}/logo/svg/fileonchain-logo-clear-blue.svg`,
-      sameAs: [siteConfig.socials.twitter, siteConfig.socials.github],
+const structuredData = serializeJsonLd([
+  {
+    "@type": "Organization",
+    "@id": ORGANIZATION_ID,
+    name: siteConfig.name,
+    url: siteConfig.url,
+    description: siteConfig.description,
+    // A square raster logo: Google's logo guidelines want at least 112px
+    // and a format Google Images indexes.
+    logo: {
+      "@type": "ImageObject",
+      url: `${siteConfig.url}/favicon/web-app-manifest-512x512.png`,
+      width: 512,
+      height: 512,
     },
-    {
-      "@type": "WebSite",
-      "@id": `${siteConfig.url}/#website`,
-      name: siteConfig.name,
-      url: siteConfig.url,
-      description: siteConfig.description,
-      publisher: { "@id": `${siteConfig.url}/#organization` },
-      potentialAction: {
-        "@type": "SearchAction",
-        target: {
-          "@type": "EntryPoint",
-          urlTemplate: `${siteConfig.url}/explorer?q={search_term_string}`,
-        },
-        "query-input": "required name=search_term_string",
+    sameAs: [siteConfig.socials.twitter, siteConfig.socials.github, siteConfig.repo],
+    contactPoint: {
+      "@type": "ContactPoint",
+      contactType: "customer support",
+      url: `${siteConfig.url}/contact`,
+    },
+  },
+  {
+    "@type": "WebSite",
+    "@id": WEBSITE_ID,
+    name: siteConfig.name,
+    url: siteConfig.url,
+    description: siteConfig.description,
+    inLanguage: "en",
+    publisher: { "@id": ORGANIZATION_ID },
+    // Site search is a CID lookup: the explorer has no `?q=` parameter, but
+    // every CID resolves at its detail route.
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${siteConfig.url}/explorer/{search_term_string}`,
       },
+      "query-input": "required name=search_term_string",
     },
-  ],
-};
+  },
+]);
 
 const themeBootstrapScript = `
 try {
@@ -186,7 +205,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+          dangerouslySetInnerHTML={{ __html: structuredData }}
         />
       </head>
       <body className="bg-background text-foreground font-sans min-h-screen flex flex-col antialiased">

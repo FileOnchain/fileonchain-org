@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { PageShell } from "@/components/layout/PageShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import VerifyPanel from "@/components/verify/VerifyPanel";
+import JsonLd from "@/components/JsonLd";
 import { pageMetadata } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
+import { ORGANIZATION_ID, breadcrumbList } from "@/lib/structured-data";
 
 /**
  * /verify — public, in-browser verification of an evidence package. No
@@ -68,9 +70,38 @@ export async function generateMetadata({
   };
 }
 
+/** The verifier as a free, browser-run web application (what the page shows). */
+const verifierJsonLd = [
+  {
+    "@type": "WebApplication",
+    "@id": `${siteConfig.url}/verify#app`,
+    name: `${siteConfig.name} Verifier`,
+    url: `${siteConfig.url}/verify`,
+    description: DESCRIPTION,
+    applicationCategory: "SecurityApplication",
+    operatingSystem: "Any (runs in a web browser)",
+    browserRequirements: "Requires JavaScript",
+    isAccessibleForFree: true,
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    publisher: { "@id": ORGANIZATION_ID },
+    featureList: [
+      "Subject integrity check against the original bytes",
+      "Artifact and envelope signatures reported separately",
+      "Storage and settlement receipt checks",
+      "Key status checks",
+      "No account or wallet required",
+    ],
+  },
+  breadcrumbList([
+    ["Home", "/"],
+    ["Verify", "/verify"],
+  ]),
+];
+
 export default function VerifyPage() {
   return (
     <PageShell size="wide" padding="lg" atmosphere>
+      <JsonLd data={verifierJsonLd} />
       <PageHeader
         className="mb-8"
         index="09"

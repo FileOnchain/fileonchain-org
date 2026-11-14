@@ -456,6 +456,16 @@ carry a sibling `layout.tsx`. **Always build it with `pageMetadata()` from
 `socialDescription` / `ogType` / `index: false`): Next merges metadata
 shallowly per top-level key, so a hand-written `openGraph` or `twitter`
 block silently drops the share image, `og:site_name`, and `twitter:site`.
+Indexable public pages are listed once in `src/lib/public-pages.ts`
+(path, title, one-sentence `summary`, sitemap priority); `sitemap.ts`
+and the prerendered `/llms.txt` + `/llms-full.txt` (built by
+`src/lib/llms.ts` from that list, the FAQ, blog Markdown, and the specs
+under `docs/`) both read it, so **add a new public page there**. Sitemap
+`lastmod` is emitted only where a real date exists (posts, newest post,
+newest changelog release), never the build time. Page-level JSON-LD goes
+through `components/JsonLd.tsx` + `src/lib/structured-data.ts` (links to
+the root Organization/WebSite by `@id`, escapes `<`); only mark up what
+the page visibly shows.
 The root layout deliberately sets no `alternates.canonical` (it would be
 inherited by 404s and nested workspace pages); the homepage sets its own
 in `app/page.tsx`. `/dashboard`, `/login`, `/profile`, and the signed-in

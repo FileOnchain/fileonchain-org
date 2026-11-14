@@ -7,8 +7,10 @@ import { PageShell } from "@/components/layout/PageShell";
 import PostBody from "@/components/blog/PostBody";
 import PostMeta from "@/components/blog/PostMeta";
 import { loadPost, loadPosts } from "@/lib/blog/load";
-import { pageMetadata } from "@/lib/seo";
+import JsonLd from "@/components/JsonLd";
+import { pageMetadata, pageOgImageUrl } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
+import { ORGANIZATION_ID, WEBSITE_ID, breadcrumbList } from "@/lib/structured-data";
 
 /** Every post is prerendered; an unknown slug is a 404, not a runtime render. */
 export const dynamicParams = false;
@@ -54,23 +56,34 @@ const BlogPostPage = async ({ params }: PostPageProps) => {
   if (!post) notFound();
 
   const url = `${siteConfig.url}/blog/${post.slug}`;
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BlogPosting",
-    headline: post.title,
-    description: post.description,
-    datePublished: post.date,
-    dateModified: post.updated ?? post.date,
-    author: { "@type": "Person", name: post.author },
-    publisher: { "@type": "Organization", name: siteConfig.name, url: siteConfig.url },
-    mainEntityOfPage: url,
-    url,
-    ...(post.tags.length ? { keywords: post.tags.join(", ") } : {}),
-  };
+  const jsonLd = [
+    {
+      "@type": "BlogPosting",
+      "@id": `${url}#article`,
+      headline: post.title,
+      description: post.description,
+      datePublished: post.date,
+      dateModified: post.updated ?? post.date,
+      author: { "@type": "Person", name: post.author },
+      publisher: { "@id": ORGANIZATION_ID },
+      isPartOf: { "@id": WEBSITE_ID },
+      image: pageOgImageUrl(post.title, post.description),
+      inLanguage: "en",
+      mainEntityOfPage: url,
+      url,
+      timeRequired: `PT${post.readingMinutes}M`,
+      ...(post.tags.length ? { keywords: post.tags.join(", ") } : {}),
+    },
+    breadcrumbList([
+      ["Home", "/"],
+      ["Blog", "/blog"],
+      [post.title, `/blog/${post.slug}`],
+    ]),
+  ];
 
   return (
     <PageShell size="narrow" padding="lg" atmosphere>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <JsonLd data={jsonLd} />
       <article>
         <Link
           href="/blog"

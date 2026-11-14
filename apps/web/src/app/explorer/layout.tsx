@@ -10,7 +10,7 @@ const LIVE_NETWORKS = Array.from(new Set(ACTIVE_CHAINS.map((c) => c.name))).join
 // detail pages (`[cid]/page.tsx`) override this via `generateMetadata`.
 export const metadata: Metadata = pageMetadata({
   title: "Explorer",
-  description: `Browse and search files anchored onchain across ${LIVE_NETWORKS}. Look up any CID and its anchor records.`,
+  description: `Search files anchored onchain across ${LIVE_NETWORKS}. Look up any CID's anchor records.`,
   path: "/explorer",
   socialDescription: `Search the multichain CID index: every anchored file across ${ACTIVE_CHAINS.length} live networks.`,
 });

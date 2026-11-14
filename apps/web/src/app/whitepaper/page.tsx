@@ -10,7 +10,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "Documents",
   description:
-    "The FileOnChain documents: the neutral Evidence Protocol specification, the Agent Evidence Profile, the Cloud product overview, the integration status ledger, and the ADRs.",
+    "The FileOnChain documents: the Evidence Protocol spec, the Agent Evidence Profile, the Cloud overview, the integration status ledger, and the ADRs.",
   path: "/whitepaper",
   socialDescription:
     "Protocol spec, Agent Evidence Profile, Cloud overview, integration status, and ADRs — the neutral protocol, the opinionated profile, the convenient product.",
