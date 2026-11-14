@@ -11,7 +11,7 @@ import { pageMetadata } from "@/lib/seo";
 import { siteConfig } from "@/lib/site";
 
 const DESCRIPTION =
-  "What changed in the FileOnChain Evidence Protocol, the Agent Evidence Profile, the reference implementations, and the webapp, with protocol version and fixture changes called out.";
+  "Release notes for the FileOnChain Evidence Protocol, the Agent Evidence Profile, the reference implementations, and the webapp, version by version.";
 
 const base = pageMetadata({
   title: "Changelog",

@@ -9,7 +9,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "Protocol",
   description:
-    "The FileOnChain Evidence Protocol: a neutral, independently implementable envelope format for subject, claims, signatures, and receipts, verified locally by an open verifier.",
+    "The FileOnChain Evidence Protocol: a neutral envelope format for subject, claims, signatures, and receipts, verified locally by an open verifier.",
   path: "/protocol",
   socialDescription:
     "A neutral, independently implementable evidence envelope: subject, claims, artifact and envelope signatures, receipt adapters, application profiles. No token, no market.",
