@@ -46,7 +46,7 @@
     "@radix-ui/react-tabs": "^1.1.16",
     "@radix-ui/react-tooltip": "^1.2.11",
     "@reown/appkit": "^2.0.0",
-    "@reown/appkit-controllers": "^1.8.10",
+    "@reown/appkit-controllers": "^2.0.0",
     "@reown/walletkit": "^1.2.8",
     "@solana/web3.js": "^3.0.0",
     "@ton/core": "^0.63.1",
