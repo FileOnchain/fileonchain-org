@@ -27,7 +27,9 @@ have nothing here: Solana (SPL Memo program), Cosmos (tx memo), TRON (the
 when moving past memo mode), Cardano (tx metadata), TON (transfer comment),
 Hedera (HCS topic — create one with the runbook and set `hcsTopicId`).
 
-Per-runtime deploy runbooks live in [`docs/deploy/`](../docs/deploy/). After
+Per-runtime deploy runbooks live in [`docs/deploy/`](../docs/deploy/); the
+keys, gates, and testnet-to-mainnet procedure every deploy follows are in
+[`docs/deploy/release-plan.md`](../docs/deploy/release-plan.md). After
 deploying anything, record the address/account/topic on the chain's entry in
 `packages/utils/src/chains.ts` — that registry is the single source of truth,
 and `isChainProvisioned` flips real anchoring on from those fields alone.
