@@ -229,7 +229,7 @@ importers:
         version: 1.11.3
       '@autonomys/auto-dag-data':
         specifier: ^1.6.14
-        version: 1.7.0
+        version: 1.8.0
       '@autonomys/auto-utils':
         specifier: ^1.6.14
         version: 1.7.0(@polkadot/util-crypto@14.0.3(@polkadot/util@14.0.3))(@polkadot/util@14.0.3)(bufferutil@4.1.0)(supports-color@8.1.1)
@@ -889,11 +889,11 @@ packages:
   '@auth/drizzle-adapter@1.11.3':
     resolution: {integrity: sha512-TxqVasPVuf7LDAT1Yuu6bftpuet8o0tjdXW+mXpnXWdSRPQsomdzMoz9RsXkFN/JfdK+/DwdgOEmOTv1gbiFNw==}
 
-  '@autonomys/asynchronous@1.7.0':
-    resolution: {integrity: sha512-OHruhSCQ6nqBDz3u2aQKwvGw9Q9RCGZpd67VcEAu3CFlqV4fe4b/ukuuuKuU2YrnxZqpFuH03Vnng8D/eYjBGA==}
+  '@autonomys/asynchronous@1.8.0':
+    resolution: {integrity: sha512-YSCxyB5qXVIEosk4xx02gYPTZhKFubttgUDBOHHehTq4eM9mG76HaxAUwpdcUnq9vzGXBiqkQhMUE9TUdebIVA==}
 
-  '@autonomys/auto-dag-data@1.7.0':
-    resolution: {integrity: sha512-wWpbgU4XuN9oebNyipiGllEER4QlR0ShElSDMl7Y7/nDRrClsGbjai1cFdim6po5GmQHgEha3hq2SBatFiK75g==}
+  '@autonomys/auto-dag-data@1.8.0':
+    resolution: {integrity: sha512-N14j9uTLxY+2QgtXuaM6vsxh+VMEMrF+RBF4NGI1xzMk/h9QK0tpT3FS7QtKBt7SjefpoCMApq/jGXsNVONF6g==}
     engines: {node: '>=22.0.0'}
 
   '@autonomys/auto-utils@1.7.0':
@@ -9405,15 +9405,18 @@ snapshots:
       - '@simplewebauthn/server'
       - nodemailer
 
-  '@autonomys/asynchronous@1.7.0': {}
-
-  '@autonomys/auto-dag-data@1.7.0':
+  '@autonomys/asynchronous@1.8.0':
     dependencies:
-      '@autonomys/asynchronous': 1.7.0
+      buffer: 6.0.3
+
+  '@autonomys/auto-dag-data@1.8.0':
+    dependencies:
+      '@autonomys/asynchronous': 1.8.0
       '@ipld/dag-pb': 4.1.7
       '@webbuf/blake3': 3.8.0(@webbuf/fixedbuf@3.8.0(@webbuf/webbuf@3.8.0))(@webbuf/webbuf@3.8.0)
       '@webbuf/fixedbuf': 3.8.0(@webbuf/webbuf@3.8.0)
       '@webbuf/webbuf': 3.8.0
+      buffer: 6.0.3
       fflate: 0.8.3
       multiformats: 13.4.2
       protobufjs: 7.6.4
