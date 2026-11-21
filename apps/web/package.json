@@ -29,7 +29,7 @@
     "@hashgraph/sdk": "^2.81.0",
     "@hiero-ledger/proto": "^2.31.0",
     "@meshsdk/core": "^1.9.1",
-    "@mysten/sui": "^2.20.1",
+    "@mysten/sui": "^3.0.0",
     "@neondatabase/serverless": "^1.1.0",
     "@next/third-parties": "16.4.6",
     "@noble/curves": "^2.2.0",

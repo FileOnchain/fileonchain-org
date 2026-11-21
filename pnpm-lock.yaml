@@ -261,8 +261,8 @@ importers:
         specifier: ^1.9.1
         version: 1.9.1(@bufbuild/protobuf@1.10.1)(@harmoniclabs/bytestring@1.0.0)(@harmoniclabs/crypto@0.3.1)(bufferutil@4.1.0)(debug@4.4.1(supports-color@8.1.1))(rxjs@7.8.2)(supports-color@8.1.1)
       '@mysten/sui':
-        specifier: ^2.20.1
-        version: 2.39.1(typescript@7.0.2)
+        specifier: ^3.0.0
+        version: 3.0.1(typescript@7.0.2)
       '@neondatabase/serverless':
         specifier: ^1.1.0
         version: 1.2.1
@@ -2366,8 +2366,8 @@ packages:
   '@mysten/bcs@2.1.4':
     resolution: {integrity: sha512-ksfm0HGy82iDcuLaf4kAduaeTNqALH8D8WCdxxwU/L2Gpk4SnqoC7D8R4qMoMpCSkh56CFVG3Tme343Iz2P8PA==}
 
-  '@mysten/sui@2.39.1':
-    resolution: {integrity: sha512-cFhIn7WJcT6thzKlBO2OtqyLX5uigY/1IK0PRTa6o50Bcy0qLhacu+fjhqY7uHeXlXGrjc/kIsXs5o4KtPcieg==}
+  '@mysten/sui@3.0.1':
+    resolution: {integrity: sha512-humKrLNPyScafqwbl2axfffWO9YVK3blAkxHJyBy4tid5CZ1P19NIRlHv659oa8DhR8KeGpCTeb9/8xcoIDKkQ==}
     engines: {node: '>=22'}
 
   '@mysten/utils@0.4.2':
@@ -11122,7 +11122,7 @@ snapshots:
       '@mysten/utils': 0.4.2
       '@scure/base': 2.4.0
 
-  '@mysten/sui@2.39.1(typescript@7.0.2)':
+  '@mysten/sui@3.0.1(typescript@7.0.2)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@17.0.2)
       '@mysten/bcs': 2.1.4
