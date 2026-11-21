@@ -9,16 +9,18 @@ export const anchorOnSui = async (
   cid: string,
   privateKey: string,
 ): Promise<UploadJobTx> => {
-  const [{ SuiJsonRpcClient }, { Transaction }, { Ed25519Keypair }, sui] =
+  // @mysten/sui v3 removed the JSON-RPC transport: `@mysten/sui/jsonRpc` still
+  // loads but every export throws at runtime. gRPC is the supported transport.
+  const [{ SuiGrpcClient }, { Transaction }, { Ed25519Keypair }, sui] =
     await Promise.all([
-      import("@mysten/sui/jsonRpc"),
+      import("@mysten/sui/grpc"),
       import("@mysten/sui/transactions"),
       import("@mysten/sui/keypairs/ed25519"),
       import("@fileonchain/sdk/sui"),
     ]);
-  const client = new SuiJsonRpcClient({
-    url: chain.rpcUrl,
+  const client = new SuiGrpcClient({
     network: chain.testnet ? "testnet" : "mainnet",
+    baseUrl: chain.rpcUrl,
   });
   const keypair = Ed25519Keypair.fromSecretKey(privateKey);
   const address = keypair.getPublicKey().toSuiAddress();
@@ -38,15 +40,26 @@ export const anchorOnSui = async (
           signer: keypair,
           transaction: tx,
         });
-        return { digest: result.digest };
+        // v3 returns a discriminated union instead of throwing on an on-chain
+        // abort: an executed-but-aborted transaction comes back as
+        // `FailedTransaction`.
+        if (!result.Transaction) {
+          throw new Error(
+            `Sui anchor transaction failed: ${result.FailedTransaction?.status.error?.message ?? "unknown error"}`,
+          );
+        }
+        return { digest: result.Transaction.digest };
       },
     },
     { chainId: chain.id, cid },
   );
-  const confirmed = await client.getTransactionBlock({ digest });
+  // gRPC reads trail execution slightly, so wait for the transaction to be
+  // fetchable before reading back its checkpoint.
+  const confirmed = await client.waitForTransaction({ digest });
+  const tx = confirmed.Transaction ?? confirmed.FailedTransaction;
   return {
     chainId: chain.id,
     txHash: digest,
-    blockNumber: Number(confirmed.checkpoint ?? 0),
+    blockNumber: Number(tx?.checkpoint ?? 0),
   };
 };
