@@ -365,7 +365,7 @@ importers:
         version: 14.14.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       multiformats:
         specifier: ^14.0.0
-        version: 14.0.6
+        version: 14.0.7
       near-api-js:
         specifier: ^7.2.0
         version: 7.5.3
@@ -7550,8 +7550,8 @@ packages:
   multiformats@13.4.2:
     resolution: {integrity: sha512-eh6eHCrRi1+POZ3dA+Dq1C6jhP1GNtr9CRINMb67OKzqW9I5DUuZM/3jLPlzhgpGeiNUlEGEbkCYChXMCc/8DQ==}
 
-  multiformats@14.0.6:
-    resolution: {integrity: sha512-0YlOSF+MAPh+68ao+Qcya4SkiF/amdpAe0jmOsCH7ztKoWiQJbVjkVKqjgyJK5TApL5zyDExT56aFf6A+H/WIA==}
+  multiformats@14.0.7:
+    resolution: {integrity: sha512-cakOJESELiIY9QbUL9DlnWxJE/lH7Z5hxhPWnG8PONvjMBsbE8jWGQE0ujidINS0bWOF0Knkf0iRY7e81hRgCQ==}
 
   multiformats@9.9.0:
     resolution: {integrity: sha512-HoMUjhH9T8DDBNT+6xzkrd9ga/XiBI4xLr58LJACwK6G3HTOPeMz4nB4KJs33L2BelrIJa7P0VuNaVF3hMYfjg==}
@@ -10782,7 +10782,7 @@ snapshots:
 
   '@ipld/dag-pb@4.1.7':
     dependencies:
-      multiformats: 14.0.6
+      multiformats: 14.0.7
 
   '@isaacs/nonrecursive-glob-match@1.1.0': {}
 
@@ -10848,7 +10848,7 @@ snapshots:
       '@multiformats/dns': 1.0.15
       '@multiformats/multiaddr': 13.0.3
       main-event: 1.0.4
-      multiformats: 14.0.6
+      multiformats: 14.0.7
       progress-events: 1.1.0
       uint8arraylist: 3.0.2
 
@@ -11123,7 +11123,7 @@ snapshots:
   '@multiformats/multiaddr@13.0.3':
     dependencies:
       '@chainsafe/is-ip': 2.1.0
-      multiformats: 14.0.6
+      multiformats: 14.0.7
       uint8-varint: 3.0.0
       uint8arrays: 6.1.1
 
@@ -17621,7 +17621,7 @@ snapshots:
 
   multiformats@13.4.2: {}
 
-  multiformats@14.0.6: {}
+  multiformats@14.0.7: {}
 
   multiformats@9.9.0: {}
 
@@ -19222,7 +19222,7 @@ snapshots:
 
   uint8arrays@6.1.1:
     dependencies:
-      multiformats: 14.0.6
+      multiformats: 14.0.7
 
   unbox-primitive@1.1.0:
     dependencies:
