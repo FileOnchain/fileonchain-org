@@ -9,6 +9,11 @@ auto-created `ProxyAdmin` is owned by `ADMIN_ADDRESS` (default: the
 deployer). `ADMIN_ADDRESS` is also the `FileRegistry` owner. Anchoring is
 free beyond gas — there is no token, staking, or governance to wire.
 
+Before any mainnet run, follow [`release-plan.md`](release-plan.md) (key
+roles, fork rehearsal, testnet soak, go/no-go, post-deploy checks). On
+known mainnet chain ids the script itself refuses a `MockUSDC`, and an
+admin or treasury that is the deployer or not a contract (use a Safe).
+
 ## Prerequisites
 
 - Foundry installed (`forge --version`); in `contracts/evm/` run
@@ -33,7 +38,7 @@ export USDC_ADDRESS=0x...      # the chain's canonical USDC (optional)
 
 `USDC_ADDRESS` is read with `vm.envOr` — leave it unset on testnets and the
 script deploys a `MockUSDC` and wires `CachePayments` to it. On mainnets,
-always set the chain's real USDC.
+always set the chain's real USDC (the script reverts otherwise).
 
 ## Deploy
 

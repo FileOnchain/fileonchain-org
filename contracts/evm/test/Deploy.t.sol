@@ -44,4 +44,52 @@ contract DeployTest is Test {
     vm.setEnv("USDC_ADDRESS", vm.toString(address(existing)));
     new Deploy().run();
   }
+
+  // The mainnet guard is exercised directly (no env vars) so it cannot race
+  // with test_Run_BothUSDCBranches over process-global env.
+  function test_AssertSafeConfig_NoOpOnTestnets() public {
+    Deploy deploy = new Deploy();
+    vm.chainId(11_155_111);
+    deploy.assertSafeConfig(address(1), address(1), address(1), address(0));
+  }
+
+  function test_AssertSafeConfig_MainnetRules() public {
+    Deploy deploy = new Deploy();
+    address deployer = makeAddr("deployer");
+    address safe = address(new MockUSDC()); // any contract stands in for a Safe
+    address usdc = address(new MockUSDC());
+    address eoa = makeAddr("eoa");
+    vm.chainId(8453);
+
+    vm.expectRevert("Deploy: USDC_ADDRESS required on mainnet");
+    deploy.assertSafeConfig(deployer, safe, safe, address(0));
+
+    vm.expectRevert("Deploy: USDC_ADDRESS has no code");
+    deploy.assertSafeConfig(deployer, safe, safe, eoa);
+
+    vm.expectRevert("Deploy: ADMIN_ADDRESS must not be the deployer on mainnet");
+    deploy.assertSafeConfig(deployer, deployer, safe, usdc);
+
+    vm.expectRevert("Deploy: ADMIN_ADDRESS must be a multisig contract on mainnet");
+    deploy.assertSafeConfig(deployer, eoa, safe, usdc);
+
+    vm.expectRevert("Deploy: TREASURY_ADDRESS must not be the deployer on mainnet");
+    deploy.assertSafeConfig(deployer, safe, deployer, usdc);
+
+    vm.expectRevert("Deploy: TREASURY_ADDRESS must be a multisig contract on mainnet");
+    deploy.assertSafeConfig(deployer, safe, eoa, usdc);
+
+    deploy.assertSafeConfig(deployer, safe, safe, usdc);
+  }
+
+  function test_IsKnownMainnet() public {
+    Deploy deploy = new Deploy();
+    assertTrue(deploy.isKnownMainnet(1));
+    assertTrue(deploy.isKnownMainnet(8453));
+    assertTrue(deploy.isKnownMainnet(870));
+    assertFalse(deploy.isKnownMainnet(11_155_111));
+    assertFalse(deploy.isKnownMainnet(84_532));
+    assertFalse(deploy.isKnownMainnet(8700));
+    assertFalse(deploy.isKnownMainnet(31_337));
+  }
 }
