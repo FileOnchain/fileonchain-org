@@ -275,7 +275,7 @@ importers:
         version: 3.0.1(typescript@7.0.2)
       '@neondatabase/serverless':
         specifier: ^1.1.0
-        version: 1.2.1
+        version: 1.2.2
       '@next/third-parties':
         specifier: 16.4.6
         version: 16.4.6(next@16.4.6(@babel/core@7.29.7(supports-color@8.1.1))(@types/node@26.6.11)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)
@@ -356,7 +356,7 @@ importers:
         version: 2.1.1
       drizzle-orm:
         specifier: ^0.45.2
-        version: 0.45.4(@neondatabase/serverless@1.2.1)
+        version: 0.45.4(@neondatabase/serverless@1.2.2)
       html-to-image:
         specifier: ^1.11.13
         version: 1.11.13
@@ -2389,8 +2389,8 @@ packages:
       '@emnapi/core': ^1.7.1
       '@emnapi/runtime': ^1.7.1
 
-  '@neondatabase/serverless@1.2.1':
-    resolution: {integrity: sha512-PI2JjuyEFE7oZDTkV/s6WP4KEceCwnjQHClfunhysuIATtvcVTBLdA4UgHTnJo7C0mkK+OZ6U7SV1NDnYa0HgA==}
+  '@neondatabase/serverless@1.2.2':
+    resolution: {integrity: sha512-Zkq+/V9o34IKntqe8c0JMjxQ+MLF/t695x4IXHMKchHk/rn8rqpC1oZ3qouh1UFMDr/nRlrCtSlcsaxTmeclJg==}
     engines: {node: '>=19.0.0'}
 
   '@next/env@16.4.6':
@@ -11175,7 +11175,7 @@ snapshots:
       '@tybys/wasm-util': 0.10.3
     optional: true
 
-  '@neondatabase/serverless@1.2.1': {}
+  '@neondatabase/serverless@1.2.2': {}
 
   '@next/env@16.4.6': {}
 
@@ -15743,9 +15743,9 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.23.15
 
-  drizzle-orm@0.45.4(@neondatabase/serverless@1.2.1):
+  drizzle-orm@0.45.4(@neondatabase/serverless@1.2.2):
     optionalDependencies:
-      '@neondatabase/serverless': 1.2.1
+      '@neondatabase/serverless': 1.2.2
 
   dunder-proto@1.0.1:
     dependencies:
