@@ -401,7 +401,7 @@ importers:
         version: 3.7.1
       viem:
         specifier: ^2.53.1
-        version: 2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
+        version: 2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
       ws:
         specifier: ^8.21.0
         version: 8.23.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -595,7 +595,7 @@ importers:
         version: 7.0.2
       viem:
         specifier: ^2.53.1
-        version: 2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
+        version: 2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
 
   packages/sdk-aptos:
     dependencies:
@@ -662,7 +662,7 @@ importers:
         version: 7.0.2
       viem:
         specifier: ^2.53.1
-        version: 2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
+        version: 2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
 
   packages/sdk-hedera:
     dependencies:
@@ -826,7 +826,7 @@ importers:
         version: 2.4.0
       viem:
         specifier: ^2.53.1
-        version: 2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
+        version: 2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
     devDependencies:
       '@fileonchain/sdk':
         specifier: workspace:^
@@ -9056,8 +9056,8 @@ packages:
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
 
-  viem@2.58.7:
-    resolution: {integrity: sha512-9s29POkcUOdlvEN5ePdBTBryhoEQE+ikXuuwjvJRqTc99yCMVkVqwvrjogYpTaJLo2rIrgOEjAglbdr6DCRdkg==}
+  viem@2.58.8:
+    resolution: {integrity: sha512-kQBP9j2gkL1j+eCIV3qs+cfS2NvltlNX2BcJ2C1qKlCIjP6ibqvIlZSJN8OJ+CR8j/pJpUUoG97179upObcw3g==}
     peerDependencies:
       mppx: '>=0.17.0'
       typescript: ^7.0.0
@@ -9571,7 +9571,7 @@ snapshots:
       idb-keyval: 6.2.1
       ox: 0.6.9(typescript@7.0.2)(zod@4.6.7)
       preact: 10.24.2
-      viem: 2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
+      viem: 2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
       zustand: 5.0.3(@types/react@19.3.3)(react@19.3.1)
     transitivePeerDependencies:
       - '@types/react'
@@ -9792,7 +9792,7 @@ snapshots:
       jose: 6.2.8
       md5: 2.3.0
       uncrypto: 0.1.3
-      viem: 2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(zod@3.25.76)
+      viem: 2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(zod@3.25.76)
       zod: 3.25.76
     optionalDependencies:
       '@x402/core': 2.27.0
@@ -9816,7 +9816,7 @@ snapshots:
       idb-keyval: 6.2.1
       ox: 0.6.9(typescript@7.0.2)(zod@4.6.7)
       preact: 10.24.2
-      viem: 2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
+      viem: 2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
       zustand: 5.0.3(@types/react@19.3.3)(react@19.3.1)
     transitivePeerDependencies:
       - '@types/react'
@@ -12148,7 +12148,7 @@ snapshots:
     dependencies:
       big.js: 6.2.2
       dayjs: 1.11.13
-      viem: 2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(zod@3.22.4)
+      viem: 2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(zod@3.22.4)
     transitivePeerDependencies:
       - bufferutil
       - mppx
@@ -12160,7 +12160,7 @@ snapshots:
     dependencies:
       big.js: 6.2.2
       dayjs: 1.11.13
-      viem: 2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
+      viem: 2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
     transitivePeerDependencies:
       - bufferutil
       - mppx
@@ -12174,7 +12174,7 @@ snapshots:
       '@reown/appkit-wallet': 2.0.0(bufferutil@4.1.0)(typescript@7.0.2)
       '@walletconnect/universal-provider': 2.23.7(bufferutil@4.1.0)(typescript@7.0.2)(zod@4.6.7)
       valtio: 2.1.7(@types/react@19.3.3)(react@19.3.1)
-      viem: 2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
+      viem: 2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -12345,7 +12345,7 @@ snapshots:
       '@walletconnect/logger': 3.0.2
       '@walletconnect/universal-provider': 2.23.7(bufferutil@4.1.0)(typescript@7.0.2)(zod@4.6.7)
       valtio: 2.1.7(@types/react@19.3.3)(react@19.3.1)
-      viem: 2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
+      viem: 2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
     optionalDependencies:
       '@base-org/account': 2.4.0(@types/react@19.3.3)(@x402/core@2.27.0)(@x402/evm@2.27.0(bufferutil@4.1.0)(typescript@7.0.2))(@x402/extensions@2.27.0(bufferutil@4.1.0)(ethers@6.17.0(bufferutil@4.1.0))(typescript@7.0.2))(@x402/svm@2.27.0(@solana/kit@5.5.1(bufferutil@4.1.0)(typescript@7.0.2))(@solana/sysvars@5.5.1(typescript@7.0.2)))(bufferutil@4.1.0)(debug@4.4.1(supports-color@8.1.1))(react@19.3.1)(typescript@7.0.2)(zod@4.6.7)
       '@coinbase/wallet-sdk': 4.3.6(@types/react@19.3.3)(bufferutil@4.1.0)(react@19.3.1)(typescript@7.0.2)(zod@4.6.7)
@@ -12417,7 +12417,7 @@ snapshots:
       bs58: 6.0.0
       semver: 7.7.2
       valtio: 2.1.7(@types/react@19.3.3)(react@19.3.1)
-      viem: 2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
+      viem: 2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
     optionalDependencies:
       '@lit/react': 1.0.8(@types/react@19.3.3)
     transitivePeerDependencies:
@@ -12639,7 +12639,7 @@ snapshots:
   '@safe-global/safe-apps-sdk@9.1.0(bufferutil@4.1.0)(typescript@7.0.2)(zod@4.6.7)':
     dependencies:
       '@safe-global/safe-gateway-typescript-sdk': 3.23.1
-      viem: 2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
+      viem: 2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
     transitivePeerDependencies:
       - bufferutil
       - mppx
@@ -12740,12 +12740,12 @@ snapshots:
       apg-js: 4.4.0
     optional: true
 
-  '@signinwithethereum/siwe@4.2.1(ethers@6.17.0(bufferutil@4.1.0))(viem@2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7))':
+  '@signinwithethereum/siwe@4.2.1(ethers@6.17.0(bufferutil@4.1.0))(viem@2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7))':
     dependencies:
       '@signinwithethereum/siwe-parser': 4.2.1
     optionalDependencies:
       ethers: 6.17.0(bufferutil@4.1.0)
-      viem: 2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
+      viem: 2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7)
     optional: true
 
   '@simplewebauthn/browser@13.3.0': {}
@@ -14935,7 +14935,7 @@ snapshots:
   '@x402/evm@2.27.0(bufferutil@4.1.0)(typescript@7.0.2)':
     dependencies:
       '@x402/core': 2.27.0
-      viem: 2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(zod@3.25.76)
+      viem: 2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(zod@3.25.76)
       zod: 3.25.76
     transitivePeerDependencies:
       - bufferutil
@@ -14948,12 +14948,12 @@ snapshots:
     dependencies:
       '@noble/curves': 1.9.7
       '@scure/base': 1.2.6
-      '@signinwithethereum/siwe': 4.2.1(ethers@6.17.0(bufferutil@4.1.0))(viem@2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7))
+      '@signinwithethereum/siwe': 4.2.1(ethers@6.17.0(bufferutil@4.1.0))(viem@2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7))
       '@x402/core': 2.27.0
       ajv: 8.20.0
       jose: 5.10.0
       tweetnacl: 1.0.3
-      viem: 2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(zod@3.25.76)
+      viem: 2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(zod@3.25.76)
       zod: 3.25.76
     transitivePeerDependencies:
       - bufferutil
@@ -19416,7 +19416,7 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  viem@2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7):
+  viem@2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(utf-8-validate@6.0.6)(zod@4.6.7):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
@@ -19433,7 +19433,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  viem@2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(zod@3.22.4):
+  viem@2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(zod@3.22.4):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
@@ -19450,7 +19450,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  viem@2.58.7(bufferutil@4.1.0)(typescript@7.0.2)(zod@3.25.76):
+  viem@2.58.8(bufferutil@4.1.0)(typescript@7.0.2)(zod@3.25.76):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
